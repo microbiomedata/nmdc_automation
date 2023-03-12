@@ -124,25 +124,22 @@ class MetaProtAgg():
     def sweep(self):
         print("Getting list of indexed objects")
         done = self.agg_col.distinct("metaproteomic_analysis_id")
-        act_recs = {}
-        acts = []
         for actrec in self.act_col.find({}):
             # New annotations should have this
-            act = actrec['id']
-            if act in done:
+            act_id = actrec['id']
+            if act_id in done:
                 continue
-            acts.append(act)
-            act_recs[act] = actrec
             try:
                 rows = self.process_activity(actrec)
             except Exception as ex:
                 # Continue on errors
                 print(ex)
+                continue
             if len(rows) > 0:
                 print(' - %s' % (str(rows[0])))
-                self.metap_agg_col.insert_many(rows)
+                self.agg_col.insert_many(rows)
             else:
-                print(f' - No rows for {act}')
+                print(f' - No rows for {act_id}')
 
 
 if __name__ == "__main__":

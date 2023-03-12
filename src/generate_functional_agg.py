@@ -3,100 +3,135 @@ import requests
 from pymongo import MongoClient
 
 
-_base_url = "https://data.microbiomedata.org/data"
-_base_fn = "/global/cfs/cdirs/m3408/results"
+class AnnotationLine():
+
+    def __init__(self, line, filter=None):
+        self.id = None
+        self.kegg = None
+        self.cogs = None
+        self.product = None
+        self.ec_numbers = None
+
+        if line.find("ko=") > 0:
+            annotations = line.split("\t")[8].split(";")
+            self.id = annotations[0][3:]
+            if filter and self.id not in filter:
+                return
+
+            for anno in annotations:
+                if anno.startswith("ko="):
+                    kos = anno[3:].replace("KO:", "KEGG.ORTHOLOGY:")
+                    self.kegg = kos.rstrip().split(',')
+                elif anno.startswith("cog="):
+                    self.cogs = anno[4:].split(',')
+                elif anno.startswith("product="):
+                    self.product = anno[8:]
+                elif anno.startswith("ec_number="):
+                    self.ec_numbers = anno[10:].split(",")
 
 
-def init_nmdc_mongo():
-    url = os.environ["MONGO_URL"]
-    client = MongoClient(url)
-    nmdc = client.nmdc
-    return nmdc
+class MetaGenomeFuncAgg():
+    _BASE_URL_ENV = "NMDC_BASE_URL"
+    _base_url = "https://data.microbiomedata.org/data"
+    _BASE_PATH_ENV = "NMDC_BASE_PATH"
+    _base_dir = "/global/cfs/cdirs/m3408/results"
 
+    def __init__(self):
+        url = os.environ["MONGO_URL"]
+        client = MongoClient(url, directConnection=True)
+        self.db = client.nmdc
+        self.agg_col = self.db.functional_annotation_agg
+        self.act_col = self.db.metagenome_annotation_activity_set
+        self.do_col = self.db.data_object_set
+        self.base_url = os.environ.get(self._BASE_URL_ENV, self._base_url)
+        self.base_dir = os.environ.get(self._BASE_PATH_ENV, self._base_dir)
 
-def do_line(line, cts):
-    if line.find("ko=") > 0:
-        annotations = line.split("\t")[8]
-        for anno in annotations.split(";"):
-            if anno.startswith("ko="):
-                ko = anno[3:].replace("KO:", "KEGG.ORTHOLOGY")
-                if ko not in cts:
-                    cts[ko] = 0
-                cts[ko] += 1
-    return None
+    def get_kegg_terms(self, url):
+        fn = url.replace(self.base_url, self.base_dir)
 
-
-def get_kegg_counts(id, url):
-    # Yes: We could do a json load but that can be slow for these large
-    # files.  So let's just grab what we need
-    cts = {}
-    rows = []
-    fn = url.replace(_base_url, _base_fn)
-
-    if os.path.exists(fn):
-        with open(fn) as f:
-            for line in f:
-                do_line(line, cts)
-    else:
-        # It looks like some of the data objects have
-        # an error
-        s = requests.Session()
-        with s.get(url, headers=None, stream=True) as resp:
+        if os.path.exists(fn):
+            lines = open(fn)
+        else:
+            s = requests.Session()
+            resp = s.get(url, headers=None, stream=True)
             if not resp.ok:
                 print(f"Failed: {url}")
                 return []
-            for line in resp.iter_lines():
-                do_line(line.decode(), cts)
-    for func, ct in cts.items():
-        rec = {
-               'metagenome_annotation_id': id,
-               'gene_function_id': func,
-               'count': ct
-              }
-        rows.append(rec)
-    print(f' - {len(rows)} terms')
-    return rows
+            lines = resp.iter_lines()
 
+        kos = {}
+        for line in lines:
+            if isinstance(line, bytes):
+                line = line.decode()
+            anno = AnnotationLine(line)
+            if anno.kegg:
+                for ko in anno.kegg:
+                    if ko not in kos:
+                        kos[ko] = 0
+                    kos[ko] += 1
+        return kos
 
-def find_anno(nmdc, dos):
-    for doid in dos:
-        do = nmdc.data_object_set.find_one({"id": doid})
-        if 'data_object_type' not in do:
-            continue
-        if do['data_object_type'] == 'Functional Annotation GFF':
-            return do['url']
-    return None
+    def find_anno(self, dos):
+        """
+        Find the GFF annotation URL
+        input: list of data object IDs
+        returns: GFF functional annotation URL
+        """
+        url = None
+        for doid in dos:
+            do = self.do_col.find_one({"id": doid})
+            # skip over bad records
+            if not do or 'data_object_type' not in do:
+                continue
+            if do['data_object_type'] == 'Functional Annotation GFF':
+                url = do['url']
+                break
+        return url
+
+    def process_activity(self, act):
+        url = self.find_anno(act['has_output'])
+        if not url:
+            raise ValueError("Missing url")
+        print(f"{act}: {url}")
+        id = act['id']
+        cts = self.get_kegg_counts(act, url)
+
+        rows = []
+        for func, ct in cts.items():
+            rec = {
+                'metagenome_annotation_id': id,
+                'gene_function_id': func,
+                'count': ct
+                }
+            rows.append(rec)
+        print(f' - {len(rows)} terms')
+        return rows
+
+    def sweep(self):
+        print("Getting list of indexed objects")
+        done = self.agg_col.distinct("metagenome_annotation_id")
+        for actrec in self.act_col.find({}):
+            # New annotations should have this
+            act_id = actrec['id']
+            if act_id in done:
+                continue
+            try:
+                rows = self.process_activity(actrec)
+            except Exception as ex:
+                # Continue on errors
+                print(ex)
+                continue
+            if len(rows) > 0:
+                print(' - %s' % (str(rows[0])))
+                self.agg_col.insert_many(rows)
+            else:
+                print(f' - No rows for {act_id}')
 
 
 if __name__ == "__main__":
-    nmdc = init_nmdc_mongo()
-    act_recs = {}
-    acts = []
-    for actrec in nmdc.metagenome_annotation_activity_set.find({}):
-        # New annotations should have this
-        if 'part_of' not in actrec:
-            continue
-        act = actrec['part_of'][0]
-        acts.append(act)
-        act_recs[act] = actrec
+    mg = MetaGenomeFuncAgg()
+    mg.sweep()
 
-    print("Getting list of indexed objects")
-    done = nmdc.functional_annotation_agg.distinct("metagenome_annotation_id")
-
-    for act in acts:
-        f = {"metagenome_annotation_id": act}
-        if act in done:
-            continue
-        url = find_anno(nmdc, act_recs[act]['has_output'])
-        url = url.replace("data/nmdc_mta", "data/nmdc:mta", 1)
-        print(f"{act}: {url}")
-        rows = get_kegg_counts(act, url)
-
-        if len(rows) > 0:
-            print(' - %s' % (str(rows[0])))
-            nmdc.functional_annotation_agg.insert_many(rows)
-        else:
-            print(f' - No rows for {act}')
 
 # Schema
 #
