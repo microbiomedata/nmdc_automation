@@ -51,21 +51,20 @@ class MetaProtAgg():
         fn = url.replace(self.base_url, self.base_dir)
 
         if os.path.exists(fn):
-            with open(fn) as f:
-                for line in f:
-                    anno = AnnotationLine(line, gene_list)
-                    if anno.kegg:
-                        kos[anno.id] = anno.kegg
+            lines = open(fn)
         else:
             s = requests.Session()
-            with s.get(url, headers=None, stream=True) as resp:
-                if not resp.ok:
-                    print(f"Failed: {url}")
-                    return []
-                for line in resp.iter_lines():
-                    anno = AnnotationLine(line.decode(), gene_list)
-                    if anno.kegg:
-                        kos[anno.id] = anno.kegg
+            resp = s.get(url, headers=None, stream=True)
+            if not resp.ok:
+                raise OSError(f"Failed to read {url}")
+            lines = resp.iter_lines()
+
+        for line in lines:
+            if isinstance(line, bytes):
+                line = line.decode()
+            anno = AnnotationLine(line, gene_list)
+            if anno.kegg:
+                kos[anno.id] = anno.kegg
         return kos
 
     def find_anno(self, dos):

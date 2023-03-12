@@ -55,8 +55,7 @@ class MetaGenomeFuncAgg():
             s = requests.Session()
             resp = s.get(url, headers=None, stream=True)
             if not resp.ok:
-                print(f"Failed: {url}")
-                return []
+                raise OSError(f"Failed to read {url}")
             lines = resp.iter_lines()
 
         kos = {}
