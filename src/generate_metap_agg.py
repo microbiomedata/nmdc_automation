@@ -47,18 +47,20 @@ class MetaProtAgg():
         self.base_dir = os.environ.get(self._BASE_PATH_ENV, self._base_dir)
 
     def get_kegg_terms(self, url, gene_list):
-        kos = {}
         fn = url.replace(self.base_url, self.base_dir)
 
         if os.path.exists(fn):
+            print(f"Opening: {fn}")
             lines = open(fn)
         else:
+            print(f"Reading: {url}")
             s = requests.Session()
             resp = s.get(url, headers=None, stream=True)
             if not resp.ok:
                 raise OSError(f"Failed to read {url}")
             lines = resp.iter_lines()
 
+        kos = {}
         for line in lines:
             if isinstance(line, bytes):
                 line = line.decode()
@@ -82,7 +84,7 @@ class MetaProtAgg():
                 continue
             if do['data_object_type'] == 'Annotation Amino Acid FASTA':
                 url = do['url']
-                url.replace("_proteins.faa", "_functional_annotation.gff")
+                url = url.replace("_proteins.faa", "_functional_annotation.gff")
                 break
         return url
 
@@ -118,7 +120,7 @@ class MetaProtAgg():
                     kegg_recs[ko]["count"] += 1
                     if prot == pep['best_protein']:
                         kegg_recs[ko]["best_protein"] = True
-        return kegg_recs
+        return list(kegg_recs.values())
 
     def sweep(self):
         print("Getting list of indexed objects")
