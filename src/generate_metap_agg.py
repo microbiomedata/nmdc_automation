@@ -1,139 +1,152 @@
 import os
-import sys
 import requests
 from pymongo import MongoClient
 
 
-_base_url = "https://data.microbiomedata.org/data"
-_base_fn = "/global/cfs/cdirs/m3408/results"
+class AnnotationLine():
+
+    def __init__(self, line, filter=None):
+        self.id = None
+        self.kegg = None
+        self.cogs = None
+        self.product = None
+        self.ec_numbers = None
+
+        if line.find("ko=") > 0:
+            annotations = line.split("\t")[8].split(";")
+            self.id = annotations[0][3:]
+            if filter and self.id not in filter:
+                return
+
+            for anno in annotations:
+                if anno.startswith("ko="):
+                    kos = anno[3:].replace("KO:", "KEGG.ORTHOLOGY:")
+                    self.kegg = kos.rstrip().split(',')
+                elif anno.startswith("cog="):
+                    self.cogs = anno[4:].split(',')
+                elif anno.startswith("product="):
+                    self.product = anno[8:]
+                elif anno.startswith("ec_number="):
+                    self.ec_numbers = anno[10:].split(",")
 
 
-def init_nmdc_mongo():
-    url = os.environ["MONGO_URL"]
-    client = MongoClient(url, directConnection=True)
-    nmdc = client.nmdc
-    return nmdc
+class MetaProtAgg():
+    _BASE_URL_ENV = "NMDC_BASE_URL"
+    _base_url = "https://data.microbiomedata.org/data"
+    _BASE_PATH_ENV = "NMDC_BASE_PATH"
+    _base_dir = "/global/cfs/cdirs/m3408/results"
 
+    def __init__(self):
+        url = os.environ["MONGO_URL"]
+        client = MongoClient(url, directConnection=True)
+        self.db = client.nmdc
+        self.agg_col = self.db.metap_gene_function_aggregation
+        self.act_col = self.db.metaproteomics_analysis_activity_set
+        self.do_col = self.db.data_object_set
+        self.base_url = os.environ.get(self._BASE_URL_ENV, self._base_url)
+        self.base_dir = os.environ.get(self._BASE_PATH_ENV, self._base_dir)
 
-def do_line(line, gene_list):
-    if line.find("ko=") > 0:
-        annotations = line.split("\t")[8].split(";")
-        id = annotations[0][3:]
-        if id not in gene_list:
-            return None, None
+    def get_kegg_terms(self, url, gene_list):
+        kos = {}
+        fn = url.replace(self.base_url, self.base_dir)
 
-        for anno in annotations:
-            if anno.startswith("ko="):
-                ko = anno[3:].replace("KO:", "KEGG.ORTHOLOGY")
-                return id, ko
-    return None, None
+        if os.path.exists(fn):
+            with open(fn) as f:
+                for line in f:
+                    anno = AnnotationLine(line, gene_list)
+                    if anno.kegg:
+                        kos[anno.id] = anno.kegg
+        else:
+            s = requests.Session()
+            with s.get(url, headers=None, stream=True) as resp:
+                if not resp.ok:
+                    print(f"Failed: {url}")
+                    return []
+                for line in resp.iter_lines():
+                    anno = AnnotationLine(line.decode(), gene_list)
+                    if anno.kegg:
+                        kos[anno.id] = anno.kegg
+        return kos
 
-
-def get_kegg_terms(url, gene_list):
-    # Yes: We could do a json load but that can be slow for these large
-    # files.  So let's just grab what we need
-    kos = {}
-    fn = url.replace(_base_url, _base_fn)
-
-    if os.path.exists(fn):
-        with open(fn) as f:
-            for line in f:
-                id, ko_line = do_line(line, gene_list)
-                if ko_line:
-                    kos[id] = ko_line.rstrip().split(",")
-    else:
-        # It looks like some of the data objects have
-        # an error
-        s = requests.Session()
-        with s.get(url, headers=None, stream=True) as resp:
-            if not resp.ok:
-                print(f"Failed: {url}")
-                return []
-            for line in resp.iter_lines():
-                ko = do_line(line.decode(), gene_list)
-                if ko:
-                    kos[id] = ko
-    return kos
-
-def find_anno(nmdc, dos):
-    for doid in dos:
-        do = nmdc.data_object_set.find_one({"id": doid})
-        if not do:
-            continue
-        if 'data_object_type' not in do:
-            continue
-        if do['data_object_type'] == 'Annotation Amino Acid FASTA':
-            return do['url'].replace("_proteins.faa", "_functional_annotation.gff")
-    return None
-
-def process_act(nmdc, act):
-    # Get the URL and ID
-    url = find_anno(nmdc, act['has_input'])
-    if not url:
-        raise ValueError("Missing url")
-    url_id = url.split('/')[-1].replace("nmdc_", "nmdc:").split('_')[0]
-    last_id = None
-    id_list = set()
-    # Get the filter list
-    for pep in act['has_peptide_quantifications']:
-        mid = pep['all_proteins'][0].split('_')[0]
-        if not mid.startswith(url_id):
-            continue
-        if last_id and last_id != mid:
-            raise ValueError(f"changing reference {last_id} {mid}")
-            continue
-        for prot in pep['all_proteins']:
-            id_list.add(prot)
-        last_id = mid
-    proteins = get_kegg_terms(url, id_list)
-    kegg_recs = {}
-    for pep in act['has_peptide_quantifications']:
-        mid = pep['all_proteins'][0].split('_')[0]
-        if not mid.startswith(url_id):
-            continue
-        for prot in pep['all_proteins']:
-            if prot not in proteins:
+    def find_anno(self, dos):
+        """
+        Find the GFF annotation URL
+        We use the protein file to get the base part of the URL.
+        input: list of data object IDs
+        returns: GFF functional annotation URL
+        """
+        url = None
+        for doid in dos:
+            do = self.do_col.find_one({"id": doid})
+            # skip over bad records
+            if not do or 'data_object_type' not in do:
                 continue
-            kos = proteins[prot]
-            for ko in kos:
-                if ko not in kegg_recs:
-                    kegg_recs[ko] = {"metaproteomic_analysis_id": act['id'],
-                                     "gene_function_id": ko,
-                                     "count": 0,
-                                     "best_protein": False}
-                kegg_recs[ko]["count"] += 1
-                if prot == pep['best_protein']:
-                    kegg_recs[ko]["best_protein"] = True
-    for ko in kegg_recs:
-        print(kegg_recs[ko])
+            if do['data_object_type'] == 'Annotation Amino Acid FASTA':
+                url = do['url']
+                url.replace("_proteins.faa", "_functional_annotation.gff")
+                break
+        return url
+
+    def process_activity(self, act):
+        # Get the URL and ID
+        url = self.find_anno(act['has_input'])
+        if not url:
+            raise ValueError("Missing url")
+        url_id = url.split('/')[-1].replace("nmdc_", "nmdc:").split('_')[0]
+        id_list = set()
+        # Get the filter list
+        for pep in act['has_peptide_quantifications']:
+            # This check is because some activities have
+            # bogus peptides
+            mid = pep['all_proteins'][0].split('_')[0]
+            if not mid.startswith(url_id):
+                continue
+            id_list.update(pep['all_proteins'])
+        proteins = self.get_kegg_terms(url, id_list)
+        kegg_recs = {}
+        for pep in act['has_peptide_quantifications']:
+            for prot in pep['all_proteins']:
+                if prot not in proteins:
+                    continue
+                kos = proteins[prot]
+                for ko in kos:
+                    if ko not in kegg_recs:
+                        new_rec = {"metaproteomic_analysis_id": act['id'],
+                                   "gene_function_id": ko,
+                                   "count": 0,
+                                   "best_protein": False}
+                        kegg_recs[ko] = new_rec
+                    kegg_recs[ko]["count"] += 1
+                    if prot == pep['best_protein']:
+                        kegg_recs[ko]["best_protein"] = True
+        return kegg_recs
+
+    def sweep(self):
+        print("Getting list of indexed objects")
+        done = self.agg_col.distinct("metaproteomic_analysis_id")
+        act_recs = {}
+        acts = []
+        for actrec in self.act_col.find({}):
+            # New annotations should have this
+            act = actrec['id']
+            if act in done:
+                continue
+            acts.append(act)
+            act_recs[act] = actrec
+            try:
+                rows = self.process_activity(actrec)
+            except Exception as ex:
+                # Continue on errors
+                print(ex)
+            if len(rows) > 0:
+                print(' - %s' % (str(rows[0])))
+                metap_agg_col.insert_many(rows)
+            else:
+                print(f' - No rows for {act}')
+
 
 if __name__ == "__main__":
-    nmdc = init_nmdc_mongo()
-    act_recs = {}
-    acts = []
-    print("get acts")
-    for actrec in nmdc.metaproteomics_analysis_activity_set.find({}):
-        # New annotations should have this
-        act = actrec['id']
-        print(act)
-        acts.append(act)
-        act_recs[act] = actrec
-        try:
-            process_act(nmdc, actrec)
-        except Exception as ex:
-            print(ex)
-    sys.exit()
+    mp = MetaProtAgg()
+    mp.sweep()
 
-    print("Getting list of indexed objects")
-    done = nmdc.metap_gene_function_aggregation.distinct("metaproteomic_analysis_id ")
-    for act in acts:
-        if act in done:
-            continue
-        break
-        continue
 
-        if len(rows) > 0:
-            print(' - %s' % (str(rows[0])))
-            nmdc.functional_annotation_agg.insert_many(rows)
-        else:
-            print(f' - No rows for {act}')
