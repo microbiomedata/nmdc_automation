@@ -140,7 +140,7 @@ class MetaProtAgg():
                 print(ex)
             if len(rows) > 0:
                 print(' - %s' % (str(rows[0])))
-                metap_agg_col.insert_many(rows)
+                self.metap_agg_col.insert_many(rows)
             else:
                 print(f' - No rows for {act}')
 
@@ -148,5 +148,3 @@ class MetaProtAgg():
 if __name__ == "__main__":
     mp = MetaProtAgg()
     mp.sweep()
-
-
