@@ -46,7 +46,7 @@ class MetaGenomeFuncAgg():
         self.base_url = os.environ.get(self._BASE_URL_ENV, self._base_url)
         self.base_dir = os.environ.get(self._BASE_PATH_ENV, self._base_dir)
 
-    def get_kegg_terms(self, url):
+    def get_kegg_counts(self, url):
         fn = url.replace(self.base_url, self.base_dir)
 
         if os.path.exists(fn):
@@ -84,6 +84,8 @@ class MetaGenomeFuncAgg():
                 continue
             if do['data_object_type'] == 'Functional Annotation GFF':
                 url = do['url']
+                # Fix up broken URLs
+                url = url.replace('data/nmdc_mta', 'data/nmdc:mta')
                 break
         return url
 
@@ -91,9 +93,9 @@ class MetaGenomeFuncAgg():
         url = self.find_anno(act['has_output'])
         if not url:
             raise ValueError("Missing url")
-        print(f"{act}: {url}")
+        print(f"Processing {url}")
         id = act['id']
-        cts = self.get_kegg_counts(act, url)
+        cts = self.get_kegg_counts(url)
 
         rows = []
         for func, ct in cts.items():
