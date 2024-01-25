@@ -81,6 +81,14 @@ class Config:
     @property
     def client_secret(self):
         return self.config_data["credentials"]["client_secret"]
+    
+    @property
+    def jaws_api(self):
+        return self.config_data["jaws"]["jaws_api"]
+    
+    @property
+    def jaws_token(self):
+        return self.config_data["jaws"]["jaws_token"]
 
     @property
     def allowed_workflows(self):
