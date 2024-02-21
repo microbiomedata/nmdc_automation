@@ -32,25 +32,29 @@ def get_mongo_db() -> MongoDatabase:
     return _client[os.getenv("MONGO_DBNAME")]
 
 
-def within_range(wf1: Workflow, wf2: Workflow, force=False) -> bool:
+def within_range(wf1: Workflow, wf2: Workflow, version_range: str, force: bool = False) -> bool:
     """
-    Determine if two workflows are within a major and minor
-    version of each other.
+    Determine if two workflows are within a specified version component of each other.
+    The version_range parameter can be 'major', 'minor', or 'patch'.
     """
 
     def get_version(wf):
-        v_string = wf1.version.lstrip("b").lstrip("v")
+        v_string = wf.version.lstrip("b").lstrip("v")
         return Version.parse(v_string)
 
-    # Apples and oranges
+    # Check for different workflow names
     if wf1.name != wf2.name:
         return False
+
     v1 = get_version(wf1)
     v2 = get_version(wf2)
+
     if force:
-        return v1==v2
-    if v1.major == v2.major and v1.minor == v2.minor:
+        return v1 == v2
+
+    if getattr(v1, version_range) == getattr(v2, version_range):
         return True
+
     return False
 
 
@@ -233,7 +237,7 @@ class Scheduler:
             existing_jobs.add(act)
         return existing_jobs
 
-    def find_new_jobs(self, act: Activity) -> list[Job]:
+    def find_new_jobs(self, act: Activity, compare_version: str) -> list[Job]:
         """
         For a given activity see if there are any new jobs
         that should be created.
@@ -251,7 +255,7 @@ class Scheduler:
             # Look at previously generated derived
             # activities to see if this is already done.
             for child_act in act.children:
-                if within_range(child_act.workflow, wf, force=self.force):
+                if within_range(child_act.workflow, wf, compare_version, force=self.force):
                     break
             else:
                 # These means no existing activities were
@@ -262,7 +266,7 @@ class Scheduler:
 
         return new_jobs
 
-    def cycle(self, dryrun: bool = False, skiplist: set = set(), allowlist = None) -> list:
+    def cycle(self, dryrun: bool = False, skiplist: set = set(), allowlist = None, compare_version: str = "major") -> list:
         """
         This function does a single cycle of looking for new jobs
         """
@@ -275,7 +279,7 @@ class Scheduler:
                 continue
             if allowlist and act.was_informed_by not in allowlist:
                 continue
-            jobs = self.find_new_jobs(act)
+            jobs = self.find_new_jobs(act, compare_version)
             for job in jobs:
                 if dryrun:
                     msg = f"new job: informed_by: {job.informed_by} trigger: {job.trigger_id} "
@@ -312,8 +316,12 @@ def main():  # pragma: no cover
         with open(os.environ.get("ALLOWLISTFILE")) as f:
             for line in f:
                 allowlist.add(line.rstrip())
+    if os.environ.get("COMPAREVERSION"):
+        compare_version = os.environ.get("COMPAREVERSION")
+    else:
+        compare_version = "major"
     while True:
-        sched.cycle(dryrun=dryrun, skiplist=skiplist, allowlist=allowlist)
+        sched.cycle(dryrun=dryrun, skiplist=skiplist, allowlist=allowlist, compare_version=compare_version)
         _sleep(_POLL_INTERVAL)
 
 
