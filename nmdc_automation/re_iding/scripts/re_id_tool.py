@@ -517,7 +517,7 @@ def delete_old_records(ctx, old_records_file):
                         annotation_ids.append(item["id"])
                 delete_query = {
                     "delete": set_name,
-                    "deletes": [{"q": {"id": {"$in": delete_ids}}, "limit": len(delete_ids)}],
+                    "deletes": [{"q": {"$id": {"$in": delete_ids}}, "limit": 0}],
                 }
                 try:
                     logging.info(f"Deleting {set_name} records: {delete_ids}")
@@ -529,7 +529,7 @@ def delete_old_records(ctx, old_records_file):
     # delete functional annotation agg records
     delete_annotation_query = {
         "delete": "functional_annotation_agg",
-        "deletes": [{"q": {"metagenome_annotation_id": {"$in": annotation_ids}}, "limit": len(annotation_ids)}],
+        "deletes": [{"q": {"metagenome_annotation_id": {"$in": annotation_ids}}, "limit": 0}],
     }
     try:
         logging.info(f"Deleting functional annotation agg records: {annotation_ids}")
