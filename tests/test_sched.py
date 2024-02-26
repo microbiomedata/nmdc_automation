@@ -1,7 +1,8 @@
 from pymongo import MongoClient
 import json
 import os
-from nmdc_automation.workflow_automation.sched import Scheduler
+from nmdc_automation.workflow_automation.sched import Scheduler, within_range
+from nmdc_automation.workflow_automation.workflows import load_workflows, Workflow
 from pytest import fixture
 from pathlib import Path
 from time import time
@@ -82,6 +83,54 @@ def mock_progress(db, wf):
     db[s].delete_many({})
     db[s].insert_one(data)
 
+def test_within_range():
+    
+    wf1_major_dict = {
+        "Name": "TestWF",
+        "Version": "v1.1.0",
+    }
+    wf2_major_dict = {
+        "Name": "TestWF",
+        "Version": "v2.0.0",
+    }
+    
+    wf1_minor_dict = {
+        "Name": "TestWF",
+        "Version": "v1.1.0",
+    }
+    wf2_minor_dict = {
+        "Name": "TestWF",
+        "Version": "v1.2.5",
+    }
+    
+    wf1_patch_dict = {
+        "Name": "TestWF",
+        "Version": "v1.1.0",
+    }
+    wf2_patch_dict = {
+        "Name": "TestWF",
+        "Version": "v1.1.5",
+    }
+
+    # Instantiate Workflow objects from dictionaries
+    wf1_major = Workflow(wf1_major_dict)
+    wf2_major = Workflow(wf2_major_dict)
+    wf1_minor = Workflow(wf1_minor_dict)
+    wf2_minor = Workflow(wf2_minor_dict)
+    wf1_patch = Workflow(wf1_patch_dict)
+    wf2_patch = Workflow(wf2_patch_dict)
+    
+    # Test major version range
+    assert within_range(wf1_major, wf2_major, "major") == False
+    assert within_range(wf1_major, wf1_minor, "major") == True
+
+    # Test minor version range
+    assert within_range(wf1_minor, wf2_minor, "minor") == False
+    assert within_range(wf1_minor, wf1_major, "minor") == True
+
+    # Test patch version range
+    assert within_range(wf1_patch, wf2_patch, "patch") == False
+    assert within_range(wf1_patch, wf1_minor, "patch") == True
 
 def test_submit(db, mock_api):
     """
