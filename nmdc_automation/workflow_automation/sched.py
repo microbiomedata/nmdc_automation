@@ -42,7 +42,6 @@ def within_range(wf1: Workflow, wf2: Workflow, version_range: str, force: bool =
         v_string = wf.version.lstrip("b").lstrip("v")
         return Version.parse(v_string)
 
-    # Check for different workflow names
     if wf1.name != wf2.name:
         return False
 
@@ -52,8 +51,12 @@ def within_range(wf1: Workflow, wf2: Workflow, version_range: str, force: bool =
     if force:
         return v1 == v2
 
-    if getattr(v1, version_range) == getattr(v2, version_range):
-        return True
+    if version_range == "major":
+        return v1.major == v2.major
+    elif version_range == "minor":
+        return v1.major == v2.major and v1.minor == v2.minor
+    elif version_range == "patch":
+        return v1 == v2
 
     return False
 

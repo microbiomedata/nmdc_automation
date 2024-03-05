@@ -111,7 +111,7 @@ def test_within_range():
         "Name": "TestWF",
         "Version": "v1.1.5",
     }
-
+    
     # Instantiate Workflow objects from dictionaries
     wf1_major = Workflow(wf1_major_dict)
     wf2_major = Workflow(wf2_major_dict)
@@ -131,6 +131,9 @@ def test_within_range():
     # Test patch version range
     assert within_range(wf1_patch, wf2_patch, "patch") == False
     assert within_range(wf1_patch, wf1_minor, "patch") == True
+    
+    assert within_range(wf1_patch, wf1_patch, "mafor", force=True) == True
+
 
 def test_submit(db, mock_api):
     """
