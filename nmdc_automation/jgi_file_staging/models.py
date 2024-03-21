@@ -17,4 +17,4 @@ class Sample(BaseModel):
     jdp_file_id: str
     md5sum: Optional[str]
     analysis_project_id: int
-    modDate: date
+    modDate: datetime
