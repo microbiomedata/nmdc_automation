@@ -1,0 +1,43 @@
+2024-03-21,15:12:39.542 DEBUG {file_restoration} [update_file_statuses] number of requests to restore: 0
+2024-03-21,15:12:39.563 DEBUG {file_restoration} [restore_files] number of files to restore: 0
+2024-03-21,15:12:39.566 DEBUG {file_restoration} [restore_files] Example of files to restore: Empty DataFrame
+Columns: []
+Index: []
+2024-03-21,15:48:52.640 DEBUG {file_restoration} [update_file_statuses] number of requests to restore: 0
+2024-03-21,15:48:52.705 DEBUG {file_restoration} [restore_files] number of files to restore: 1053
+2024-03-21,15:48:52.714 DEBUG {file_restoration} [restore_files] Example of files to restore:                         _id     project   apGoldId    studyId  itsApId  ...                            md5sum analysis_project_id             create_date update_date  request_id
+0  65fc970ca53a95bb8e7e60b4  1000_soils  Ga0533585  Gs0156736  1362320  ...  d2ddb6904f929ee0839a01fa12a4ed6d             1362320 2024-03-21 13:21:53.030        None        None
+1  65fc970ca53a95bb8e7e60b5  1000_soils  Ga0533585  Gs0156736  1362320  ...  168198b65f76e7a324dcc8f71971b981             1362320 2024-03-21 13:21:53.030        None        None
+2  65fc970ca53a95bb8e7e60b6  1000_soils  Ga0533585  Gs0156736  1362320  ...  1080460d0b9f5a7114f3bee42c784d73             1362320 2024-03-21 13:21:53.030        None        None
+3  65fc970ca53a95bb8e7e60b7  1000_soils  Ga0533585  Gs0156736  1362320  ...  d8609d45be78b37a1161a1190ef3cc88             1362320 2024-03-21 13:21:53.030        None        None
+4  65fc970ca53a95bb8e7e60b8  1000_soils  Ga0533585  Gs0156736  1362320  ...  2b3192ac15e776bafc31c05298b5ea9d             1362320 2024-03-21 13:21:53.030        None        None
+
+[5 rows x 16 columns]
+2024-03-21,15:48:52.906 DEBUG {connectionpool} [_new_conn] Starting new HTTPS connection (1): files.jgi.doe.gov:443
+2024-03-21,15:48:53.035 DEBUG {connectionpool} [_make_request] https://files.jgi.doe.gov:443 "POST /download_files/ HTTP/1.1" 401 58
+2024-03-21,15:48:53.037 DEBUG {file_restoration} [restore_files] 0
+2024-03-21,15:48:53.037 DEBUG {file_restoration} [restore_files] {"detail":"Authentication credentials were not provided."}
+2024-03-21,15:49:53.041 DEBUG {file_restoration} [update_file_statuses] number of requests to restore: 0
+2024-03-21,15:49:53.104 DEBUG {file_restoration} [restore_files] number of files to restore: 1053
+2024-03-21,15:49:53.111 DEBUG {file_restoration} [restore_files] Example of files to restore:                         _id     project   apGoldId    studyId  itsApId  ...                            md5sum analysis_project_id             create_date update_date  request_id
+0  65fc970ca53a95bb8e7e60b4  1000_soils  Ga0533585  Gs0156736  1362320  ...  d2ddb6904f929ee0839a01fa12a4ed6d             1362320 2024-03-21 13:21:53.030        None        None
+1  65fc970ca53a95bb8e7e60b5  1000_soils  Ga0533585  Gs0156736  1362320  ...  168198b65f76e7a324dcc8f71971b981             1362320 2024-03-21 13:21:53.030        None        None
+2  65fc970ca53a95bb8e7e60b6  1000_soils  Ga0533585  Gs0156736  1362320  ...  1080460d0b9f5a7114f3bee42c784d73             1362320 2024-03-21 13:21:53.030        None        None
+3  65fc970ca53a95bb8e7e60b7  1000_soils  Ga0533585  Gs0156736  1362320  ...  d8609d45be78b37a1161a1190ef3cc88             1362320 2024-03-21 13:21:53.030        None        None
+4  65fc970ca53a95bb8e7e60b8  1000_soils  Ga0533585  Gs0156736  1362320  ...  2b3192ac15e776bafc31c05298b5ea9d             1362320 2024-03-21 13:21:53.030        None        None
+
+[5 rows x 16 columns]
+2024-03-21,15:49:53.118 DEBUG {connectionpool} [_new_conn] Starting new HTTPS connection (1): files.jgi.doe.gov:443
+2024-03-21,15:49:58.907 DEBUG {connectionpool} [_make_request] https://files.jgi.doe.gov:443 "POST /download_files/ HTTP/1.1" 500 None
+2024-03-21,15:49:58.909 DEBUG {file_restoration} [restore_files] 0
+2024-03-21,15:49:58.909 DEBUG {file_restoration} [restore_files] 
+<!doctype html>
+<html lang="en">
+<head>
+  <title>Server Error (500)</title>
+</head>
+<body>
+  <h1>Server Error (500)</h1><p></p>
+</body>
+</html>
+

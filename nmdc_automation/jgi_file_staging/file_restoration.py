@@ -60,6 +60,8 @@ def restore_files(project: str, config_file: str) -> str:
             )
         ]
     )
+    logging.debug(f"number of files to restore: {len(restore_df)}")
+    logging.debug(f"Example of files to restore: {restore_df.head()}")
     JDP_TOKEN = os.environ.get("JDP_TOKEN")
     headers = {"Authorization": JDP_TOKEN, "accept": "application/json"}
     url = "https://files.jgi.doe.gov/download_files/"
