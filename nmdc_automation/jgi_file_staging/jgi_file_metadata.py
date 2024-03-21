@@ -69,7 +69,10 @@ def get_samples_data(
     )
 
     gold_analysis_files_df["project"] = project
-    insert_samples_into_mongodb(gold_analysis_files_df.to_dict("records"))
+    gold_analysis_files = gold_analysis_files_df.to_dict("records")
+    logging.debug(f"gold_analysis_files: {gold_analysis_files[0]}")
+    mdb = get_mongo_db()
+    insert_samples_into_mongodb(gold_analysis_files, mdb)
 
 
 def get_access_token() -> str:
