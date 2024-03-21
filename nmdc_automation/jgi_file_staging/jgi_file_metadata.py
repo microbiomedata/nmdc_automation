@@ -71,6 +71,11 @@ def get_samples_data(
     gold_analysis_files_df["project"] = project
     gold_analysis_files = gold_analysis_files_df.to_dict("records")
     logging.debug(f"gold_analysis_files: {gold_analysis_files[0]}")
+    # change modDate to datetime
+    gold_analysis_files = [
+        {**d, "modDate": pd.to_datetime(d["modDate"], unit="ms")}
+        for d in gold_analysis_files
+    ]
     mdb = get_mongo_db()
     insert_samples_into_mongodb(gold_analysis_files, mdb)
 
