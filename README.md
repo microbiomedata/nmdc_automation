@@ -2,7 +2,6 @@
 ![Tests](./badges/tests.svg)
 ![Coverage](./badges/coverage.svg)
 
-
 <!-- Pytest Coverage Comment:Begin -->
 <!-- Pytest Coverage Comment:End -->
 
