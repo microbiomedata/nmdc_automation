@@ -93,6 +93,31 @@ def cli(ctx, target):
     ctx.obj["site_config"] = site_config
 
 @cli.command()
+@click.option("--mongo-uri",required=False, default="mongodb://localhost:37020",)
+@click.option("--no-update", is_flag=True, default=False)
+@click.pass_context
+def update_nom(ctx, mongo_uri, no_update=False):
+    start_time = time.time()
+    logging.info(f"Updating the NMDC NOM Analysis Activity and related Data Objects")
+    # Connect to the MongoDB server and check the database name
+    client = pymongo.MongoClient(mongo_uri, directConnection=True)
+    with pymongo.timeout(5):
+        assert ("nmdc" in client.list_database_names()), f"Database nmdc not found"
+    db_client = client["nmdc"]
+    # start a session
+    session = client.start_session()
+
+    # API client for minting new IDs
+    config = ctx.obj["site_config"]
+    api_client = NmdcRuntimeApi(config)
+
+    # Keep track of the updated record identifiers
+    updated_record_identifiers = []
+
+
+
+
+@cli.command()
 @click.argument("legacy_study_id", type=str, required=True)
 @click.argument("nmdc_study_id", type=str, required=True)
 @click.option("--mongo-uri",required=False, default="mongodb://localhost:37020",)
