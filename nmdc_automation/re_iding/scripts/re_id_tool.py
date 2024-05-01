@@ -224,7 +224,7 @@ def update_study(ctx, legacy_study_id, nmdc_study_id,  mongo_uri, identifiers_fi
         #====== OmicsProcessing Update ======
         # Find all OmicsProcessing records part_of either study and has_input either biosample
         study_ids = [legacy_study_id, nmdc_study_id]
-        biosample_ids = [legacy_biosample_id, biosample.id]
+        biosample_ids = [legacy_biosample_id, updated_biosample.id]
         omics_processing_query = {
             "$and": [
                 {"part_of": {"$in": study_ids}},
