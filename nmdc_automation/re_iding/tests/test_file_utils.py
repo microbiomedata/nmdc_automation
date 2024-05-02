@@ -3,6 +3,7 @@ import pytest
 import shutil
 import tempfile
 import os
+import time
 
 from nmdc_automation.re_iding.file_utils import rewrite_bam, md5_sum
 
@@ -33,7 +34,7 @@ def test_sample_bam(sample_bam):
     assert os.path.getsize(sample_bam) > 0
 
 
-def test_modify_bam(sample_bam, tmpdir):
+def test_rewrite_bam(sample_bam, tmpdir):
     # Define input and output BAM file paths
     input_bam = sample_bam
     output_bam = str(tmpdir.join("output.bam"))
@@ -60,3 +61,31 @@ def test_modify_bam(sample_bam, tmpdir):
     expected_md5 = md5_sum(output_bam)
     expected_size = os.path.getsize(output_bam)
     assert expected_md5, expected_size == rewrite_bam(input_bam, output_bam, old_pattern, new_pattern)
+
+# test_input.bam is 2.3 GB
+@pytest.mark.skipif(not os.path.exists("test_data/.local/test_input.bam"), reason="Requires test_input.bam")
+def test_rewrite_bam_large():
+    start_time = time.time()
+    # Define input and output BAM file paths
+    input_bam = "test_data/.local/test_input.bam"
+    output_bam = "test_data/.local/test_output.bam"
+
+    # Define old and new patterns for modification
+    old_pattern = "nmdc:mga0zv48"
+    new_pattern = "nmdc:updated_id"
+
+    # Call the modify_bam function
+    md5, size = rewrite_bam(input_bam, output_bam, old_pattern, new_pattern)
+    end_time = time.time()
+    print(f"Elapsed time: {end_time - start_time} seconds")
+
+    # Check if the output BAM file exists
+    assert os.path.exists(output_bam)
+
+    # Check if the output BAM file is not empty
+    assert os.path.getsize(output_bam) > 0
+
+    # Assert that the MD5 checksum is returned
+    assert md5, "MD5 checksum is not returned"
+    # Assert that the file size is > 0
+    assert size, "File size is not returned"
