@@ -1,10 +1,9 @@
-#!/bin/bash
+#!/bin/sh
 #
 
-# IMG=microbiomedata/workflowmeta:1.0.5.1
 IMG=biocontainers/samtools:1.3.1
 
-if [ "$1" = "inside" ] ; then
+if which samtools>/dev/null ; then
 	in=$2
 	out=$3
 	old=$4
@@ -12,8 +11,12 @@ if [ "$1" = "inside" ] ; then
 	echo "Rewriting $out"
 	samtools view -h $in | sed "s/${old}/${new}/g" | \
           samtools view -hb -o $out
-else 
-	touch $2
-	#shifter --image=$IMG $0 inside $@
+elif which shifter>/dev/null ; then 
+	shifter --image=$IMG $0 $@
+elif which docker>/dev/null ; then
+	docker run --platform linux/amd64 --rm -v $0:/script --entrypoint /bin/bash $IMG /script $@
+else
+	echo "no container runtime"
+        exit 1
 fi
 
