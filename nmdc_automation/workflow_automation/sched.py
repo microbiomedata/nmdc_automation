@@ -65,7 +65,7 @@ class Job:
     Class to hold information for new jobs
     """
 
-    def __init__(self, workflow: Workflow, trigger_act: str):
+    def __init__(self, workflow: Workflow, trigger_act: Activity):
         self.workflow = workflow
         self.trigger_act = trigger_act
         self.informed_by = trigger_act.was_informed_by
@@ -223,12 +223,16 @@ class Scheduler:
             return root_id, ct + 1
 
     @lru_cache(maxsize=128)
-    def get_existing_jobs(self, wf: Workflow):
+    def get_existing_job_activity_ids(self, wf: Workflow) -> set[str]:
+        """
+        Get a set of existing job activity IDs for a given workflow and version.
+
+        """
         existing_jobs = set()
-        # Filter by git_repo and version
-        # Find all existing jobs for this workflow
         q = {"config.git_repo": wf.git_repo, "config.release": wf.version}
         for j in self.db.jobs.find(q):
+            # The trigger activity ID existing in the jobs collection is our signal that
+            # a job has already been created for this activity
             act = j["config"]["trigger_activity"]
             existing_jobs.add(act)
         return existing_jobs
@@ -246,7 +250,7 @@ class Scheduler:
             if not wf.enabled:
                 continue
             # See if we already have a job for this
-            if act.id in self.get_existing_jobs(wf):
+            if act.id in self.get_existing_job_activity_ids(wf):
                 continue
             # Look at previously generated derived
             # activities to see if this is already done.
@@ -267,7 +271,7 @@ class Scheduler:
         This function does a single cycle of looking for new jobs
         """
         acts = load_activities(self.db, self.workflows)
-        self.get_existing_jobs.cache_clear()
+        self.get_existing_job_activity_ids.cache_clear()
         job_recs = []
         for act in acts:
             if act.was_informed_by in skiplist:
