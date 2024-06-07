@@ -65,13 +65,14 @@ def fix_versions(db, wf):
     db[s].insert_one(data)
 
 
-def test_activies(db):
+def test_load_activies(db):
     """
     Test basic job creation
     """
     # init_test(db)
     reset_db(db)
-    wfs = load_workflows("./tests/workflows_test.yaml")
+    test_workflows_path = os.path.join(test_dir, "workflows_test.yaml")
+    wfs = load_workflows(test_workflows_path)
     load(db, "data_object_set.json", reset=True)
     for wf in wfs:
         if wf.name in ["Sequencing", "ReadsQC Interleave"]:
@@ -79,7 +80,6 @@ def test_activies(db):
         fix_versions(db, wf)
     acts = load_activities(db, wfs)
     assert acts is not None
-    # TODO find out why this fails - len(acts) = 4
-    # assert len(acts) == 5
-    # assert len(acts[0].children) == 1
-    # assert acts[0].children[0] == acts[1]
+    assert len(acts) == 5
+    assert len(acts[0].children) == 1
+    assert acts[0].children[0] == acts[1]
