@@ -1,6 +1,9 @@
 from dataclasses import dataclass, field, fields
 from typing import List, Set, Dict, Any, Optional
 
+"""
+Base data classes for workflows, activities and data objects.
+"""
 
 @dataclass
 class Workflow:
