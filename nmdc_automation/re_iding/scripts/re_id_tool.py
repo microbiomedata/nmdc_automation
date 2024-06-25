@@ -750,7 +750,7 @@ def _ingest_records(db_records, db_client, api_user_client):
             # Update the omics_processing_record with the new has_output via PyMongo
             filter_criteria = {"id": omics_processing_id}
             update_criteria = {"$set": {"has_output": omics_processing_record["has_output"]}}
-            result = db_client["omics_processing_set"].update_one(filter_criteria, update_criteria)
+            result = db_client["omics_processing_set"].update_one(filter_criteria, update_criteria, upsert=True)
             logging.info(f"Updated {result.modified_count} omics_processing_set records")
 
         # validate the record
@@ -769,8 +769,13 @@ def _ingest_records(db_records, db_client, api_user_client):
                     continue
                 logging.info(f"Inserting {len(collection)} records into {collection_name}")
 
-                insertion_result = db_client[collection_name].insert_many(collection, ordered=False)
-                logging.info(f"Inserted {len(insertion_result.inserted_ids)} records into {collection_name}")
+                # insertion_result = db_client[collection_name].insert_many(collection, ordered=False)
+                for record in collection:
+                    try:
+                        insertion_result = db_client[collection_name].insert_one(record)
+                    except pymongo.errors.DuplicateKeyError:
+                        logging.error(f"DuplicateKeyError: {record['id']}")
+                        continue
         else:
             logging.error("Workflow Record validation failed")
 
@@ -778,8 +783,9 @@ def _ingest_records(db_records, db_client, api_user_client):
 @cli.command()
 @click.argument("old_records_file", type=click.Path(exists=True))
 @click.option("--mongo-uri",required=False, default="mongodb://localhost:27017",)
+@click.option("--failed-records", is_flag=True, default=False)
 @click.pass_context
-def delete_old_records(ctx, old_records_file, mongo_uri):
+def delete_old_records(ctx, old_records_file, mongo_uri, failed_records=False):
     """
     Read in json dump of old records and:
     delete them using
@@ -813,7 +819,7 @@ def delete_old_records(ctx, old_records_file, mongo_uri):
             for record_identifier in old_db_records:
                 for set_name, object_record in record_identifier.items():
                     # we don't want to delete the omics_processing_set
-                    if set_name == "omics_processing_set":
+                    if set_name == "omics_processing_set" and not failed_records:
                         continue
                     delete_ids = []
                     if isinstance(object_record, list):
@@ -1120,8 +1126,6 @@ def _get_has_input_from_read_qc(api_client, legacy_id):
         has_input_data_objects.update(record.get("has_input", []))
     return list(has_input_data_objects)
 
-
-# Method to compare any two nmdc pydantic models and return a dictionary of differences
 
 def _update_study(study: nmdc.Study, legacy_study_id: str, nmdc_study_id: str) -> nmdc.Study:
     """
