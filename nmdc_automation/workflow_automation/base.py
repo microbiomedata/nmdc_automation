@@ -37,6 +37,13 @@ class Workflow:
 
         self.do_types = [inp_param[3:] for inp_param in self.inputs.values() if inp_param.startswith("do:")]
 
+    def __hash__(self):
+        # Based name, type, git_repo, version
+        return hash((self.name, self.type, self.git_repo, self.version))
+
+    def __eq__(self, other):
+        return self.__hash__() == other.__hash__()
+
     @classmethod
     def from_dict(cls, wf: dict):
         """
@@ -54,6 +61,12 @@ class Workflow:
                     )
 
         return cls(**init_values)
+
+    def add_child(self, child: 'Workflow'):
+        self.children.add(child)
+
+    def add_parent(self, parent: 'Workflow'):
+        self.parents.add(parent)
 
 @dataclass
 class Activity:
