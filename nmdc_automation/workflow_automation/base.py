@@ -53,13 +53,7 @@ class Workflow:
         for field_ in fields(cls):
             if field_.init:  # Only include fields that are part of __init__
                 attr_name = field_.name
-                dict_key = attr_name.replace(
-                    "_", " "
-                    ).capitalize()  # Assuming the dictionary keys are capitalized with spaces
-                init_values[attr_name] = wf.get(
-                    dict_key, field_.default if field_.default != field_.default_factory else field_.default_factory()
-                    )
-
+                init_values[attr_name] = wf.get(attr_name)
         return cls(**init_values)
 
     def add_child(self, child: 'Workflow'):
@@ -87,6 +81,27 @@ class Activity:
         if self.type == "nmdc:OmicsProcessing":
             self.was_informed_by = [self.id]
 
+    def __hash__(self):
+        return hash((self.id, self.name, self.type, self.version))
+
+    def __eq__(self, other):
+        return self.__hash__() == other.__hash__()
+
+    @classmethod
+    def from_dict(cls, activity_rec: dict, wf: 'Workflow' = None) -> 'Activity':
+        """
+        Create an Activity object from a dictionary.
+        """
+        init_values = {}
+        for field_ in fields(cls):
+            if field_.init:
+                attr_name = field_.name
+                init_values[attr_name] = activity_rec.get(attr_name)
+        if wf:
+            init_values["workflow"] = wf
+        return cls(**init_values)
+
+
     def add_data_object(self, do: 'DataObject'):
         self.data_objects_by_type[do.data_object_type] = do
 
@@ -103,14 +118,11 @@ class DataObject:
 
     @classmethod
     def from_dict(cls, rec: dict) -> 'DataObject':
-        return cls(**{f: rec.get(f) for f in cls._FIELDS})
+        init_values = {f.name: rec.get(f.name) for f in fields(cls)}
+        return cls(**init_values)
 
-    _FIELDS = [
-        "id",
-        "name",
-        "description",
-        "url",
-        "md5_checksum",
-        "file_size_bytes",
-        "data_object_type",
-    ]
+    def __hash__(self):
+        return hash((self.id, self.name, self.data_object_type, self.md5_checksum))
+
+    def __eq__(self, other):
+        return self.__hash__() == other.__hash__()

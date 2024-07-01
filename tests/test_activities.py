@@ -89,7 +89,8 @@ def test_workflows():
     """
     Test Workflow object creation
     """
-    wfs = load_workflows("./tests/workflows_test.yaml")
+    wf_path = os.path.join(test_dir, "workflows_test.yaml")
+    wfs = load_workflows(wf_path)
     assert wfs is not None
     wfm = {}
     assert len(wfs) == 9
