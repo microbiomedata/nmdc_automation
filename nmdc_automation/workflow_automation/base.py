@@ -5,6 +5,7 @@ from typing import List, Set, Dict, Any, Optional
 Base data classes for workflows, activities and data objects.
 """
 
+# TODO: This is a work in progress. Code will be refactored from the original classes in the future.
 @dataclass
 class Workflow:
     """
