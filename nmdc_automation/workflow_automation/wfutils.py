@@ -7,6 +7,7 @@ import tempfile
 import logging
 import re
 import hashlib
+import requests
 from typing import Any, Dict, List, Optional, Union
 from pathlib import Path
 import shutil
@@ -15,6 +16,7 @@ from nmdc_automation.config import SiteConfig
 from nmdc_automation.workflow_automation.models import DataObject, workflow_process_factory
 
 DEFAULT_MAX_RETRIES = 2
+
 
 class JobRunnerABC(ABC):
 
@@ -51,7 +53,6 @@ class JobRunnerABC(ABC):
         pass
 
 
-
 class CromwellRunner(JobRunnerABC):
 
     def __init__(self, site_config: SiteConfig, workflow: "WorkflowStateManager", job_metadata: Dict[str,
@@ -66,40 +67,54 @@ class CromwellRunner(JobRunnerABC):
 
 
     def submit_job(self) -> str:
-            # TODO: implement
-            pass
+        # TODO: implement
+        pass
 
     def get_job_status(self) -> str:
-            # TODO: implement
-            return "Pending"
+        status_url = f"{self.service_url}/{self.job_id}/status"
+        response = requests.get(status_url)
+        response.raise_for_status()
+        return response.json().get("status", "Unknown")
+
 
     def get_job_metadata(self) -> Dict[str, Any]:
-            raise NotImplementedError
-            # TODO: implement
+        metadata_url = f"{self.service_url}/{self.job_id}/metadata"
+        response = requests.get(metadata_url)
+        response.raise_for_status()
+        metadata = response.json()
+        # update cached metadata
+        self.metadata = metadata
+        return metadata
 
     @property
     def job_id(self) -> Optional[str]:
-            return self.metadata.get("id", None)
+        return self.metadata.get("id", None)
+
+    @job_id.setter
+    def job_id(self, job_id: str):
+        self.metadata["id"] = job_id
 
     @property
     def outputs(self) -> Dict[str, str]:
-            return self.metadata.get("outputs", {})
+        return self.metadata.get("outputs", {})
 
     @property
     def metadata(self) -> Dict[str, Any]:
-            return self._metadata
+        return self._metadata
 
     @metadata.setter
     def metadata(self, metadata: Dict[str, Any]):
-            self._metadata = metadata
+        self._metadata = metadata
 
     @property
     def max_retries(self) -> int:
-            return self._max_retries
+        return self._max_retries
 
 
 
 class WorkflowStateManager:
+    CHUNK_SIZE = 1000000  # 1 MB
+    GIT_RELEASES_PATH = "/releases/download"
     def __init__(self, state: Dict[str, Any] = None, opid: str = None):
         if state is None:
             state = {}
@@ -169,6 +184,39 @@ class WorkflowStateManager:
                 return self.cached_state[job_runner_id]
 
 
+    def fetch_release_file(self, filename: str, suffix: str = None) -> str:
+        """Download a release file from the Git repository and save it as a temporary file."""
+        url = self._build_release_url(filename)
+        logging.debug(f"Fetching release file from URL: {url}")
+        # download the file as a stream to handle large files
+        with requests.get(url, stream=True) as response:
+            response.raise_for_status()
+            # create a named temporary file
+            with tempfile.NamedTemporaryFile(suffix=suffix) as tmp_file:
+                self._write_stream_to_file(response, tmp_file)
+                return tmp_file.name
+
+
+    def _build_release_url(self, filename: str) -> str:
+        """Build the URL for a release file in the Git repository."""
+        release = self.config["release"]
+        base_url = self.config["git_repo"].rstrip("/")
+        url = f"{base_url}{self.GIT_RELEASES_PATH}/{release}/{filename}"
+
+
+    def _write_stream_to_file(self, response: requests.Response, file: tempfile.NamedTemporaryFile) -> None:
+        """Write a stream from a requests response to a file."""
+        try:
+            for chunk in response.iter_content(chunk_size=self.CHUNK_SIZE):
+                if chunk:
+                    file.write(chunk)
+        except Exception as e:
+            # clean up the temporary file
+            Path(file.name).unlink(missing_ok=True)
+            logging.error(f"Error writing stream to file: {e}")
+            raise e
+
+
 class WorkflowJob:
     def __init__(self, site_config: SiteConfig, workflow_state: Dict[str, Any] = None,
                  job_metadata: Dict['str', Any] = None, opid: str = None, job_runner: JobRunnerABC = None
@@ -181,9 +229,8 @@ class WorkflowJob:
         self.job = job_runner
 
     # Properties to access the site config, job state, and job runner attributes
-    # getter and setter props for job state opid
     @property
-    def opid(self) -> str:
+    def opid(self) -> Optional[str]:
         return self.workflow.state.get("opid", None)
 
     def set_opid(self, opid: str, force: bool = False):
@@ -203,6 +250,7 @@ class WorkflowJob:
     @property
     def job_status(self) -> str:
         status = None
+        # extend this list as needed for other job runners
         job_id_keys = ["cromwell_jobid"]
         failed_count = self.workflow.state.get("failed_count", 0)
         # if none of the job id keys are in the workflow state, it is unsubmitted
