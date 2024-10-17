@@ -11,7 +11,7 @@ from yaml import load, Loader
 
 
 from nmdc_automation.config import SiteConfig
-from nmdc_automation.workflow_automation.models import WorkflowConfig
+from nmdc_automation.models.workflow import WorkflowConfig
 from tests.fixtures import db_utils
 from nmdc_automation.workflow_automation.wfutils import WorkflowJob
 
@@ -46,8 +46,23 @@ def mock_api(monkeypatch, requests_mock, test_data_dir):
             "access_token": "abcd"
             }
     requests_mock.post("http://localhost/token", json=token_resp)
-    resp = ["nmdc:abcd"]
-    requests_mock.post("http://localhost/pids/mint", json=resp)
+    resp = ["nmdc:dobj-01-abcd1234"]
+    # mock mint responses in sequence
+    mint_responses = [
+        ["nmdc:dobj-01-abcd1234"],
+        ["nmdc:dobj-02-abcd1234"],
+        ["nmdc:dobj-03-abcd1234"],
+        ["nmdc:dobj-04-abcd1234"],
+        ["nmdc:dobj-05-abcd1234"],
+        ["nmdc:dobj-06-abcd1234"],
+        ["nmdc:dobj-07-abcd1234"],
+        ["nmdc:dobj-08-abcd1234"],
+        ["nmdc:dobj-09-abcd1234"],
+        ["nmdc:dobj-10-abcd1234"],
+    ]
+    def mint_callback():
+        return mint_responses.pop(0)
+    requests_mock.post("http://localhost/pids/mint", json=mint_callback())
     requests_mock.post(
         "http://localhost/workflows/workflow_executions",
         json=resp
@@ -157,3 +172,14 @@ def mock_cromwell_api(fixtures_dir):
             )
 
         yield m
+
+
+@fixture(scope="session")
+def gold_import_dir(fixtures_dir):
+    return fixtures_dir / "gold_import"
+
+@fixture(scope="session")
+def gold_import_files(gold_import_dir):
+    # return the full paths to fixtures that simulate JGI import files. These are used to test the GoldMapper class.
+    # One (1) file is a nucleotide sequencing file. All the other files are RQC, assembly, MAGs, etc.
+    return [str(f) for f in gold_import_dir.iterdir() if f.is_file()]
