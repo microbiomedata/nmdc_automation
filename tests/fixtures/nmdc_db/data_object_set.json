@@ -830,7 +830,6 @@
     "id" : "nmdc:dobj-11-7ag1m391",
     "name" : "52818.3.460102.GTGGTGTT-GTGGTGTT.fastq.gz",
     "description" : "Metagenome Raw Reads for nmdc:omprc-11-3rnpg083",
-    "alternative_identifiers" : [],
     "file_size_bytes" : 35395496786,
     "md5_checksum" : "7f3fd94c01fcece0806a739365441a4b",
     "data_object_type" : "Metagenome Raw Reads",
