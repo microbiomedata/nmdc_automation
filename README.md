@@ -54,6 +54,21 @@ This package is meant to be used on NMDC approvied compute instances with direct
 
 The main python drivers can be found in the `nmdc_automation/run_process directory` that contians two processes that require configurations to be supplied. 
  
+### Managing Workflow Updates
+
+Incorporating updated workflow versions into nmdc_automation is a manual process. 
+
+1. Update the workflows.yaml file with the new workflow version.
+2. Merge the updated workflows.yaml file into the main branch.
+3. Build the docker image and push it to the docker registry.
+    ```bash
+   docker build -t microbiomedata/sched:<yyyymmdd> .
+   docker login
+    docker push microbiomedata/sched:<yyyymmdd>
+   ```
+4. Update the docker image in the nmdc-automation deployment in the rancher UI.
+5. Restart the nmdc-automation deployment in the rancher UI.
+
 #### Run NMDC Workflows with corresponding omics processing records
 ~~`nmdc_automation/run_process/run_worklfows.py` will automate job claims, job processing, and analysis record and data object submission via the nmdc runtime-api.~~
 ~~To submit a process that will spawn a daemon that will claim, process, and submit all jobs that have not been claimed, `cd` in to `nmdc_automation/run_process`
