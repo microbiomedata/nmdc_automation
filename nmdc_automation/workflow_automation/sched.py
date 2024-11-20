@@ -294,12 +294,15 @@ class Scheduler:
         self.get_existing_jobs.cache_clear()
         job_recs = []
         for wfp_node in wfp_nodes:
+            # Skip if we are in the skiplist
             if wfp_node.was_informed_by in skiplist:
                 logging.debug(f"Skipping: {wfp_node.was_informed_by}")
                 continue
+            # Skip if the workflow is disabled
             if not wfp_node.workflow.enabled:
                 logging.debug(f"Skipping: {wfp_node.id}, workflow disabled.")
                 continue
+            # Find new jobs
             jobs = self.find_new_jobs(wfp_node)
             for job in jobs:
                 if dryrun:

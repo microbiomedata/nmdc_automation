@@ -36,6 +36,27 @@ def test_scheduler_cycle(test_db, mock_api, workflow_file, workflows_config_dir,
     resp = jm.cycle()
     assert len(resp) == exp_num_jobs_cycle_1
 
+
+def test_scheduler_cycle_metagenome_sequencing_workflow(test_db, mock_api, workflows_config_dir, site_config_file):
+    """
+    Test basic job creation for metagenome sequencing workflow. Metagenome Sequencing is treated as a WorkflowExecution
+    instead of a DataGeneration, used for external sequencing data.
+    """
+    reset_db(test_db)
+    load_fixture(test_db, "data_object_set.json")
+    load_fixture(test_db, "metagenome_sequencing.json", "workflow_execution_set")
+
+    jm = Scheduler(test_db, wfn=workflows_config_dir / "workflows.yaml",
+                   site_conf=site_config_file)
+    resp = jm.cycle()
+    assert len(resp) == 1
+    # Expect 1 unclaimed ReadQcAnalysis job in the response
+    job = resp[0]
+    assert job["claims"] == []
+    assert job["config"]["activity"]["type"] == "nmdc:ReadQcAnalysis"
+
+
+
 @mark.parametrize("workflow_file", [
     "workflows.yaml",
     "workflows-mt.yaml"

@@ -11,7 +11,7 @@ from tests.fixtures.db_utils import  load_fixture, reset_db
 )
 def test_load_workflow_process_nodes(test_db, workflow_file, workflows_config_dir):
     """
-    Test
+    Test loading of WorkflowProcessNode objects starting with DataObjects, DataGenerations, and WorkflowExecutions
     """
     metatranscriptome = False
     if workflow_file == "workflows-mt.yaml":
@@ -24,25 +24,54 @@ def test_load_workflow_process_nodes(test_db, workflow_file, workflows_config_di
 
     wfs = load_workflow_configs(workflows_config_dir / workflow_file)
 
-    # these are called by load_activities
+    # these are called by load_workflow_process_nodes
     data_objs_by_id = get_required_data_objects_map(test_db, wfs)
     wf_execs = get_current_workflow_process_nodes(test_db, wfs, data_objs_by_id)
     assert wf_execs
     assert len(wf_execs) == 2
 
-    acts = load_workflow_process_nodes(test_db, wfs)
+    wp_nodes = load_workflow_process_nodes(test_db, wfs)
     # sanity check
-    assert acts
-    assert len(acts) == 2
+    assert wp_nodes
+    assert len(wp_nodes) == 2
 
     # Omics and RQC share data_object_type for metagenome and metatranscriptome
     # they can be distinguished by analyte category so we expect 1 of each
     # for metagenome and metatranscriptome
-    data_gen = [act for act in acts if act.type == "nmdc:NucleotideSequencing"][0]
+    data_gen = [wp_node for wp_node in wp_nodes if wp_node.type == "nmdc:NucleotideSequencing"][0]
     assert data_gen
     assert data_gen.children
     assert len(data_gen.children) == 1
     assert data_gen.children[0].type == "nmdc:ReadQcAnalysis"
+
+
+def test_load_workflow_process_nodes_metagenome_sequencing_workflow(test_db, workflows_config_dir):
+    """
+    Test loading of WorkflowProcessNode objects starting with external sequencing data
+    which is treated as a WorkflowExecution instead of a DataGeneration
+    """
+    reset_db(test_db)
+    load_fixture(test_db, "data_object_set.json")
+    load_fixture(test_db, "metagenome_sequencing.json", "workflow_execution_set")
+
+    wfs = load_workflow_configs(workflows_config_dir / "workflows.yaml")
+
+    # these are called by load_workflow_process_nodes
+    data_objs_by_id = get_required_data_objects_map(test_db, wfs)
+    # sanity check
+    assert data_objs_by_id
+    wf_execs = get_current_workflow_process_nodes(test_db, wfs, data_objs_by_id)
+    assert wf_execs
+    assert len(wf_execs) == 1
+
+    wp_nodes = load_workflow_process_nodes(test_db, wfs)
+    # sanity check
+    assert wp_nodes
+    assert len(wp_nodes) == 1
+    node = wp_nodes[0]
+    assert node.type == "nmdc:MetagenomeSequencing"
+
+
 
 
 @mark.parametrize(
@@ -58,14 +87,12 @@ def test_load_workflows(workflows_config_dir, workflow_file):
 
     shared_wf_names = ["Sequencing Noninterleaved", "Sequencing Interleaved"]
     if metatranscriptome:
-        exp_num_wfs = 9
         exp_wf_names = ["Metatranscriptome Reads QC", "Metatranscriptome Reads QC Interleave",
                         "Metatranscriptome Assembly", "Metatranscriptome Annotation", "Expression Analysis Antisense",
                         "Expression Analysis Sense", "Expression Analysis Nonstranded", ]
     else:
-        exp_num_wfs = 8
         exp_wf_names = ["Reads QC", "Reads QC Interleave", "Metagenome Assembly", "Metagenome Annotation", "MAGs",
-                        "Readbased Analysis", ]
+                        "Readbased Analysis", "Metagenome Sequencing" ]
 
     wfs = load_workflow_configs(workflows_config_dir / workflow_file)
     assert wfs
@@ -77,6 +104,13 @@ def test_load_workflows(workflows_config_dir, workflow_file):
         assert wf_name in wfm
         wf = wfm[wf_name]
         assert wf is not None
+        # Metagenome Sequencing is a special case
+        if wf_name == "Metagenome Sequencing":
+            assert wf.collection is not None
+            assert wf.enabled
+            assert wf.analyte_category == "Metagenome"
+            continue
+        # Normal workflow
         assert wf.type is not None
         assert wf.name is not None
         assert wf.collection is not None
