@@ -9,9 +9,20 @@ from linkml_runtime.dumpers import yaml_dumper
 import yaml
 
 
-from nmdc_schema.nmdc import DataGeneration, FileTypeEnum, MagsAnalysis, MetagenomeAnnotation, MetagenomeAssembly, \
-    MetatranscriptomeAnnotation, MetatranscriptomeAssembly, MetatranscriptomeExpressionAnalysis, NucleotideSequencing, \
-    ReadBasedTaxonomyAnalysis, ReadQcAnalysis, WorkflowExecution
+from nmdc_schema.nmdc import (
+    DataGeneration,
+    MagsAnalysis,
+    MetagenomeAnnotation,
+    MetagenomeAssembly,
+    MetagenomeSequencing,
+    MetatranscriptomeAnnotation,
+    MetatranscriptomeAssembly,
+    MetatranscriptomeExpressionAnalysis,
+    NucleotideSequencing,
+    ReadBasedTaxonomyAnalysis,
+    ReadQcAnalysis,
+    WorkflowExecution
+)
 import nmdc_schema.nmdc as nmdc
 
 
@@ -32,6 +43,7 @@ WorkflowExecution]:
         "nmdc:MagsAnalysis": MagsAnalysis,
         "nmdc:MetagenomeAnnotation": MetagenomeAnnotation,
         "nmdc:MetagenomeAssembly": MetagenomeAssembly,
+        "nmdc:MetagenomeSequencing": MetagenomeSequencing,
         "nmdc:MetatranscriptomeAnnotation": MetatranscriptomeAnnotation,
         "nmdc:MetatranscriptomeAssembly": MetatranscriptomeAssembly,
         "nmdc:MetatranscriptomeExpressionAnalysis": MetatranscriptomeExpressionAnalysis,
