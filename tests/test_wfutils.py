@@ -1,8 +1,8 @@
 from nmdc_automation.workflow_automation.wfutils import (
-    CromwellRunner,
+    CromwellJobRunner,
     WorkflowJob,
     WorkflowStateManager,
-    _json_tmp,
+    JawsJobRunner,
 )
 from nmdc_automation.models.nmdc import DataObject, workflow_process_factory
 from nmdc_schema.nmdc import MagsAnalysis, EukEval
@@ -36,12 +36,29 @@ def test_workflow_job(site_config, fixtures_dir):
 
 
 def test_cromwell_job_runner(site_config, fixtures_dir):
-    # load cromwell metadata
+    """ Test basic initialization of CromwellRunner """
     job_metadata = json.load(open(fixtures_dir / "mags_job_metadata.json"))
     job_state = json.load(open(fixtures_dir / "mags_workflow_state.json"))
     state_manager = WorkflowStateManager(job_state)
-    job_runner = CromwellRunner(site_config, state_manager, job_metadata)
+    job_runner = CromwellJobRunner(site_config, state_manager, job_metadata)
     assert job_runner
+    assert hasattr(job_runner, "generate_submission_files")
+    assert hasattr(job_runner, "submit_job")
+    assert hasattr(job_runner, "get_job_status")
+    assert hasattr(job_runner, "get_job_metadata")
+
+
+def test_jaws_job_runner(site_config, fixtures_dir):
+    """ Test basic initialization of JawsJobRunner """
+    job_metadata = json.load(open(fixtures_dir / "mags_job_metadata.json"))
+    job_state = json.load(open(fixtures_dir / "mags_workflow_state.json"))
+    state_manager = WorkflowStateManager(job_state)
+    job_runner = JawsJobRunner(site_config, state_manager, job_metadata)
+    assert job_runner
+    assert hasattr(job_runner, "generate_submission_files")
+    assert hasattr(job_runner, "submit_job")
+    assert hasattr(job_runner, "get_job_status")
+    assert hasattr(job_runner, "get_job_metadata")
 
 
 def test_cromwell_job_runner_get_job_status(site_config, fixtures_dir, mock_cromwell_api):
@@ -53,7 +70,7 @@ def test_cromwell_job_runner_get_job_status(site_config, fixtures_dir, mock_crom
     job_metadata['id'] = "cromwell-job-id-12345"
 
     state_manager = WorkflowStateManager(job_state)
-    job_runner = CromwellRunner(site_config, state_manager, job_metadata)
+    job_runner = CromwellJobRunner(site_config, state_manager, job_metadata)
     status = job_runner.get_job_status()
     assert status
     assert status == "Succeeded"
@@ -62,7 +79,7 @@ def test_cromwell_job_runner_get_job_status(site_config, fixtures_dir, mock_crom
     job_state['cromwell_jobid'] = "cromwell-job-id-54321"
     job_metadata['id'] = "cromwell-job-id-54321"
     state_manager = WorkflowStateManager(job_state)
-    job_runner = CromwellRunner(site_config, state_manager, job_metadata)
+    job_runner = CromwellJobRunner(site_config, state_manager, job_metadata)
     status = job_runner.get_job_status()
     assert status
     assert status == "Failed"
@@ -77,7 +94,7 @@ def test_cromwell_job_runner_get_job_metadata(site_config, fixtures_dir, mock_cr
     job_metadata['id'] = "cromwell-job-id-12345"
 
     state_manager = WorkflowStateManager(job_state)
-    job_runner = CromwellRunner(site_config, state_manager, job_metadata)
+    job_runner = CromwellJobRunner(site_config, state_manager, job_metadata)
     metadata = job_runner.get_job_metadata()
     assert metadata
     assert metadata['id'] == "cromwell-job-id-12345"
@@ -179,7 +196,7 @@ def test_workflow_manager_fetch_release_file_failed_write(mock_get, fixtures_dir
 def test_cromwell_runner_setup_inputs_and_labels(site_config, fixtures_dir):
     job_state = json.load(open(fixtures_dir / "mags_workflow_state.json"))
     workflow = WorkflowStateManager(job_state)
-    runner = CromwellRunner(site_config, workflow)
+    runner = CromwellJobRunner(site_config, workflow)
     inputs = runner._generate_workflow_inputs()
     assert inputs
     # we expect the inputs to be a key-value dict with URLs as values
@@ -212,7 +229,7 @@ def test_cromwell_runner_generate_submission_files( mock_fetch_release_file, sit
             io.BytesIO(b"mock workflow inputs"),  # workflowInputs file
             io.BytesIO(b"mock labels")  # labels file
         ]
-        runner = CromwellRunner(site_config, workflow)
+        runner = CromwellJobRunner(site_config, workflow)
         submission_files = runner.generate_submission_files()
         assert submission_files
         assert "workflowSource" in submission_files
@@ -227,7 +244,7 @@ def test_cromwell_runner_generate_submission_files( mock_fetch_release_file, sit
 
 
 @mock.patch("nmdc_automation.workflow_automation.wfutils.WorkflowStateManager.fetch_release_file")
-@mock.patch("nmdc_automation.workflow_automation.wfutils.CromwellRunner._cleanup_files")
+@mock.patch("nmdc_automation.workflow_automation.wfutils.CromwellJobRunner._cleanup_files")
 def test_cromwell_runner_generate_submission_files_exception(mock_cleanup_files, mock_fetch_release_file,
                                                              site_config, fixtures_dir):
     # Mock file fetching
@@ -247,14 +264,14 @@ def test_cromwell_runner_generate_submission_files_exception(mock_cleanup_files,
             OSError("Failed to open file"),  # workflowInputs file
             io.BytesIO(b"mock labels")  # labels file
         ]
-        runner = CromwellRunner(site_config, workflow)
+        runner = CromwellJobRunner(site_config, workflow)
         with pytest.raises(OSError):
             runner.generate_submission_files()
         # Check that the cleanup function was called
         mock_cleanup_files.assert_called_once()
 
 
-@mock.patch("nmdc_automation.workflow_automation.wfutils.CromwellRunner.generate_submission_files")
+@mock.patch("nmdc_automation.workflow_automation.wfutils.CromwellJobRunner.generate_submission_files")
 def test_cromwell_job_runner_submit_job_new_job(mock_generate_submission_files, site_config, fixtures_dir, mock_cromwell_api):
     mock_generate_submission_files.return_value = {
         "workflowSource": "workflowSource",
@@ -270,7 +287,7 @@ def test_cromwell_job_runner_submit_job_new_job(mock_generate_submission_files, 
     wf_state['done'] = False # simulate a job that has not been submitted
 
     wf_state_manager = WorkflowStateManager(wf_state)
-    job_runner = CromwellRunner(site_config, wf_state_manager)
+    job_runner = CromwellJobRunner(site_config, wf_state_manager)
     jobid = job_runner.submit_job()
     assert jobid
 
@@ -318,7 +335,6 @@ def test_workflow_execution_record_from_workflow_job(site_config, fixtures_dir, 
     wfe = job.make_workflow_execution(data_objects)
     assert wfe.started_at_time
     assert wfe.ended_at_time
-
 
 
 def test_workflow_job_from_database_job_record(site_config, fixtures_dir):

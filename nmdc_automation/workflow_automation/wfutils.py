@@ -66,7 +66,7 @@ class JobRunnerABC(ABC):
         pass
 
 
-class CromwellRunner(JobRunnerABC):
+class CromwellJobRunner(JobRunnerABC):
     """Job runner for Cromwell"""
     LABEL_SUBMITTER_VALUE = "nmdcda"
     LABEL_PARAMETERS = ["release", "wdl", "git_repo"]
@@ -220,6 +220,70 @@ class CromwellRunner(JobRunnerABC):
     def job_id(self, job_id: str):
         """ Set the job id in the metadata """
         self.metadata["id"] = job_id
+
+    @property
+    def outputs(self) -> Dict[str, str]:
+        """ Get the outputs from the metadata """
+        return self.metadata.get("outputs", {})
+
+    @property
+    def metadata(self) -> Dict[str, Any]:
+        """ Get the metadata """
+        return self._metadata
+
+    @metadata.setter
+    def metadata(self, metadata: Dict[str, Any]):
+        """ Set the metadata """
+        self._metadata = metadata
+
+    @property
+    def max_retries(self) -> int:
+        return self._max_retries
+
+
+class JawsJobRunner(JobRunnerABC):
+    """Job runner for JAWS"""
+    def __init__(self, site_config: SiteConfig, workflow: "WorkflowStateManager", job_metadata: Dict[str, Any] = None,
+                 max_retries: int = DEFAULT_MAX_RETRIES, dry_run: bool = False) -> None:
+        """
+        Create a JAWS job runner.
+        :param site_config: SiteConfig object
+        :param workflow: WorkflowStateManager object
+        :param job_metadata: metadata for the job
+        :param max_retries: maximum number of retries for a job
+        :param dry_run: if True, do not submit the job
+        """
+        self.config = site_config
+        if not isinstance(workflow, WorkflowStateManager):
+            raise ValueError("workflow must be a WorkflowStateManager object")
+        self.workflow = workflow
+        self._metadata = {}
+        if job_metadata:
+            self._metadata = job_metadata
+        self._max_retries = max_retries
+        self.dry_run = dry_run
+
+    @property
+    def job_id(self) -> Optional[str]:
+        """ Get the job id from the metadata """
+        return self.metadata.get("id", None)
+
+    @job_id.setter
+    def job_id(self, job_id: str):
+        """ Set the job id in the metadata """
+        self.metadata["id"] = job_id
+
+    def generate_submission_files(self) -> Dict[str, Any]:
+        pass
+
+    def submit_job(self, force: bool = False) -> Optional[str]:
+        pass
+
+    def get_job_status(self) -> str:
+        pass
+
+    def get_job_metadata(self) -> Dict[str, Any]:
+        pass
 
     @property
     def outputs(self) -> Dict[str, str]:
@@ -412,7 +476,7 @@ class WorkflowJob:
         self.workflow = WorkflowStateManager(workflow_state, opid)
         # default to CromwellRunner if no job_runner is provided
         if job_runner is None:
-            job_runner = CromwellRunner(site_config, self.workflow, job_metadata)
+            job_runner = CromwellJobRunner(site_config, self.workflow, job_metadata)
         self.job = job_runner
 
     # Properties to access the site config, job state, and job runner attributes

@@ -313,7 +313,7 @@ def test_job_manager_get_finished_jobs(site_config, initial_state_file_1_failure
 def test_job_manager_process_successful_job(site_config, initial_state_file_1_failure, fixtures_dir):
     # mock job.job.get_job_metadata - use fixture cromwell/succeded_metadata.json
     job_metadata = json.load(open(fixtures_dir / "mags_job_metadata.json"))
-    with patch("nmdc_automation.workflow_automation.wfutils.CromwellRunner.get_job_metadata") as mock_get_metadata:
+    with patch("nmdc_automation.workflow_automation.wfutils.CromwellJobRunner.get_job_metadata") as mock_get_metadata:
         mock_get_metadata.return_value = job_metadata
 
         # Arrange
@@ -355,7 +355,7 @@ def test_job_manager_get_finished_jobs_1_failure(site_config, initial_state_file
         failed_job = failed_jobs[0]
         assert failed_job.job_status == "Failed"
 
-@mock.patch("nmdc_automation.workflow_automation.wfutils.CromwellRunner.generate_submission_files")
+@mock.patch("nmdc_automation.workflow_automation.wfutils.CromwellJobRunner.generate_submission_files")
 def test_job_manager_process_failed_job_1_failure(
         mock_generate_submission_files, site_config, initial_state_file_1_failure, mock_cromwell_api):
     # Arrange
@@ -393,7 +393,7 @@ def test_job_manager_process_failed_job_2_failures(site_config, initial_state_fi
 def mock_runtime_api_handler(site_config, mock_api):
     pass
 
-@mock.patch("nmdc_automation.workflow_automation.wfutils.CromwellRunner.submit_job")
+@mock.patch("nmdc_automation.workflow_automation.wfutils.CromwellJobRunner.submit_job")
 def test_claim_jobs(mock_submit, site_config_file, site_config, fixtures_dir):
     # Arrange
     mock_submit.return_value = {"id": "nmdc:1234", "detail": {"id": "nmdc:1234"}}
