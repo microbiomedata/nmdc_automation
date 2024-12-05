@@ -390,7 +390,6 @@ class Watcher:
         logger.info("Entering polling loop")
         while True:
             try:
-                print(".")
                 self.cycle()
             except (IOError, ValueError, TypeError, AttributeError) as e:
                 logger.exception(f"Error occurred during cycle: {e}", exc_info=True)
