@@ -5,18 +5,21 @@ import logging
 import datetime
 import pytz
 import yaml
+from functools import lru_cache
 
 from typing import List, Dict, Union, Tuple
 from nmdc_schema import nmdc
 
 from nmdc_automation.api import NmdcRuntimeApi
 from nmdc_automation.models.nmdc import DataObject, workflow_process_factory
-from .utils import object_action, file_link, get_md5, filter_import_by_type
+from .utils import object_action, file_link, get_or_create_md5, filter_import_by_type
 
 logger = logging.getLogger(__name__)
 
 
 class GoldMapper:
+
+    METAGENOME_RAW_READS = "Metagenome Raw Reads"
     def __init__(
         self,
         iteration,
@@ -37,16 +40,16 @@ class GoldMapper:
             project_directory: Project directory path.
         """
 
-        self.import_data = self.load_yaml_file(yaml_file)
+        self.import_specifications = self.load_yaml_file(yaml_file)
         self.nmdc_db = nmdc.Database()
         self.iteration = iteration
         self.file_list = file_list
         self.nucelotide_sequencing_id = nucelotide_sequencing_id
         self.root_dir = os.path.join(
-            self.import_data["Workflow Metadata"]["Root Directory"], nucelotide_sequencing_id
+            self.import_specifications["Workflow Metadata"]["Root Directory"], nucelotide_sequencing_id
         )
         self.project_dir = project_directory
-        self.url = self.import_data["Workflow Metadata"]["Source URL"]
+        self.url = self.import_specifications["Workflow Metadata"]["Source URL"]
         self.data_object_type = "nmdc:DataObject"
         self.data_object_map = {}
         self.workflow_execution_ids = {}
@@ -61,7 +64,42 @@ class GoldMapper:
 
     def build_workflows_by_type(self) -> Dict:
         """Builds a dictionary of workflows by their type."""
-        return {wf["Type"]: wf for wf in self.import_data["Workflows"]}
+        return {wf["Type"]: wf for wf in self.import_specifications["Workflows"]}
+
+
+    def map_sequencing_data_files(self) -> Dict[str, Tuple[str, str]]:
+        """
+        Find the sequencing data file (there should only be one), determine the destination name,
+        and the data object type. Return a dictionary of (import file, export file) pairs, by data object type.
+        """
+        sequencing_import_specifications = [
+            d for d in self.import_specifications["Data Objects"]["Unique"] if d["data_object_type"] == self.METAGENOME_RAW_READS
+        ]
+        # We can only have one sequencing data object import specification
+        if len(sequencing_import_specifications) > 1:
+            raise ValueError("More than one sequencing import specification found")
+        import_spec = sequencing_import_specifications[0]
+
+        # Get the import file that matches the nmdc_suffix given in the data object spec - we can only have one
+        import_files = [str(f) for f in self.file_list if re.search(import_spec['import_suffix'], str(f))]
+        if len(import_files) > 1:
+            raise ValueError("More than one sequencing data object found")
+        if not import_files:
+            raise ValueError("No sequencing data object found")
+        import_file = import_files[0]
+
+        file_destination_name = object_action(
+            import_file,
+            import_spec["action"],
+            self.nucelotide_sequencing_id,
+            import_spec["nmdc_suffix"],
+        )
+
+        export_file = os.path.join(self.root_dir, file_destination_name)
+        return {import_spec["data_object_type"]: (import_file, export_file)}
+
+
+
 
     def map_sequencing_data(self) -> Tuple[nmdc.Database, Dict]:
         """
@@ -74,7 +112,7 @@ class GoldMapper:
 
         # get the Metagenome Raw Reads import data
         sequencing_import_data = [
-            d for d in self.import_data["Data Objects"]["Unique"] if d["data_object_type"] in sequencing_types
+            d for d in self.import_specifications["Data Objects"]["Unique"] if d["data_object_type"] in sequencing_types
         ]
         has_output = []
         for data_object_dict in sequencing_import_data:
@@ -103,7 +141,7 @@ class GoldMapper:
                         logger.debug(f"{export_file} already exists")
 
                     filemeta = os.stat(export_file)
-                    md5 = get_md5(export_file)
+                    md5 = get_or_create_md5(export_file)
                     data_object_id = self.runtime.minter(self.data_object_type)
                     # Imported nucleotide sequencing data object does not have a URL
                     do_record = {
@@ -160,7 +198,7 @@ class GoldMapper:
                 file_destination_name,
             )
             filemeta = os.stat(updated_file)
-            md5 = get_md5(updated_file)
+            md5 = get_or_create_md5(updated_file)
             data_object_id = self.runtime.minter(self.data_object_type)
             do_record = {
                 "id": data_object_id,
@@ -184,9 +222,9 @@ class GoldMapper:
 
         # Select the correct data source (unique or multiple)
         data_objects_key = "Unique" if unique else "Multiples"
-        data_object_specs = self.import_data["Data Objects"][data_objects_key]
+        data_object_specs = self.import_specifications["Data Objects"][data_objects_key]
         for data_object_spec in data_object_specs:
-            if not filter_import_by_type(self.import_data["Workflows"], data_object_spec["output_of"]):
+            if not filter_import_by_type(self.import_specifications["Workflows"], data_object_spec["output_of"]):
                 continue
             if not "import_suffix" in data_object_spec:
                 logging.warning("Missing suffix")
@@ -223,7 +261,7 @@ class GoldMapper:
         section with an 'Execution Resource'.
         """
 
-        for workflow in self.import_data["Workflows"]:
+        for workflow in self.import_specifications["Workflows"]:
             if not workflow.get("Import"):
                 continue
             logging.info(f"Processing {workflow['Name']}")
@@ -256,7 +294,7 @@ class GoldMapper:
                 "has_output": has_output_list,
                 "git_url": workflow["Git_repo"],
                 "version": workflow["Version"],
-                "execution_resource": self.import_data["Workflow Metadata"]["Execution Resource"],
+                "execution_resource": self.import_specifications["Workflow Metadata"]["Execution Resource"],
                 "started_at_time": datetime.datetime.now(pytz.utc).isoformat(),
                 "ended_at_time": datetime.datetime.now(pytz.utc).isoformat(),
                 "was_informed_by": self.nucelotide_sequencing_id
@@ -313,3 +351,5 @@ class GoldMapper:
                 has_output.append(data_object_id)
 
         return has_input, has_output
+
+
