@@ -8,10 +8,59 @@
 
 # nmdc_automation
 
-## Goal
+## Overview
 
-Demonstrate how the various stages of a series of workflows could
-be tracked and triggered by the runtime.
+This is an automation framework for running sequential metagenome analysis jobs and making the outputs
+available as metadata in the NMDC database, and data objects on the NMDC data portal. The
+primary components in this process are:
+
+Scheduler
+: The Scheduler polls the NMDC database based upon an `Allowlist` of DataGeneration IDs. Based on an allowed 
+data-generation ID, the scheduler examines WorkflowExecutions and DataObjects that `was_informed_by` by the 
+data generation, and builds a graph of `Workflow Process Nodes`. When the scheduler finds a node where:
+: 1. The node has child workflow(s) which are not scheduled or in the NMDC database
+: 2. The required data objects for the child node exist
+: In this case the Scheduler will "schedule" a new job by creating a Job configuration and writing this
+to the `jobs` collection in the NMDC database
+
+Watcher
+: The Watcher "watches" the `jobs` table in the NMDC database looking for unclaimed jobs. If found, the 
+Watcher will create a `WorkflowJob` to manage the analysis job.  The watcher will then periodically poll
+each workflow job for it's status and process successful or failed jobs when they are complete
+
+WorkflowJob
+: A `WorkflowJob` consists of a `WorkflowStateManager` and a `JobRunner` and is responsible for preparing the 
+required inputs for an analysis job, submitting it to the job running service (e.g., J.A.W.S, Cromwell) and 
+for processing the resulting data and metadata when the job completes.  The watcher maintains a record of it's
+current activity in a `State File`
+
+Site Config
+: Site-specific configuration if provided by a .toml file and defines some parameters that are used
+across the workflow process including
+: 1. URL and credentials for NMDC API
+: 2. Staging and Data filesystem locations for the site
+: 3. Job Runner service URLs
+: 4. Path to the state file
+
+Workflow Definitions
+: Workflow definitions in a .yaml file describing each analysis step, specifying
+: 1. Name, type, version, WDL and git repository for each workflow
+: 2. Inputs, Outputs and Workflow Execution steps
+: 3. Data Object Types, description and name templates for processing workflow output data
+
+
+
+
+
+Workflow Definitions
+
+Scheduler
+
+
+Watcher
+
+
+WorkflowJob
 
 ## Approach
 
@@ -61,15 +110,36 @@ and run `python run_workflows.py watcher --config ../../configs/site_configurati
 
 ```text
 Setting up Watcher/Runner on Perlmutter:
-1. After logging into nmdcda on perlmutter do ~/bin/screen.sh prod
-2. /global/cfs/cdirs/m3408/squads/napacompliance
-    a. check workflows.yaml
-3. ./run_prod.sh or ./run.sh - pulling from nmdc and submitting to Cromwell; monitors job to see if it succeeded or failed
+1. Environment
+    a. Ensure the watcher will not be affected when you terminal session closes 
+        1. using screen: ~/bin/screen.sh prod
+        2. using tmux:
+        3. run watcher using nohup
+2. Watcher locations on Perlmutter
+    a. Production Instance:  /global/homes/n/nmdcda/nmdc_automation/prod
+    b. Development Instance: /global/homes/n/nmdcda/nmdc_automation/dev
+3. Updating and Running Watcher
+    a. Automation code is in `nmdc_automation` under git version control - example pulling latest main:
+    
+    b. Initial running environment:
+        1. In the nmdc_automation dir:
+        source .venv/bin/activate
+        poetry update
+        poetry install
+        poetry shell
+        
+    c. Invoke the Watcher:
+        1. in /global/homes/n/nmdcda/nmdc_automation/ dev or prod:
+        export NMDC_LOG_LEVEL=INFO    # The default is DEBUG and is very verbose
+        nohup ./run.sh & or nohup ./run_prod.sh &
 4. start up workers, sbatch ~/workers_perlmutter.sl
     a. sbatch -N 5 -q regular ./workers_perlmutter.sl
     b. salloc -N 1 -C cpu -q interactive -t 4:00:00
 5. Cq running -> to see what jobs are still running
 6. Cq meta <string> ->status of string job
+7. Monitoring the Watcher:
+    a. The Watcher runs on a login node of Perlmutter - the file host-prod.last indicates which node the watcher is running on
+    b. ssh to that node and search for the watcher:  ps aux | grep watcher
 
 Setting up Scheduler on Rancher:
 1. cd /conf
