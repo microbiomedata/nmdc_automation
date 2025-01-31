@@ -11,8 +11,8 @@ import argparse
 from pathlib import Path
 from itertools import chain
 
-from mongo import get_mongo_db
-from models import Sample, SequencingProject
+from nmdc_automation.jgi_file_staging.import.mongo  get_mongo_db
+from nmdc_automation.jgi_file_staging.import.models import Sample, SequencingProject
 from typing import List
 from pydantic import ValidationError
 
