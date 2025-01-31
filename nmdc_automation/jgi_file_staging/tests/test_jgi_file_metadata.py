@@ -25,7 +25,7 @@ from jgi_file_metadata import (
     remove_large_files,
     get_seq_unit_names,
 )
-from nmdc_automation.jgi_file_staging.import.mongo import get_mongo_db
+from nmdc_automation.jgi_file_staging.mongo import get_mongo_db
 
 from file_restoration import update_sample_in_mongodb
 
