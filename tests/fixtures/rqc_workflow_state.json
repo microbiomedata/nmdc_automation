@@ -1,0 +1,81 @@
+{
+      "workflow": {
+        "id": "Reads QC Interleave: v1.0.14"
+      },
+      "created_at": "2025-01-23T15:43:31",
+      "config": {
+        "git_repo": "https://github.com/microbiomedata/ReadsQC",
+        "release": "v1.0.14",
+        "wdl": "interleave_rqcfilter.wdl",
+        "activity_id": "nmdc:wfrqc-12-2c1nnv75.1",
+        "activity_set": "workflow_execution_set",
+        "was_informed_by": "nmdc:omprc-11-qww9t685",
+        "trigger_activity": "nmdc:omprc-11-qww9t685",
+        "iteration": 1,
+        "input_prefix": "nmdc_rqcfilter",
+        "inputs": {
+          "proj": "nmdc:wfrqc-12-2c1nnv75.1",
+          "input_fastq1": "https://storage.neonscience.org/neon-microbial-raw-seq-files/2020/BMI_H23VFBGXH_mms_R1/BMI_H23VFBGXH_Plate19S_13WellF4_R1.fastq.gz",
+          "input_fastq2": "https://storage.neonscience.org/neon-microbial-raw-seq-files/2020/BMI_H23VFBGXH_mms_R2/BMI_H23VFBGXH_Plate19S_13WellF4_R2.fastq.gz"
+        },
+        "input_data_objects": [
+          {
+            "id": "nmdc:dobj-11-fqg2kq70",
+            "type": "nmdc:DataObject",
+            "name": "BMI_H23VFBGXH_Plate19S_13WellF4_R1.fastq.gz",
+            "description": "sequencing results for BMI_H23VFBGXH_Plate19S_13WellF4_R1",
+            "data_object_type": "Metagenome Raw Read 1",
+            "md5_checksum": "db8fd8a4b00c3250eb6f064c8494c6bd",
+            "url": "https://storage.neonscience.org/neon-microbial-raw-seq-files/2020/BMI_H23VFBGXH_mms_R1/BMI_H23VFBGXH_Plate19S_13WellF4_R1.fastq.gz"
+          },
+          {
+            "id": "nmdc:dobj-11-ka24gq21",
+            "type": "nmdc:DataObject",
+            "name": "BMI_H23VFBGXH_Plate19S_13WellF4_R2.fastq.gz",
+            "description": "sequencing results for BMI_H23VFBGXH_Plate19S_13WellF4_R2",
+            "data_object_type": "Metagenome Raw Read 2",
+            "md5_checksum": "dcb0285e5f7de7473687ac09330aae22",
+            "url": "https://storage.neonscience.org/neon-microbial-raw-seq-files/2020/BMI_H23VFBGXH_mms_R2/BMI_H23VFBGXH_Plate19S_13WellF4_R2.fastq.gz"
+          }
+        ],
+        "activity": {
+          "name": "Read QC for {id}",
+          "input_read_bases": "{outputs.stats.input_read_bases}",
+          "input_read_count": "{outputs.stats.input_read_count}",
+          "output_read_bases": "{outputs.stats.output_read_bases}",
+          "output_read_count": "{outputs.stats.output_read_count}",
+          "type": "nmdc:ReadQcAnalysis"
+        },
+        "outputs": [
+          {
+            "output": "filtered_final",
+            "name": "Reads QC result fastq (clean data)",
+            "data_object_type": "Filtered Sequencing Reads",
+            "description": "Reads QC for {id}",
+            "id": "nmdc:dobj-12-bdf2hx55"
+          },
+          {
+            "output": "filtered_stats_final",
+            "name": "Reads QC summary statistics",
+            "data_object_type": "QC Statistics",
+            "description": "Reads QC summary for {id}",
+            "id": "nmdc:dobj-12-gcr35b81"
+          },
+          {
+            "output": "rqc_info",
+            "name": "File containing read filtering information",
+            "data_object_type": "Read Filtering Info File",
+            "description": "Read filtering info for {id}",
+            "id": "nmdc:dobj-12-ycq3dr80"
+          }
+        ]
+      },
+      "claims": [],
+      "opid": "nmdc:sys0krvk2x15",
+      "done": false,
+      "start": "2025-01-24T22:50:25.484420+00:00",
+      "cromwell_jobid": "789748bd-a293-4740-9d91-57bda45eb26b",
+      "last_status": "Failed",
+      "nmdc_jobid": "nmdc:cc6b9da0-d9a0-11ef-842c-029300d6af8a",
+      "failed_count": 1
+    }

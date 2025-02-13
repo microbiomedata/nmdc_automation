@@ -106,7 +106,7 @@ class WorkflowConfig:
     def __post_init__(self):
         """ Initialize the object """
         for _, inp_param in self.inputs.items():
-            if inp_param.startswith("do:"):
+            if isinstance(inp_param, str) and inp_param.startswith("do:"):
                 self.data_object_types.append(inp_param[3:])
         if not self.type:
             # Infer the type from the name

@@ -129,7 +129,7 @@ class Scheduler:
         inputs = dict()
         optional_inputs = wf.optional_inputs
         for k, v in job.workflow.inputs.items():
-            if v.startswith("do:"):
+            if isinstance(v, str) and v.startswith("do:"):
                 do_type = v[3:]
                 dobj = do_by_type.get(do_type)
                 if not dobj:

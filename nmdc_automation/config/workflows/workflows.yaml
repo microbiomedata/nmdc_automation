@@ -30,6 +30,7 @@ Workflows:
     Inputs:
       input_files: do:Metagenome Raw Reads
       proj: "{workflow_execution_id}"
+      interleaved: true
     Workflow Execution:
       name: "Read QC for {id}"
       input_read_bases: "{outputs.stats.input_read_bases}"
@@ -64,6 +65,7 @@ Workflows:
       proj: "{workflow_execution_id}"
       input_fastq1: do:Metagenome Raw Read 1
       input_fastq2: do:Metagenome Raw Read 2
+      interleaved: false
     Filter Input Objects:
     - Metagenome Raw Read 1
     - Metagenome Raw Read 2

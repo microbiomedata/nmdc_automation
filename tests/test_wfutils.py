@@ -193,6 +193,16 @@ def test_cromwell_runner_setup_inputs_and_labels(site_config, fixtures_dir):
     assert labels['git_repo'].startswith("https://github.com/microbiomedata")
     assert labels['pipeline'] == labels['wdl']
 
+def test_cromwell_runner_setup_inputs_readsqc_boolean_values(site_config, fixtures_dir):
+    job_state = json.load(open(fixtures_dir / "rqc_workflow_state.json"))
+    workflow = WorkflowStateManager(job_state)
+    runner = CromwellRunner(site_config, workflow)
+    inputs = runner._generate_workflow_inputs()
+    assert inputs
+    assert inputs['nmdc_rqcfilter.input_fastq1']
+    assert inputs['nmdc_rqcfilter.input_fastq2']
+
+
 
 @mock.patch("nmdc_automation.workflow_automation.wfutils.WorkflowStateManager.fetch_release_file")
 def test_cromwell_runner_generate_submission_files( mock_fetch_release_file, site_config, fixtures_dir):
