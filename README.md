@@ -8,76 +8,286 @@
 
 # nmdc_automation
 
-## Goal
+An automation framework for running sequential metagenome analysis jobs and making the outputs
+available as metadata in the NMDC database, and data objects on the NMDC data portal.
 
-Demonstrate how the various stages of a series of workflows could
-be tracked and triggered by the runtime.
+## Installation
 
-## Approach
+### Requirements
 
-The workflows are defined in a YAML file.  This describes the
-following for each workflow
+- mongodb-community needs to be installed and running on the local machine
+- Python 3.11 or later
 
-* Name
-* Git Repo associated with the workflow
-* Version: The current active version that should be run
-* WDL: The "top-level" WDL that should be run
-* Input Prefix: The string that should be prefixed to all of the inputs.
-                This is a workaround because Mongo doesn't like dots in key names
-* Inputs: The array of inputs for the workflow.  Not it doesn't deal with nested structures yet.
+Mongodb installation instructions for Mac can be found [here](https://docs.mongodb.com/manual/tutorial/install-mongodb-on-os-x/)
 
-The main scheduling loop does the following:
-
-1. For each workflow, it gathers up all jobs and activities that match the current
-   repo and version.  This basically to figure out what is in-flight or completed that
-   matches the current release.  These records also include the trigger object that
-   initiated the previous jobs.
-2. Using the trigger object type find all objects that could be processed.
-3. See if the trigger object exist in the query from step 1.  Anything missing will 
-   generate a new job.
-4. Generate a job record for each object.  Use the workflow spec to populate the inputs.
-
-## Install Dependencies
-To install the environment using poetry, there are a few steps to take. 
-If Poetry is no installed, run:
-`pip install poetry`
-
-Once poetry is installed, you can run:
-`poetry install` 
-
-To use the environment, you can shell into the env:
-`poetry shell`
-
-
-## Implementation
-This package is meant to be used on NMDC approvied compute instances with directories that can be accessed via https and are linked to the microbiomedata.org/data endpoint.
-
-The main python drivers can be found in the `nmdc_automation/run_process directory` that contians two processes that require configurations to be supplied. 
- 
-#### Run NMDC Workflows with corresponding omics processing records
-~~`nmdc_automation/run_process/run_worklfows.py` will automate job claims, job processing, and analysis record and data object submission via the nmdc runtime-api.~~
-~~To submit a process that will spawn a daemon that will claim, process, and submit all jobs that have not been claimed, `cd` in to `nmdc_automation/run_process`
-and run `python run_workflows.py watcher --config ../../configs/site_configuration_nersc.toml daemon`, this will watch for omics processing records that have not been claimed and processed.~~
-
-```text
-Setting up Watcher/Runner on Perlmutter:
-1. After logging into nmdcda on perlmutter do ~/bin/screen.sh prod
-2. /global/cfs/cdirs/m3408/squads/napacompliance
-    a. check workflows.yaml
-3. ./run_prod.sh or ./run.sh - pulling from nmdc and submitting to Cromwell; monitors job to see if it succeeded or failed
-4. start up workers, sbatch ~/workers_perlmutter.sl
-    a. sbatch -N 5 -q regular ./workers_perlmutter.sl
-    b. salloc -N 1 -C cpu -q interactive -t 4:00:00
-5. Cq running -> to see what jobs are still running
-6. Cq meta <string> ->status of string job
-
-Setting up Scheduler on Rancher:
-1. cd /conf
-2. /allow.lst is where the allow list is
-3. /conf/fetch_latest_workflow_yaml.sh - fetches latest workflow from repo
-4. /conf/run.sh in order to reprocess workflows.yaml
-5. 'ps aux' to see what the scheduler is currently running
+ Ensure that the mongodb service is running:
+```bash
+brew services start mongodb-community
 ```
+
+### Installation
+
+1. Clone the repository
+```bash
+git clone https://github.com/microbiomedata/nmdc_automation.git
+```
+
+2. Install the required packages
+```bash
+cd nmdc_automation  
+poetry install
+```
+
+3. Activate the poetry environment
+```bash  
+poetry env activate
+```
+
+4. Run the tests
+```bash
+make test
+```
+
+
+
+## Overview
+
+### System Components
+
+
+Scheduler
+: The Scheduler polls the NMDC database based upon an `Allowlist` of DataGeneration IDs. Based on an allowed 
+data-generation ID, the scheduler examines WorkflowExecutions and DataObjects that `was_informed_by` by the 
+data generation, and builds a graph of `Workflow Process Nodes`. 
+
+A `Workflow Process Node` is a representation of:
+- `workflow` - the workflow configuration, from workflows.yaml. The "recipe" for the given type of analysis
+- - `workflow.children` - the child workflow recipes that can be run after this workflow
+- `process` - the planned process, from the NMDC database. The "instance" of a workflow execution or data generation from the NMDC database
+- `parent` - the parent workflow process node, if any
+- `children` - the child workflow process nodes, if any
+
+```mermaid
+erDiagram
+    WorkflowProcessNode ||--|| PlannedProcess: "process"
+    PlannedProcess ||-- |{ DataObject: "has_input / has_output"
+    WorkflowProcessNode }|--|| WorkflowConfig: "workflow"
+    WorkflowConfig ||--o{ WorkflowConfig: "children"
+    WorkflowProcessNode |o--o| WorkflowProcessNode: "parent"
+    WorkflowProcessNode |o--o{ WorkflowProcessNode: "children"
+```
+
+When the scheduler finds a node where:
+
+1. The node has a workflow configuration in node.workflow.children
+2. The node DOES NOT have a child node in node.children
+3. The required inputs for the child workflow are available in node's process outputs
+
+```mermaid
+erDiagram
+    WPNode_Sequencing ||--|| WPNode_ReadsQC: "children nodes"
+    WPNode_Sequencing ||--|| WConfig_Sequencing: "workflow"
+    WConfig_Sequencing ||--o{ WConfig_ReadsQC: "children workflows"
+    WPNode_Sequencing ||--|| Process_Sequencing: "process"
+    Process_Sequencing ||-- |{ SequencingData: "has_output"
+    WPNode_ReadsQC ||--|| Process_ReadsQC: "process"
+    Process_ReadsQC ||--|{ SequencingData: "has_input"
+    Process_ReadsQC ||-- |{ ReadsQCData: "has_output"
+    WPNode_ReadsQC ||--|| WConfig_ReadsQC: "workflow"
+    WConfig_ReadsQC ||--o{ WConfig_Assembly: "children workflows"
+```
+
+In this case the Scheduler will "schedule" a new job by creating a Job configuration from:
+- the workflow configuration from node.workflow.children
+- input data from node.data_objects
+and writing this
+to the `jobs` collection in the NMDC database
+
+Watcher
+: The Watcher "watches" the `jobs` table in the NMDC database looking for unclaimed jobs. If found, the 
+Watcher will create a `WorkflowJob` to manage the analysis job.  The watcher will then periodically poll
+each workflow job for its status and process successful or failed jobs when they are complete
+
+WorkflowJob
+: A `WorkflowJob` consists of a `WorkflowStateManager` and a `JobRunner` and is responsible for preparing the 
+required inputs for an analysis job, submitting it to the job running service (e.g., J.A.W.S, Cromwell) and 
+for processing the resulting data and metadata when the job completes.  The watcher maintains a record of it's
+current activity in a `State File`
+
+### System Configuration
+
+Site Config
+: Site-specific configuration is provided by a .toml file and defines some parameters that are used
+across the workflow process including
+
+1. URL and credentials for NMDC API
+2. Staging and Data filesystem locations for the site
+3. Job Runner service URLs
+4. Path to the state file
+
+Workflow Definitions
+: Workflow definitions in a .yaml file describing each analysis step, specifying:
+
+1. Name, type, version, WDL and git repository for each workflow
+2. Inputs, Outputs and Workflow Execution steps
+3. Data Object Types, description and name templates for processing workflow output data
+
+---
+
+## Instructions (for NERSC / Perlmutter environment)
+
+
+### Running the Scheduler on NERSC Rancher2
+
+The Scheduler is a Dockerized application running on [Rancher](https://rancher2.spin.nersc.gov). 
+To initialize the Scheduler for new DataGeneration IDs, the following steps:
+
+1. On Rancher, go to `Deployments`, select `Production` from the clusters list, and find the Scheduler in either `nmdc` or `nmdc-dev`
+2. Click on the Scheduler and select `run shell`
+3. In the shell, `cd /conf`
+4. Update the file `allow.lst` with the Data Generation IDs that you want to schedule
+   1. Copy the list of data-generation IDs to you clipboard
+   2. In the shell, delete the existing allow list `rm allow.lst`
+   3. Replace the file with your copied list:
+      1. `cat >allow.lst`
+      2. Paste your IDs `command-v`
+      3. Ensure a blank line at the end with a `return` 
+      4. Terminate the cat command using `control-d`
+5. Recommended to set the log level to INFO or you get a *very* large log output
+   1. `export NMDC_LOG_LEVEL=INFO`
+6. Restart the scheduler.  In the shell, in /conf:  `./run.sh`
+7. Ensure the scheduler is running by checking `sched.log`
+
+
+### Running the Watcher on NERSC Perlmutter
+
+The watcher is a python application which runs on a login node on Perlmutter. 
+The following instructions all assume the user is logged in as user `nmdcda@perlmutter.nersc.gov`
+
+1. Get an ssh key - in your home directory: `./sshproxy.sh -u <your_nersc_username> -c nmdcda`
+2. Log in using the key `ssh -i .ssh/nmdcda nmdcda@perlmutter.nersc.gov`
+
+Watcher code and config files can be found 
+- `/global/homes/n/nmdcda/nmdc_automation/prod`
+- `/global/homes/n/nmdcda/nmdc_automation/dev`
+
+#### Set-Up and Configuration
+
+1. Ensure you have the latest `nmdc_automation` code.
+   1. `cd nmdc_automation`
+   2. `git status` / `git switch main` if not on main branch
+   3. `git fetch origin`
+   4. `git pull`
+2. Setup NMDC automation environment with `conda` and `poetry`. 
+   1. load conda: `eval "$__conda_setup"`
+   2. in the `nmdc_automation` directory: `poetry update`
+   3. Install the nmdc_automation project with `poetry install`
+   4. `poetry shell` to use the environment
+
+Example setup:
+```bash
+(nersc-python) nmdcda@perlmutter:login38:~> pwd
+/global/homes/n/nmdcda
+(nersc-python) nmdcda@perlmutter:login38:~> cd nmdc_automation/dev/
+(nersc-python) nmdcda@perlmutter:login38:~/nmdc_automation/dev> eval "$__conda_setup"
+(base) nmdcda@perlmutter:login38:~/nmdc_automation/dev> cd nmdc_automation/
+(base) nmdcda@perlmutter:login38:~/nmdc_automation/dev/nmdc_automation> poetry update
+Package operations: 0 installs, 18 updates, 0 removals
+
+  • Updating attrs (24.3.0 -> 25.1.0)
+  • Updating certifi (2024.12.14 -> 2025.1.31)
+  • Updating pydantic (2.10.5 -> 2.10.6)
+  • Updating rdflib (7.1.2 -> 7.1.3)
+  • Updating referencing (0.35.1 -> 0.36.2)
+  • Updating curies (0.10.2 -> 0.10.4)
+  • Updating wrapt (1.17.0 -> 1.17.2)
+  • Updating deprecated (1.2.15 -> 1.2.18)
+  • Updating babel (2.16.0 -> 2.17.0)
+  • Updating pymdown-extensions (10.14 -> 10.14.3)
+  • Updating beautifulsoup4 (4.12.3 -> 4.13.3)
+  • Updating mkdocs-material (9.5.49 -> 9.6.2)
+  • Updating linkml (1.8.5 -> 1.8.6)
+  • Updating numpy (2.2.1 -> 2.2.2)
+  • Updating pymongo (4.10.1 -> 4.11)
+  • Updating tzdata (2024.2 -> 2025.1)
+  • Updating nmdc-schema (11.2.1 -> 11.3.0)
+  • Updating semver (3.0.2 -> 3.0.4)
+
+Writing lock file
+(base) nmdcda@perlmutter:login38:~/nmdc_automation/dev/nmdc_automation> poetry install
+Installing dependencies from lock file
+
+No dependencies to install or update
+
+Installing the current project: nmdc-automation (0.1.0)
+(base) nmdcda@perlmutter:login38:~/nmdc_automation/dev/nmdc_automation> poetry shell
+Spawning shell within /global/cfs/cdirs/m3408/nmdc_automation/dev/nmdc_automation/.venv
+. /global/cfs/cdirs/m3408/nmdc_automation/dev/nmdc_automation/.venv/bin/activate
+(base) nmdcda@perlmutter:login38:~/nmdc_automation/dev/nmdc_automation> . /global/cfs/cdirs/m3408/nmdc_automation/dev/nmdc_automation/.venv/bin/activate
+(nmdc-automation-py3.11) (base) nmdcda@perlmutter:login38:~/nmdc_automation/dev/nmdc_automation>
+```
+The `poetry shell` command will activate the environment for the current shell session. 
+Environment (nmdc-automation-py3.11) will be displayed in the prompt.
+
+
+
+#### Running the Watcher
+
+We run the watcher using `nohup` (No Hangup) - this prevents the watcher process from being terminated
+when the user's terminal session ends.  This will cause stdout and stderr to be written to a file
+names `nohup.out` in addition to being written to the `watcher.log` file.  
+
+1. change to the working `prod` or `dir` directory
+- `/global/homes/n/nmdcda/nmdc_automation/prod`
+- `/global/homes/n/nmdcda/nmdc_automation/dev`
+2. `export NMDC_LOG_LEVEL=INFO`
+3. `rm nohup.out`
+4. `nohup ./run.sh &` (for dev) OR `nohup ./run_prod.sh &` (for prod)
+
+#### Provision Workers
+
+1. `sbatch ~/workers_perlmutter.sl`
+
+- `sbatch` is the command to submit a job to the Slurm scheduler
+- `~/workers_perlmutter.sl` is the script that will be run by the scheduler which specifies the number of workers to provision
+
+```bash
+#!/bin/sh
+#SBATCH -N 1
+#SBATCH -q regular
+#SBATCH -t 12:00:00
+#SBATCH -J nmdc_condor_wrk
+#SBATCH -C cpu
+```
+
+#### Monitoring the Watcher
+
+1. The watcher writes a file `host-prod.last` in `nmdc_automation/prod` or `nmdc_auotmation/dev` showing which node it is running on
+2. ssh to that node
+```shell
+(base) nmdcda@perlmutter:login07:~> cd nmdc_automation/dev
+(base) nmdcda@perlmutter:login07:~/nmdc_automation/dev> cat host-dev.last 
+login24
+(base) nmdcda@perlmutter:login07:~/nmdc_automation/dev> ssh login24
+```
+3. Search for the Watcher process `ps aux | grep watcher`
+
+#### Monitoring Jobs
+
+- `sqs` Shows the Slurm queue
+```shell
+JOBID            ST USER      NAME          NODES TIME_LIMIT       TIME  SUBMIT_TIME          QOS             START_TIME           FEATURES       NODELIST(REASON
+35153609         PD nmdcda    condor        1     14-00:00:00       0:00  2025-01-23T09:33:27  workflow        N/A                  cron           (Dependency)   
+35153610         R  nmdcda    cromwell      1     4-00:00:00 3-11:09:43  2025-02-08T22:07:23  workflow        2025-02-08T22:08:01  cron           login05        
+30091486         R  nmdcda    condor        1     14-00:00:00 11-11:13:11  2025-01-27T09:09:48  workflow        2025-01-31T22:04:33  cron           login04
+```
+Shows a new job with ID 35153609 in the queue (Pending State), and a running job with ID 35153610
+- `cq running` Shows which jobs are being run by Condor
+```shell
+7d07b3e5-edb2-414f-ba19-c570669f3b5f  f_annotate     65ce4da9-52eb-4d74-82e1-9b2b639e694a  65ce4da9-52eb-4d74-82e1-9b2b639e694a  Running   2024-03-27T00:02:34.316Z
+```
+
+
 
 ### Importing External Projects into the NMDC Database
 
