@@ -280,7 +280,7 @@ Workflows:
     Enabled: False
     Analyte Category: Metatranscriptome
     Git_repo: https://github.com/microbiomedata/metaT_ReadCounts
-    Version: v0.0.5
+    Version: v0.0.6
     WDL: readcount.wdl
     Collection: workflow_execution_set
     Predecessors:
@@ -310,7 +310,7 @@ Workflows:
     Enabled: True
     Analyte Category: Metatranscriptome
     Git_repo: https://github.com/microbiomedata/metaT_ReadCounts
-    Version: v0.0.5
+    Version: v0.0.6
     WDL: readcount.wdl
     Collection: workflow_execution_set
     Predecessors:
@@ -339,7 +339,7 @@ Workflows:
     Enabled: False
     Analyte Category: Metatranscriptome
     Git_repo: https://github.com/microbiomedata/metaT_ReadCounts
-    Version: v0.0.5
+    Version: v0.0.6
     WDL: readcount.wdl
     Collection: workflow_execution_set
     Predecessors:
