@@ -104,7 +104,7 @@ Workflows:
     Enabled: True
     Analyte Category: Metatranscriptome
     Git_repo: https://github.com/microbiomedata/metaT_Assembly
-    Version: v0.0.2
+    Version: v0.0.3
     WDL: metaT_assembly.wdl
     Collection: workflow_execution_set
     Predecessors:
