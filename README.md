@@ -12,28 +12,33 @@ An automation framework for running sequential metagenome analysis jobs and maki
 available as metadata in the NMDC database, and data objects on the NMDC data portal.
 
 ## Table of Contents
-- [Installation](#installation)
-- [Overview](#overview)
-  - [System Components](#system-components)
-  - [System Configuration](#system-configuration)
-- [Instructions (for NERSC / Perlmutter environment)](#instructions-for-nersc--perlmutter-environment)
-  - [Running the Scheduler on NERSC Rancher2](#running-the-scheduler-on-nersc-rancher2)
-  - [Running the Watcher on NERSC Perlmutter](#running-the-watcher-on-nersc-perlmutter)
-    - [Check the Watcher Status](#check-the-watcher-status)
-    - [Set-Up and Configuration](#set-up-and-configuration)
-    - [Running the Watcher](#running-the-watcher)
-    - [Provision Workers](#provision-workers)
-    - [Monitoring the Watcher](#monitoring-the-watcher)
-    - [Monitoring Jobs](#monitoring-jobs)
-      - [Slurm and Condor](#slurm-and-condor)
-      - [NMDC Database](#nmdc-database)
-      - [Watcher State File](#watcher-state-file)
-      - [Cromwell Job Status and Metadata](#cromwell-job-status-and-metadata)
-    - [Handling Failed Jobs](#handling-failed-jobs)
-  - [Importing External Projects into the NMDC Database](#importing-external-projects-into-the-nmdc-database)
-    - [Setup and Configuration](#setup-and-configuration)
-    - [Running the Import Process](#running-the-import-process)
-    - [Running the Import Process](#running-the-import-process-1)
+- [nmdc\_automation](#nmdc_automation)
+  - [Table of Contents](#table-of-contents)
+  - [Installation](#installation)
+    - [Requirements](#requirements)
+    - [MongoDB Installation](#mongodb-installation)
+    - [Installation](#installation-1)
+  - [Overview](#overview)
+    - [System Components](#system-components)
+    - [System Configuration](#system-configuration)
+  - [Instructions (for NERSC / Perlmutter environment)](#instructions-for-nersc--perlmutter-environment)
+    - [Running the Scheduler on NERSC Rancher2](#running-the-scheduler-on-nersc-rancher2)
+    - [Running the Watcher on NERSC Perlmutter](#running-the-watcher-on-nersc-perlmutter)
+      - [Check the Watcher Status](#check-the-watcher-status)
+      - [Set-Up and Configuration](#set-up-and-configuration)
+      - [Running the Watcher](#running-the-watcher)
+      - [Provision Workers](#provision-workers)
+      - [Monitoring the Watcher](#monitoring-the-watcher)
+      - [Monitoring Jobs](#monitoring-jobs)
+        - [Slurm and Condor](#slurm-and-condor)
+        - [NMDC Database](#nmdc-database)
+        - [Watcher State File](#watcher-state-file)
+        - [Cromwell Job Status and Metadata](#cromwell-job-status-and-metadata)
+      - [Handling Failed Jobs](#handling-failed-jobs)
+    - [Importing External Projects into the NMDC Database](#importing-external-projects-into-the-nmdc-database)
+      - [Setup and Configuration](#setup-and-configuration)
+      - [Running the Import Process](#running-the-import-process)
+      - [Running the Import Process](#running-the-import-process-1)
 
 ## Installation
 
@@ -308,7 +313,7 @@ We run the watcher using `nohup` (No Hangup) - this prevents the watcher process
 when the user's terminal session ends.  This will cause stdout and stderr to be written to a file
 names `nohup.out` in addition to being written to the `watcher.log` file.  
 
-1. change to the working `prod` or `dir` directory
+1. change to the working `prod` or `dev` directory
 - `/global/homes/n/nmdcda/nmdc_automation/prod`
 - `/global/homes/n/nmdcda/nmdc_automation/dev`
 2. `export NMDC_LOG_LEVEL=INFO`
