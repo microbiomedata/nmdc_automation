@@ -19,7 +19,7 @@ Workflows:
     Enabled: True
     Analyte Category: Metatranscriptome
     Git_repo: https://github.com/microbiomedata/metaT_ReadsQC
-    Version: v0.0.7
+    Version: v0.0.9
     WDL: rqcfilter.wdl
     Collection: workflow_execution_set
     Filter Input Objects:
@@ -104,7 +104,7 @@ Workflows:
     Enabled: True
     Analyte Category: Metatranscriptome
     Git_repo: https://github.com/microbiomedata/metaT_Assembly
-    Version: v0.0.3
+    Version: v0.0.4
     WDL: metaT_assembly.wdl
     Collection: workflow_execution_set
     Predecessors:
@@ -280,7 +280,7 @@ Workflows:
     Enabled: False
     Analyte Category: Metatranscriptome
     Git_repo: https://github.com/microbiomedata/metaT_ReadCounts
-    Version: v0.0.6
+    Version: v0.0.7
     WDL: readcount.wdl
     Collection: workflow_execution_set
     Predecessors:
@@ -310,7 +310,7 @@ Workflows:
     Enabled: True
     Analyte Category: Metatranscriptome
     Git_repo: https://github.com/microbiomedata/metaT_ReadCounts
-    Version: v0.0.6
+    Version: v0.0.7
     WDL: readcount.wdl
     Collection: workflow_execution_set
     Predecessors:
@@ -339,7 +339,7 @@ Workflows:
     Enabled: False
     Analyte Category: Metatranscriptome
     Git_repo: https://github.com/microbiomedata/metaT_ReadCounts
-    Version: v0.0.6
+    Version: v0.0.7
     WDL: readcount.wdl
     Collection: workflow_execution_set
     Predecessors:
