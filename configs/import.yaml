@@ -149,10 +149,7 @@ Workflows:
       name: "Metagenome Assembled Genomes Analysis for {id}"
       type: nmdc:MagsAnalysis
     Outputs:
-      - CheckM Statistics
-      - Metagenome Bins
-      - GTDBTK Bacterial Summary
-      - GTDBTK Archaeal Summary
+      - Metagenome HQMQ Bins Compression File
 
 Data Objects:
   Unique:
