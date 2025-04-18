@@ -1,6 +1,6 @@
 import configparser
 import sys
-
+from datetime import datetime
 import pandas as pd
 import numpy as np
 import requests
@@ -11,8 +11,8 @@ import argparse
 from pathlib import Path
 from itertools import chain
 
-from nmdc_automation.jgi_file_staging.mongo import get_mongo_db
-from nmdc_automation.jgi_file_staging.models import Sample, SequencingProject
+from mongo import get_mongo_db
+from models import Sample, SequencingProject
 from typing import List
 from pydantic import ValidationError
 
@@ -36,20 +36,29 @@ ACCEPT = "application/json"
 def get_request(url: str, ACCESS_TOKEN: str, delay=1.0) -> dict:
     headers = {"Authorization": f"Bearer {ACCESS_TOKEN}", "accept": ACCEPT, 'User-agent': 'nmdc bot 0.1'}
     time.sleep(delay)
-    response = requests.get(url, headers=headers, verify=eval(os.environ.get('VERIFY', 'False')))
-    if response.status_code == 200:
-        return response.json()
-    else:
-        logging.error(f"{response.text}")
-        return None
+    try:
+        response = requests.get(url, headers=headers, verify=eval(os.environ.get('VERIFY')))
+        if response.status_code == 404:
+            logging.exception('404 error')
+            return None
+        else:
+            return response.json()
+    except requests.exceptions.HTTPError as errh:
+        logging.exception(f"HTTP Error: {errh}")
+    except requests.exceptions.ConnectionError as errc:
+        logging.exception(f"Error Connecting: {errc}")
+    except requests.exceptions.Timeout as errt:
+        logging.exception(f"Timeout Error: {errt}")
+    except requests.exceptions.RequestException as err:
+        logging.exception(f"Something Else: {err}")
 
 
-def get_samples_data(project: str, config_file: str) -> None:
+def get_samples_data(project: str, config_file: str, csv_file: str = None) -> None:
     """
     Get JGI sample metadata using the gold API and store in a mongodb
-    :param proposal_id: JGI proposal ID
     :param project: Name of project (e.g., GROW, Bioscales, NEON)
     :param config_file: Config file with parameters
+    :param csv_file: csv file with files to stage
     :return:
     """
     # check_restore_status()
@@ -58,10 +67,13 @@ def get_samples_data(project: str, config_file: str) -> None:
     ACCESS_TOKEN = get_access_token()
     mdb = get_mongo_db()
     seq_project = mdb.sequencing_projects.find_one({'project_name': project})
-    files_df = get_files_df_from_proposal_id(seq_project['proposal_id'], ACCESS_TOKEN, eval(config['JDP']['delay']))
+    if csv_file is not None:
+        gold_analysis_files_df = pd.read_csv(csv_file)
+    else:
+        files_df = get_files_df_from_proposal_id(seq_project['proposal_id'], ACCESS_TOKEN, eval(config['JDP']['delay']))
+        gold_analysis_files_df = get_analysis_files_df(seq_project['proposal_id'], files_df, ACCESS_TOKEN,
+                                                       eval(config['JDP']['remove_files']))
 
-    gold_analysis_files_df = get_analysis_files_df(seq_project['proposal_id'], files_df, ACCESS_TOKEN,
-                                                   eval(config['JDP']['remove_files']))
     gold_analysis_files_df['project'] = project
     logging.debug(f'number of samples to insert: {len(gold_analysis_files_df)}')
     logging.debug(gold_analysis_files_df.head().to_dict('records'))
@@ -79,13 +91,18 @@ def get_analysis_files_df(proposal_id: int, files_df: pd.DataFrame, ACCESS_TOKEN
     gold_analysis_data_df = pd.DataFrame(gold_analysis_data)
     gold_analysis_files_df = pd.merge(gold_analysis_data_df, files_df, left_on='itsApId',
                                       right_on='analysis_project_id')
+    gold_analysis_files_df['file_type'] = gold_analysis_files_df["file_type"].astype(str)
+    gold_analysis_files_df['analysis_project_id'] = gold_analysis_files_df['analysis_project_id'].astype(str)
+    gold_analysis_files_df['seq_id'] = gold_analysis_files_df['seq_id'].astype(str)
+    gold_analysis_files_df['update_date'] = datetime.now()
+    gold_analysis_files_df['request_id'] = None
     gold_analysis_files_df = remove_unneeded_files(gold_analysis_files_df, remove_files)
     return gold_analysis_files_df
 
 
 def get_access_token() -> str:
     url = f'https://gold-ws.jgi.doe.gov/exchange?offlineToken={os.environ.get("OFFLINE_TOKEN")}'
-    response = requests.get(url, verify=eval(os.getenv('VERIFY', 'False')))
+    response = requests.get(url, verify=eval(os.getenv('VERIFY')))
     sys.exit(f"get_access_token: {response.text}") if response.status_code != 200 else None
 
     return response.text
@@ -93,9 +110,6 @@ def get_access_token() -> str:
 
 def check_access_token(ACCESS_TOKEN: str, delay: float) -> str:
     url = 'https://gold-ws.jgi.doe.gov/api/v1/projects?biosampleGoldId=Gb0291582'
-    # headers = {"Authorization": f"Bearer {ACCESS_TOKEN}", "accept": ACCEPT, 'User-agent': 'nmdc bot 0.1'}
-    # time.sleep(delay)
-    # gold_biosample_response = requests.get(gold_biosample_url, headers=headers, verify=verify)
     gold_biosample_response = get_request(url, ACCESS_TOKEN, delay=delay)
     if gold_biosample_response:
         return ACCESS_TOKEN
@@ -109,7 +123,6 @@ def get_sample_files(proposal_id: int, ACCESS_TOKEN: str, delay: float) -> List[
     :param proposal_id: proposal id
     :param ACCESS_TOKEN: gold api token
     :param delay: delay between API requests
-    :param verify: whether to verify SSL certificates for requests
     :return: list of sample files for each biosample
     """
 
@@ -118,34 +131,32 @@ def get_sample_files(proposal_id: int, ACCESS_TOKEN: str, delay: float) -> List[
     for idx, biosample_id in samples_df.itertuples():
         logging.debug(f"biosample {biosample_id}")
         ACCESS_TOKEN = check_access_token(ACCESS_TOKEN, delay)
-        try:
-            seq_id = get_sequence_id(biosample_id, ACCESS_TOKEN, delay)
-            sample_files_list, agg_id_list = get_files_and_agg_ids(seq_id, ACCESS_TOKEN)
-        except IndexError:
-            logging.exception(f'skipping biosample_id: {biosample_id}')
-            continue
-        combine_sample_ids_with_agg_ids(sample_files_list, agg_id_list, biosample_id, seq_id, all_files_list)
-    # pd.DataFrame(all_files_list).to_csv('all_files_list.csv', index=False)
-    # logging.debug(f"all_files_list: {all_files_list}")
+        seq_id_list = get_sequence_id(biosample_id, ACCESS_TOKEN, delay)
+        for seq_id in seq_id_list:
+            sample_files_list = get_files_and_agg_ids(seq_id, ACCESS_TOKEN)
+            create_all_files_list(sample_files_list, biosample_id, seq_id, all_files_list)
+
     return all_files_list
 
 
 def get_biosample_ids(proposal_id: int, ACCESS_TOKEN: str) -> List[str]:
     url = f'https://gold-ws.jgi.doe.gov/api/v1/biosamples?itsProposalId={proposal_id}'
-    # headers = {"Authorization": f"Bearer {ACCESS_TOKEN}", "accept": ACCEPT, 'User-agent': 'nmdc bot 0.1'}
-    # response = requests.get(url, headers=headers, verify=verify)
     response_json = get_request(url, ACCESS_TOKEN)
     biosample_ids = [sample['biosampleGoldId'] for sample in response_json]
     return biosample_ids
 
 
-def get_sequence_id(gold_id: str, ACCESS_TOKEN: str, delay: float) -> str:
+def get_sequence_id(biosample_id: str, ACCESS_TOKEN: str, delay: float) -> List[str]:
     # given a gold biosample id, get the JGI sequencing ID
-    gold_biosample_url = f'https://gold-ws.jgi.doe.gov/api/v1/projects?biosampleGoldId={gold_id}'
+    gold_biosample_url = f'https://gold-ws.jgi.doe.gov/api/v1/analysis_projects?biosampleGoldId={biosample_id}'
     gold_biosample_response = get_request(gold_biosample_url, ACCESS_TOKEN, delay=delay)
-    if gold_biosample_response:
-        return gold_biosample_response[0]['itsSpid']
-    return None
+    sequence_id_list = []
+    if not gold_biosample_response:
+        return sequence_id_list
+    for seq in gold_biosample_response:
+        if seq['apType'] in ["Metagenome Analysis", "Metatranscriptome Analysis"]:
+            sequence_id_list.append(seq['itsApId'])
+    return sequence_id_list
 
 
 def get_analysis_projects_from_proposal_id(proposal_id: int, ACCESS_TOKEN: str) -> List[dict]:
@@ -156,39 +167,33 @@ def get_analysis_projects_from_proposal_id(proposal_id: int, ACCESS_TOKEN: str) 
     return ap_type_gold_analysis_data
 
 
-def get_files_and_agg_ids(sequencing_id: str, ACCESS_TOKEN: str) -> (List[dict], List[str]):
+def get_files_and_agg_ids(sequencing_id: str, ACCESS_TOKEN: str) -> List[dict]:
     # Given a JGI sequencing ID, get the list of files and agg_ids associated with the biosample
     logging.debug(f"sequencing_id {sequencing_id}")
     seqid_url = f"https://files.jgi.doe.gov/search/?q={sequencing_id}&f=project_id&a=false&h=false&d=asc&p=1&x=10&api_version=2"
-    headers = {'X-CSRFToken': f'Token {ACCESS_TOKEN}', "accept": ACCEPT}
-    seqid_response = requests.get(seqid_url, headers=headers)
-    sys.exit(f"{seqid_response.text}") if seqid_response.status_code != 200 else None
-    files_data = seqid_response.json()
+    files_data = get_request(seqid_url, ACCESS_TOKEN)
     files_data_list = []
-    agg_id_list = []
     if 'organisms' in files_data.keys():
         for org in files_data['organisms']:
-            files_data_list.append(org['files'])
-            agg_id_list.append(org['agg_id'])
-        return files_data_list, agg_id_list
-    else:
-        return None, []
+            files_data_list.append({'files': org['files'], 'agg_id': org['agg_id']})
+    return files_data_list
 
 
-def combine_sample_ids_with_agg_ids(sample_files_list, agg_id_list, biosample_id, seq_id, all_files_list) -> None:
-    for sample, agg_id in zip(sample_files_list, agg_id_list):
-        for files_dict in sample:
-            seq_unit_name = files_dict['metadata']['seq_unit_name'] if 'seq_unit_name' in files_dict[
-                'metadata'].keys() else None
-            file_format = files_dict['metadata']['file_format'] if 'file_format' in files_dict[
-                'metadata'].keys() else None
+def create_all_files_list(sample_files_list, biosample_id, seq_id, all_files_list) -> None:
+    for sample in sample_files_list:
+        for files_dict in sample['files']:
+            seq_unit_name = None if 'seq_unit_name' not in files_dict['metadata'].keys() else files_dict['metadata'][
+                'seq_unit_name']
+            seq_unit_name = [seq_unit_name] if type(seq_unit_name) is str else seq_unit_name
+            file_format = None if 'file_format' not in files_dict[
+                'metadata'].keys() else files_dict['metadata']['file_format']
             md5sum = files_dict['md5sum'] if 'md5sum' in files_dict.keys() else None
             all_files_list.append({'biosample_id': biosample_id, 'seq_id': seq_id, 'file_name': files_dict['file_name'],
                                    'file_status': files_dict['file_status'], 'file_type': files_dict['file_type'],
                                    'file_size': files_dict['file_size'],
                                    'jdp_file_id': files_dict['_id'], 'md5sum': md5sum,
                                    'file_format': file_format,
-                                   'analysis_project_id': agg_id, 'seq_unit_name': seq_unit_name})
+                                   'analysis_project_id': sample['agg_id'], 'seq_unit_name': seq_unit_name})
             if 'metadata' not in files_dict.keys():
                 print(f"biosample_id {biosample_id}, seq_id{seq_id}")
 
@@ -208,9 +213,8 @@ def remove_unneeded_files(seq_files_df: pd.DataFrame, remove_files_list: list) -
 
 
 def remove_large_files(seq_files_df: pd.DataFrame, remove_files_list: list) -> pd.DataFrame:
-    for file_type in remove_files_list:
-        seq_files_df = seq_files_df[(~seq_files_df['file_name'].str.contains(file_type))]
-    return seq_files_df
+    pattern = '|'.join(remove_files_list)
+    return seq_files_df[~(seq_files_df.file_name.str.contains(pattern))]
 
 
 def remove_duplicate_analysis_files(seq_files_df: pd.DataFrame) -> pd.DataFrame:
@@ -225,11 +229,12 @@ def remove_duplicate_analysis_files(seq_files_df: pd.DataFrame) -> pd.DataFrame:
     for gold_id in ap_gold_ids:
         print(gold_id)
         seq_unit_names_list = get_seq_unit_names(seq_files_df, gold_id)
-        for idx, row in seq_files_df.loc[seq_files_df.apGoldId == gold_id, :].iterrows():
+        for idx, row in seq_files_df.loc[(seq_files_df.apGoldId == gold_id) &
+                                         (seq_files_df.file_name.str.contains('fastq')) &
+                                         (seq_files_df.file_name != 'input.corr.fastq.gz'), :].iterrows():
             # find rows with fastq files to remove (fastq file name is not in list of seq_unit_names and is not
             # input.corr.fastq.gz)
-            if 'fastq' in row.file_name and ~np.any(
-                    [seq in row.file_name for seq in seq_unit_names_list]) and row.file_name != 'input.corr.fastq.gz':
+            if ~np.any([seq in row.file_name for seq in seq_unit_names_list]):
                 drop_idx.append(idx)
     seq_files_df.drop(drop_idx, inplace=True)
     return seq_files_df
@@ -240,10 +245,7 @@ def get_seq_unit_names(analysis_files_df, gold_id):
     for idx, row in analysis_files_df.loc[pd.notna(analysis_files_df.seq_unit_name)
                                           & (analysis_files_df.apGoldId == gold_id)
                                           & (analysis_files_df.file_type == "['contigs']")].iterrows():
-        if type(row.seq_unit_name) is str:
-            seq_unit_names.append(row.seq_unit_name)
-        elif type(row.seq_unit_name) is list:
-            seq_unit_names.extend(row.seq_unit_name)
+        seq_unit_names.extend(row.seq_unit_name)
 
     seq_unit_names_list = list(set(seq_unit_names))
     seq_unit_names_list = [
@@ -311,7 +313,7 @@ def verify_downloads(config_file: str, project_name: str) -> bool:
     download_gold_df = pd.merge(project_files_df, gold_analysis_files_df, right_on='file_name',
                                 left_on='downloaded_files')
     download_gold_df.to_csv('download_gold_df.csv', index=False)
-    gold_analysis_files_df.to_csv('gold_analysis_files_df.csv', index=False)
+    files_df.to_csv('files_df.csv', index=False)
     return len(download_gold_df) == len(gold_analysis_files_df)
 
 
@@ -336,11 +338,12 @@ if __name__ == '__main__':
     parser.add_argument('-i', '--insert_project', action='store_true',
                         help='insert new project into mongodb',
                         default=False)
+    parser.add_argument('-f', '--file', help='csv file with files to stage')
     args = vars((parser.parse_args()))
     if args['verify_downloads']:
         if verify_downloads(args['config_file'], args['project_name']):
             print('Downloads verified')
-    if args['insert_project']:
+    elif args['insert_project']:
         insert_new_project_into_mongodb(args['config_file'])
-
-    get_samples_data(args['project_name'], args['config_file'])
+    else:
+        get_samples_data(args['project_name'], args['config_file'], csv_file=args['file'])
