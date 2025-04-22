@@ -118,9 +118,11 @@ class SiteConfig:
     @lru_cache(maxsize=None)
     def allowed_workflows(self):
         """Generate a list of allowed workflows."""
-        workflows_config_file = self.config_data["workflows"]["workflows_config"]
-        with open(WORKFLOWS_DIR / workflows_config_file, "r") as stream:
-            workflows = yaml.safe_load(stream)
+        # workflows_config_file = self.config_data["workflows"]["workflows_config"] # changed to a list of both workflow config files
+        workflows = {'Workflows': []}
+        for workflows_config_file in self.config_data["workflows"]["workflows_config"]: 
+            with open(WORKFLOWS_DIR / workflows_config_file, "r") as stream:
+                workflows = workflows['Workflows'].append(yaml.safe_load(stream))
 
         # Initialize an empty list to store the results
         enabled_workflows = []

@@ -1,5 +1,5 @@
 Workflows:
-  - Name: Sequencing Noninterleaved
+  - Name: Metatranscriptome Sequencing Noninterleaved
     Collection: data_generation_set
     Enabled: True
     Analyte Category: Metatranscriptome
@@ -7,7 +7,7 @@ Workflows:
     - Metatranscriptome Raw Read 1
     - Metatranscriptome Raw Read 2
 
-  - Name: Sequencing Interleaved
+  - Name: Metatranscriptome Sequencing Interleaved
     Collection: data_generation_set
     Enabled: True
     Analyte Category: Metatranscriptome

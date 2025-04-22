@@ -3,7 +3,7 @@ Workflows:
     Import: true
     Type: nmdc:ReadQcAnalysis
     Git_repo: https://github.com/microbiomedata/metaT_ReadsQC
-    Version: v0.0.7
+    Version: v0.0.9
     Collection: workflow_execution_set
     WorkflowExecutionRange: ReadQcAnalysis
     Inputs:
@@ -25,7 +25,7 @@ Workflows:
     Import: false
     Type: nmdc:MetatranscriptomeAssembly
     Git_repo: https://github.com/microbiomedata/metaT_Assembly
-    Version: v0.0.2
+    Version: v0.0.4
     Collection: workflow_execution_set
     WorkflowExecutionRange: MetatranscriptomeAssembly
     Inputs:
@@ -109,7 +109,7 @@ Workflows:
     Import: false
     Type: nmdc:MetatranscriptomeExpressionAnalysis
     Git_repo: https://github.com/microbiomedata/metaT_ReadCounts
-    Version: v0.0.5
+    Version: v0.0.7
     Collection: metatranscriptome_expression_analysis_set
     WorkflowExecutionRange: MetatranscriptomeExpressionAnalysis
     Inputs:
