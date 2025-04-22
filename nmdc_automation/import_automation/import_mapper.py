@@ -228,8 +228,8 @@ class ImportMapper:
         Create the initial list of Data Object Mapping based on the data generation
         record in the DB.
 
-        If the DG has_output is empty we create a mapping for Metagenome Raw Reads with
-        the data generation ID as the process_id, but no data object.
+        If the DG has_output is empty we create a mapping for Metagenome or Metatranscriptome 
+        Raw Reads with the data generation ID as the process_id, but no data object.
         """
         # Find the data generation and it's output data object
         id_filter = {'id': self.data_generation_id}
@@ -259,7 +259,10 @@ class ImportMapper:
                 )
             )
         else:
-            data_object_type = "Metagenome Raw Reads"
+            if "transcriptome" in data_generation['analyte_category'].lower():
+                data_object_type = "Metatranscriptome Raw Reads"
+            else:
+                data_object_type = "Metagenome Raw Reads"
             import_spec = self.import_specs_by_data_object_type[data_object_type]
             self.data_object_mappings.add(
                 DataObjectMapping(
