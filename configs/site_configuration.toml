@@ -22,8 +22,7 @@ agent_state = "/tmp/agent.state"
 activity_id_state = "/Path/to/activity_id_state"
 
 [workflows]
-#workflows_config = "./configs/workflows.yaml"
-workflows_config = ["./configs/workflows.yaml", "./configs/workflows-mt.yaml"]
+workflows_config = "./configs/workflows-mt.yaml"
 
 [credentials]
 client_id = "xxxxxx"
