@@ -27,7 +27,7 @@ Workflows:
     Predecessors:
     - Sequencing
     - Sequencing Interleaved
-    Input_prefix: nmdc_rqcfilter
+    Input_prefix: metaTReadsQC
     Inputs:
       input_files: do:Metagenome Raw Reads
       proj: "{workflow_execution_id}"
@@ -61,10 +61,10 @@ Workflows:
     Enabled: True
     Analyte Category: Metatranscriptome
     Git_repo: https://github.com/microbiomedata/metaT_ReadsQC
-    Version: v0.0.7
+    Version: v0.0.9
     Collection: workflow_execution_set
     WDL: interleave_rqcfilter.wdl
-    Input_prefix: nmdc_rqcfilter
+    Input_prefix: metaTReadsQC
     Inputs:
       proj: "{workflow_execution_id}"
       input_fastq1: do:Metagenome Raw Read 1
@@ -110,7 +110,7 @@ Workflows:
     Predecessors:
     - Metatranscriptome Reads QC
     - Metatranscriptome Reads QC Interleave
-    Input_prefix: jgi_metaASM
+    Input_prefix: metatranscriptome_assy
     Inputs:
       input_files: do:Filtered Sequencing Reads
       proj: "{workflow_execution_id}"
@@ -285,7 +285,7 @@ Workflows:
     Collection: workflow_execution_set
     Predecessors:
     - Metatranscriptome Annotation
-    Input_prefix: nmdc_expression
+    Input_prefix: readcount
     Inputs:
       gff_file: do:Functional Annotation GFF
       map: do:Contig Mapping File
@@ -315,7 +315,7 @@ Workflows:
     Collection: workflow_execution_set
     Predecessors:
     - Metatranscriptome Annotation
-    Input_prefix: nmdc_expression
+    Input_prefix: readcount
     Inputs:
       gff_file: do:Functional Annotation GFF
       map: do:Contig Mapping File
@@ -344,7 +344,7 @@ Workflows:
     Collection: workflow_execution_set
     Predecessors:
     - Metatranscriptome Annotation
-    Input_prefix: nmdc_expression
+    Input_prefix: readcount
     Inputs:
       gff_file: do:Functional Annotation GFF
       map: do:Contig Mapping File
