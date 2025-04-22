@@ -122,7 +122,8 @@ class SiteConfig:
         workflows = {'Workflows': []}
         for workflows_config_file in self.config_data["workflows"]["workflows_config"]: 
             with open(WORKFLOWS_DIR / workflows_config_file, "r") as stream:
-                workflows = workflows['Workflows'].append(yaml.safe_load(stream))
+                loaded_yaml = yaml.safe_load(stream)
+                workflows = workflows['Workflows'].append(loaded_yaml['Workflows'])
 
         # Initialize an empty list to store the results
         enabled_workflows = []

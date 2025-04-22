@@ -8,12 +8,15 @@ except ImportError:
 from nmdc_automation.models.workflow import WorkflowConfig
 
 
-def load_workflow_configs(yaml_file) -> list[WorkflowConfig]:
+def load_workflow_configs(yaml_files) -> list[WorkflowConfig]:
     """
-    Read the workflows yaml file and return a list of WorkflowConfig objects
+    Read a list of workflow yaml files and return a list of WorkflowConfig objects
     """
+    data = {"Workflows": []}
     workflow_configs = []
-    data = load(open(yaml_file), Loader)
+    for yaml_file in yaml_files:  
+        raw_data = load(open(yaml_file), Loader)
+        data = data["Workflows"].append(raw_data["Workflows"])
     for wf in data["Workflows"]:
         # normalize the keys from Key Name to key_name
         wf = {k.replace(" ", "_").lower(): v for k, v in wf.items()}
