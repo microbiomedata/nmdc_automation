@@ -226,6 +226,7 @@ def test_load_workflows(workflows_config_dir, workflow_file):
 def test_get_required_data_objects_by_id(test_db, workflows_config_dir, workflow_file):
     """
     Test get_required_data_objects_by_id
+        # TODO: add workflow specific data objects
     """
     # non-comprehensive list of expected data object types
     exp_do_mg_types = ["Metagenome Raw Read 1", "Metagenome Raw Read 2", "Filtered Sequencing Reads"]
@@ -236,7 +237,6 @@ def test_get_required_data_objects_by_id(test_db, workflows_config_dir, workflow
     else: 
         exp_do_types = exp_do_mg_types
         
-    # TODO: add workflow specific data objects
     reset_db(test_db)
     load_fixture(test_db, "data_object_set.json")
 
