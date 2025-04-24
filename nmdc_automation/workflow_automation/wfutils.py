@@ -198,19 +198,24 @@ class JawsRunner(JobRunnerABC):
     def get_job_metadata(self) -> Dict[str, Any]:
         """ Get metadata for a job. In JAWS this is the response from the status call and the
         logical names and file paths for the outputs specified in outputs.json """
+        logger.info(f"Getting job metadata: for {self.job_id} : {self.job_site}")
         metadata = self.jaws_api.status(self.job_id)
         # load output_dir / outputs.json file if the job is done and the outputs are available
         if "output_dir" in metadata and metadata["status"] == "done":
             output_dir = metadata["output_dir"]
             outputs_path = Path(output_dir) / "outputs.json"
-            with open(outputs_path) as f:
-                outputs = json.load(f)
-                # output paths are relative to the output_dir
-                for key, val in outputs.items():
-                    # some values may be 'null' if the output was not generated
-                    if val:
-                        outputs[key] = str(Path(output_dir) / val)
-                metadata["outputs"] = outputs
+            # check if the outputs.json file exists
+            if outputs_path.exists() and outputs_path.stat().st_size > 0:
+                with open(outputs_path) as f:
+                    outputs = json.load(f)
+                    # output paths are relative to the output_dir
+                    for key, val in outputs.items():
+                        # some values may be 'null' if the output was not generated
+                        if val:
+                            outputs[key] = str(Path(output_dir) / val)
+                    metadata["outputs"] = outputs
+            else:
+                logger.warning(f"Job {self.job_id} oututs.json missing or empty at {outputs_path}")
         # update cached metadata
         self.metadata = metadata
         return metadata

@@ -405,7 +405,20 @@ class Watcher:
             logger.debug("No finished jobs found.")
         for job in successful_jobs:
             logger.info(f"Processing successful job: {job.opid}, {job.was_informed_by} {job.workflow_execution_id}")
-            job_database = self.job_manager.process_successful_job(job)
+
+            try:
+                job_database = self.job_manager.process_successful_job(job)
+            except json.decoder.JSONDecodeError as e:
+                # Handle JSONDecodeError when reading an empty or incomplete outputs.json file
+                # We can skip this job and continue processing others, this will get picked up in the next cycle
+                logger.warning(
+                    f"Skipping job {job.job.job_id} due to JSONDecodeError when reading outputs.json: {e}"
+                )
+                continue
+            except Exception as e:
+                # Handle other exceptions
+                logger.exception(f"Error processing job {job.opid}: {e}", exc_info=True)
+
             # sanity checks
             if not job_database.data_object_set:
                 logger.error(f"No data objects found for job {job.opid}.")
