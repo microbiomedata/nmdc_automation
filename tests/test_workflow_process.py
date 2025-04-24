@@ -228,7 +228,14 @@ def test_get_required_data_objects_by_id(test_db, workflows_config_dir, workflow
     Test get_required_data_objects_by_id
     """
     # non-comprehensive list of expected data object types
-    exp_do_types = ["Metagenome Raw Read 1", "Metagenome Raw Read 2", "Filtered Sequencing Reads", "Metatranscriptome Raw Read 1", "Metatranscriptome Raw Read 2"]
+    exp_do_mg_types = ["Metagenome Raw Read 1", "Metagenome Raw Read 2", "Filtered Sequencing Reads"]
+    exp_do_mt_types = ["Filtered Sequencing Reads", "Metatranscriptome Raw Read 1", "Metatranscriptome Raw Read 2"]
+    
+    if "mt" in workflow_file:
+        exp_do_types = exp_do_mt_types
+    else: 
+        exp_do_types = exp_do_mg_types
+        
     # TODO: add workflow specific data objects
     reset_db(test_db)
     load_fixture(test_db, "data_object_set.json")
