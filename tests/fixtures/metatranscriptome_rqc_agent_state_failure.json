@@ -1,0 +1,162 @@
+{
+  "jobs": [
+    {
+      "workflow": {
+        "id": "Metatranscriptome Reads QC: v0.0.9"
+      },
+      "created_at": "2025-04-19T01:35:42",
+      "config": {
+        "git_repo": "https://github.com/microbiomedata/metaT_ReadsQC",
+        "release": "v0.0.9",
+        "wdl": "rqcfilter.wdl",
+        "activity_id": "nmdc:wfrqc-12-2jzvf981.1",
+        "activity_set": "workflow_execution_set",
+        "was_informed_by": "nmdc:dgns-11-6tsbsj80",
+        "trigger_activity": "nmdc:dgns-11-6tsbsj80",
+        "iteration": 1,
+        "input_prefix": "nmdc_rqcfilter",
+        "inputs": {
+          "input_files": [
+            "https://data.microbiomedata.org/data/nmdc:omprc-11-6tsbsj78/nmdc:wfrqc-11-8emfgd73.1/nmdc_wfrqc-11-8emfgd73.1_190755.filtered.fastq.gz"
+          ],
+          "proj": "nmdc:wfrqc-12-2jzvf981.1"
+        },
+        "input_data_objects": [
+          {
+            "id": "nmdc:dobj-12-rtymec73",
+            "type": "nmdc:DataObject",
+            "name": "nmdc_wfrqc-11-8emfgd73.1_190755.filtered.fastq.gz",
+            "description": "TEST DATA",
+            "data_object_type": "Metagenome Raw Reads",
+            "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-6tsbsj78/nmdc:wfrqc-11-8emfgd73.1/nmdc_wfrqc-11-8emfgd73.1_190755.filtered.fastq.gz"
+          }
+        ],
+        "activity": {
+          "name": "Read QC for {id}",
+          "input_read_bases": "{outputs.stats.input_read_bases}",
+          "input_read_count": "{outputs.stats.input_read_count}",
+          "output_read_bases": "{outputs.stats.output_read_bases}",
+          "output_read_count": "{outputs.stats.output_read_count}",
+          "type": "nmdc:ReadQcAnalysis"
+        },
+        "outputs": [
+          {
+            "output": "filtered_final",
+            "name": "Reads QC result fastq (clean data)",
+            "data_object_type": "Filtered Sequencing Reads",
+            "description": "Reads QC for {id}",
+            "id": "nmdc:dobj-12-qg2d0763"
+          },
+          {
+            "output": "filtered_stats_final",
+            "name": "Reads QC summary statistics",
+            "data_object_type": "QC Statistics",
+            "description": "Reads QC summary for {id}",
+            "id": "nmdc:dobj-12-d0rvmq56"
+          },
+          {
+            "output": "rqc_info",
+            "name": "File containing read filtering information",
+            "data_object_type": "Read Filtering Info File",
+            "description": "Read filtering info for {id}",
+            "id": "nmdc:dobj-12-j16jeq63"
+          },
+          {
+            "output": "filtered_ribo_final",
+            "name": "Fastq file containing filtered ribosomal sequences",
+            "data_object_type": "rRNA Filtered Sequencing Reads",
+            "description": "rRNA fastq for {id}",
+            "id": "nmdc:dobj-12-va26t503"
+          }
+        ]
+      },
+      "claims": [],
+      "opid": "nmdc:sys04pchjp94",
+      "done": true,
+      "start": "2025-04-19T01:36:29.929894+00:00",
+      "cromwell_jobid": "a187bc16-6417-4aac-a40d-3cfc151a7cbf",
+      "last_status": "Failed",
+      "nmdc_jobid": "nmdc:9b86feb2-1cbe-11f0-b485-2e19a490617e",
+      "failed_count": 3
+    },
+    {
+      "workflow": {
+        "id": "Metatranscriptome Reads QC: v0.0.9"
+      },
+      "created_at": "2025-04-19T01:35:43",
+      "config": {
+        "git_repo": "https://github.com/microbiomedata/metaT_ReadsQC",
+        "release": "v0.0.9",
+        "wdl": "rqcfilter.wdl",
+        "activity_id": "nmdc:wfrqc-11-8emfgd73.2",
+        "activity_set": "workflow_execution_set",
+        "was_informed_by": "nmdc:omprc-11-6tsbsj78",
+        "trigger_activity": "nmdc:omprc-11-6tsbsj78",
+        "iteration": 2,
+        "input_prefix": "nmdc_rqcfilter",
+        "inputs": {
+          "input_files": [
+            null
+          ],
+          "proj": "nmdc:wfrqc-11-8emfgd73.2"
+        },
+        "input_data_objects": [
+          {
+            "id": "nmdc:dobj-11-rtymec72",
+            "type": "nmdc:DataObject",
+            "name": "12584.1.266804.CTGACACA-TGTGTCAG.fastq.gz",
+            "description": "Raw sequencer read data",
+            "data_object_type": "Metagenome Raw Reads",
+            "file_size_bytes": 11924757981
+          }
+        ],
+        "activity": {
+          "name": "Read QC for {id}",
+          "input_read_bases": "{outputs.stats.input_read_bases}",
+          "input_read_count": "{outputs.stats.input_read_count}",
+          "output_read_bases": "{outputs.stats.output_read_bases}",
+          "output_read_count": "{outputs.stats.output_read_count}",
+          "type": "nmdc:ReadQcAnalysis"
+        },
+        "outputs": [
+          {
+            "output": "filtered_final",
+            "name": "Reads QC result fastq (clean data)",
+            "data_object_type": "Filtered Sequencing Reads",
+            "description": "Reads QC for {id}",
+            "id": "nmdc:dobj-12-6cw3kx03"
+          },
+          {
+            "output": "filtered_stats_final",
+            "name": "Reads QC summary statistics",
+            "data_object_type": "QC Statistics",
+            "description": "Reads QC summary for {id}",
+            "id": "nmdc:dobj-12-r0gdsy02"
+          },
+          {
+            "output": "rqc_info",
+            "name": "File containing read filtering information",
+            "data_object_type": "Read Filtering Info File",
+            "description": "Read filtering info for {id}",
+            "id": "nmdc:dobj-12-e7jk9p27"
+          },
+          {
+            "output": "filtered_ribo_final",
+            "name": "Fastq file containing filtered ribosomal sequences",
+            "data_object_type": "rRNA Filtered Sequencing Reads",
+            "description": "rRNA fastq for {id}",
+            "id": "nmdc:dobj-12-8mcnq547"
+          }
+        ]
+      },
+      "claims": [],
+      "opid": "nmdc:sys0xd0rw640",
+      "done": true,
+      "start": "2025-04-19T01:46:31.591005+00:00",
+      "cromwell_jobid": "8c7b35f3-4c09-4ab8-9f4f-147c987e5150",
+      "last_status": "Failed",
+      "nmdc_jobid": "nmdc:9c2f496e-1cbe-11f0-b485-2e19a490617e",
+      "failed_count": 3
+    }
+  ]
+}
