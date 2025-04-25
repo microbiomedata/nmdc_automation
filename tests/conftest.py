@@ -55,7 +55,7 @@ def mock_metagenome_assembly():
 
 @fixture(scope="session")
 def mags_config(fixtures_dir)->WorkflowConfig:
-    yaml_file = fixtures_dir / "mags_config.yaml"
+    yaml_file = fixtures_dir / "metaT_rqc_config.yaml"
     wf = load(open(yaml_file), Loader)
     # normalize the keys from Key Name to key_name
     wf = {k.replace(" ", "_").lower(): v for k, v in wf.items()}
