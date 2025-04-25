@@ -11,6 +11,36 @@
       "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-importT/52834.4.466476.GATCGAGT-GATCGAGT.fastq.gz"
     },
     {
+      "id": "nmdc:dobj-11-3fn9ej64",
+      "name": "12584.1.266804.CGGTTGTT-AACAACCG.fastq.gz",
+      "description": " Metatranscriptome Raw Reads for gold:Gp0324008",
+      "data_object_type": "Metatranscriptome Raw Reads",
+      "type": "nmdc:DataObject",
+      "file_size_bytes": 114,
+      "md5_checksum": "d007b1a06373c7ae7c15e681b41a0fc3",
+      "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-importT/52834.4.466476.GATCGAGT-GATCGAGT.fastq.gz"
+    },
+    {
+      "id": "nmdc:dobj-11-3fn9ej64",
+      "name": "12584.1.266804.CGGTTGTT-AACAACCG.fastq.gz",
+      "description": " Metatranscriptome Raw Reads for gold:Gp0324008",
+      "data_object_type": "Metatranscriptome Raw Read 1",
+      "type": "nmdc:DataObject",
+      "file_size_bytes": 114,
+      "md5_checksum": "d007b1a06373c7ae7c15e681b41a0fc3",
+      "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-importT/52834.4.466476.GATCGAGT-GATCGAGT.fastq.gz"
+    },
+    {
+      "id": "nmdc:dobj-11-3fn9ej64",
+      "name": "12584.1.266804.CGGTTGTT-AACAACCG.fastq.gz",
+      "description": " Metatranscriptome Raw Reads for gold:Gp0324008",
+      "data_object_type": "Metatranscriptome Raw Read 2",
+      "type": "nmdc:DataObject",
+      "file_size_bytes": 114,
+      "md5_checksum": "d007b1a06373c7ae7c15e681b41a0fc3",
+      "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-importT/52834.4.466476.GATCGAGT-GATCGAGT.fastq.gz"
+    },
+    {
       "id": "nmdc:dobj-13-abcd1234",
       "type": "nmdc:DataObject",
       "name": "nmdc_wfmgan-12-abcd1234.1_proteins.faa",
