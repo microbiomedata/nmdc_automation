@@ -1,0 +1,100 @@
+Workflows:
+  - Name: Metatranscriptome Sequencing Noninterleaved
+    Collection: data_generation_set
+    Enabled: True
+    Analyte Category: Metatranscriptome
+    Filter Output Objects:
+    - Metatranscriptome Raw Read 1
+    - Metatranscriptome Raw Read 2
+
+  - Name: Metatranscriptome Sequencing Interleaved
+    Collection: data_generation_set
+    Enabled: True
+    Analyte Category: Metatranscriptome
+    Filter Output Objects:
+    - Metatranscriptome Raw Reads
+
+  - Name: Metatranscriptome Reads QC
+    Type: nmdc:ReadQcAnalysis
+    Enabled: True
+    Analyte Category: Metatranscriptome
+    Git_repo: https://github.com/microbiomedata/metaT_ReadsQC
+    Version: v0.0.10
+    WDL: rqcfilter.wdl
+    Collection: workflow_execution_set
+    Filter Input Objects:
+    - Metatranscriptome Raw Reads
+    Predecessors:
+    - Sequencing
+    - Sequencing Interleaved
+    Input_prefix: metaTReadsQC
+    Inputs:
+      input_files: do:Metatranscriptome Raw Reads
+      proj: "{workflow_execution_id}"
+    Workflow Execution:
+      name: "Read QC for {id}"
+      input_read_bases: "{outputs.stats.input_read_bases}"
+      input_read_count: "{outputs.stats.input_read_count}"
+      output_read_bases: "{outputs.stats.output_read_bases}"
+      output_read_count: "{outputs.stats.output_read_count}"
+      type: nmdc:ReadQcAnalysis
+    Outputs:
+      - output: filtered_final
+        name: Reads QC result fastq (clean data)
+        data_object_type: Filtered Sequencing Reads
+        description: "Reads QC for {id}"
+      - output: filtered_stats_final
+        name: Reads QC summary statistics
+        data_object_type: QC Statistics
+        description: "Reads QC summary for {id}"
+      - output: rqc_info
+        name: File containing read filtering information
+        data_object_type: Read Filtering Info File
+        description: "Read filtering info for {id}"
+      - output: filtered_ribo_final
+        name: Fastq file containing filtered ribosomal sequences
+        data_object_type: rRNA Filtered Sequencing Reads
+        description: "rRNA fastq for {id}"
+
+  - Name: Metatranscriptome Reads QC Interleave
+    Type: nmdc:ReadQcAnalysis
+    Enabled: True
+    Analyte Category: Metatranscriptome
+    Git_repo: https://github.com/microbiomedata/metaT_ReadsQC
+    Version: v0.0.10
+    Collection: workflow_execution_set
+    WDL: interleave_rqcfilter.wdl
+    Input_prefix: metaTReadsQC
+    Inputs:
+      proj: "{workflow_execution_id}"
+      input_fastq1: do:Metatranscriptome Raw Read 1
+      input_fastq2: do:Metatranscriptome Raw Read 2
+    Filter Input Objects:
+    - Metatranscriptome Raw Read 1
+    - Metatranscriptome Raw Read 2
+    Predecessors:
+    - Sequencing Noninterleaved
+    Workflow Execution:
+      name: "Read QC for {id}"
+      input_read_bases: "{outputs.stats.input_read_bases}"
+      input_read_count: "{outputs.stats.input_read_count}"
+      output_read_bases: "{outputs.stats.output_read_bases}"
+      output_read_count: "{outputs.stats.output_read_count}"
+      type: nmdc:ReadQcAnalysis
+    Outputs:
+      - output: filtered_final
+        name: Reads QC result fastq (clean data)
+        data_object_type: Filtered Sequencing Reads
+        description: "Reads QC for {id}"
+      - output: filtered_stats_final
+        name: Reads QC summary statistics
+        data_object_type: QC Statistics
+        description: "Reads QC summary for {id}"
+      - output: rqc_info
+        name: File containing read filtering information
+        data_object_type: Read Filtering Info File
+        description: "Read filtering info for {id}"
+      - output: rrna_fastq_final 
+        name: Fastq file containing filtered ribosomal sequences             
+        data_object_type: rRNA Filtered Sequencing Reads
+        description: "rRNA fastq for {id}"
