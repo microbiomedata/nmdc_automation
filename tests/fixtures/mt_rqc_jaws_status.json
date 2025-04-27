@@ -1,0 +1,20 @@
+{
+    "compute_site_id": "nmdc",
+    "cpu_hours": 11.2,
+    "cromwell_run_id": "2a9a55af-16da-4880-9ced-ed7698262c72",
+    "id": 104298,
+    "input_site_id": "nmdc",
+    "json_file": "/global/cfs/cdirs/m3408/aim2/dev/kli_training/metaT_ReadsQC/test/url_test.json",
+    "output_dir": "/pscratch/sd/n/nmdcda/jaws_outputs/kli/104298/2a9a55af-16da-4880-9ced-ed7698262c72",
+    "result": "succeeded",
+    "status": "done",
+    "status_detail": "The run is complete.",
+    "submitted": "2025-04-10 16:13:36",
+    "tag": "mtrqc url string test",
+    "team_id": "nmdc",
+    "updated": "2025-04-11 07:01:38",
+    "user_id": "kli",
+    "wdl_file": "rqcfilter.wdl",
+    "workflow_name": "metaTReadsQC",
+    "workflow_root": "/pscratch/sd/n/nmjaws/nmdc-prod/cromwell-executions/metaTReadsQC/2a9a55af-16da-4880-9ced-ed7698262c72"
+  }
