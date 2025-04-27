@@ -19,6 +19,12 @@ from nmdc_automation.workflow_automation.watch_nmdc import (
 from nmdc_automation.workflow_automation.wfutils import WorkflowJob
 from tests.fixtures import db_utils
 
+wf_state_json = "mags_workflow_state.json"
+wf_state_fail_1 = "agent_state_1_failure.json"
+wf_state_fail_2 = "failed_job_state_2.json"
+wf_meta =  "mags_job_metadata.json"
+wf_new_job = "new_state_job.json"
+wdl = "mbin_nmdc.wdl"
 
 # FileHandler init tests
 def test_file_handler_init_from_state_file(site_config, initial_state_file_1_failure, tmp_path):
@@ -87,11 +93,12 @@ def test_file_handler_read_state(site_config, initial_state_file_1_failure):
 
 
 def test_file_handler_write_state(site_config, initial_state_file_1_failure, fixtures_dir):
+    global wf_new_job
     fh = FileHandler(site_config, initial_state_file_1_failure)
     state = fh.read_state()
     assert state
     # add new job
-    new_job = json.load(open(fixtures_dir / "new_state_job.json"))
+    new_job = json.load(open(fixtures_dir / wf_new_job))
     assert new_job
     state["jobs"].append(new_job)
     fh.write_state(state)
@@ -220,10 +227,11 @@ def test_job_manager_find_job_by_opid(site_config, initial_state_file_1_failure)
 
 
 def test_job_manager_prepare_and_cache_new_job(site_config, initial_state_file_1_failure, fixtures_dir):
+    global wf_new_job
     # Arrange
     fh = FileHandler(site_config, initial_state_file_1_failure)
     jm = JobManager(site_config, fh)
-    new_job_state = json.load(open(fixtures_dir / "new_state_job.json"))
+    new_job_state = json.load(open(fixtures_dir / wf_new_job))
     assert new_job_state
     new_job = WorkflowJob(site_config, new_job_state)
     # Act
@@ -240,10 +248,11 @@ def test_job_manager_prepare_and_cache_new_job(site_config, initial_state_file_1
 
 def test_job_manager_prepare_and_cache_new_job_force(site_config, initial_state_file_1_failure, fixtures_dir):
     # Arrange
+    global wf_state_json
     fh = FileHandler(site_config, initial_state_file_1_failure)
     jm = JobManager(site_config, fh)
     #already has an opid
-    new_job_state = json.load(open(fixtures_dir / "mags_workflow_state.json"))
+    new_job_state = json.load(open(fixtures_dir / wf_state_json))
     assert new_job_state
     new_job = WorkflowJob(site_config, new_job_state)
     # Act
@@ -266,13 +275,14 @@ def test_job_manager_prepare_and_cache_new_job_force(site_config, initial_state_
 
 
 def test_job_manager_get_finished_jobs(site_config, initial_state_file_1_failure, fixtures_dir):
-
+    global wf_state_json
+    global wf_state_fail_2
     # Arrange - initial state has 1 failure and is not done
     fh = FileHandler(site_config, initial_state_file_1_failure)
     jm = JobManager(site_config, fh)
 
     # Add a finished job: finished job is not done, but has a last_status of Succeeded
-    new_job_state = json.load(open(fixtures_dir / "mags_workflow_state.json"))
+    new_job_state = json.load(open(fixtures_dir / wf_state_json))
     assert new_job_state
     new_job = WorkflowJob(site_config, new_job_state)
     jm.job_cache.append(new_job)
@@ -280,7 +290,7 @@ def test_job_manager_get_finished_jobs(site_config, initial_state_file_1_failure
     assert len(jm.job_cache) == 2
 
     # add a failed job
-    failed_job_state = json.load(open(fixtures_dir / "failed_job_state_2.json"))
+    failed_job_state = json.load(open(fixtures_dir / wf_state_fail_2))
     assert failed_job_state
     failed_job = WorkflowJob(site_config, failed_job_state)
     assert failed_job.job_status.lower() == "failed"
@@ -311,15 +321,17 @@ def test_job_manager_get_finished_jobs(site_config, initial_state_file_1_failure
 
 
 def test_job_manager_process_successful_job(site_config, initial_state_file_1_failure, fixtures_dir):
+    global wf_state_json
+    global wf_meta
     # mock job.job.get_job_metadata - use fixture cromwell/succeded_metadata.json
-    job_metadata = json.load(open(fixtures_dir / "mags_job_metadata.json"))
+    job_metadata = json.load(open(fixtures_dir / wf_meta))
     with patch("nmdc_automation.workflow_automation.wfutils.CromwellRunner.get_job_metadata") as mock_get_metadata:
         mock_get_metadata.return_value = job_metadata
 
         # Arrange
         fh = FileHandler(site_config, initial_state_file_1_failure)
         jm = JobManager(site_config, fh)
-        new_job_state = json.load(open(fixtures_dir / "mags_workflow_state.json"))
+        new_job_state = json.load(open(fixtures_dir / wf_state_json))
         assert new_job_state
         new_job = WorkflowJob(site_config, new_job_state)
         jm.job_cache.append(new_job)
@@ -375,10 +387,11 @@ def test_job_manager_process_failed_job_1_failure(
 
 
 def test_job_manager_process_failed_job_2_failures(site_config, initial_state_file_1_failure, fixtures_dir):
+    global wf_state_fail_2
     # Arrange
     fh = FileHandler(site_config, initial_state_file_1_failure)
     jm = JobManager(site_config, fh)
-    failed_job_state = json.load(open(fixtures_dir / "failed_job_state_2.json"))
+    failed_job_state = json.load(open(fixtures_dir / wf_state_fail_2))
     assert failed_job_state
     failed_job = WorkflowJob(site_config, failed_job_state)
     jm.job_cache.append(failed_job)
@@ -395,13 +408,14 @@ def mock_runtime_api_handler(site_config, mock_api):
 
 @mock.patch("nmdc_automation.workflow_automation.wfutils.CromwellRunner.submit_job")
 def test_claim_jobs(mock_submit, site_config_file, site_config, fixtures_dir):
+    global wf_state_json
     # Arrange
     mock_submit.return_value = {"id": "nmdc:1234", "detail": {"id": "nmdc:1234"}}
     with patch(
             "nmdc_automation.workflow_automation.watch_nmdc.RuntimeApiHandler.claim_job"
             ) as mock_claim_job, requests_mock.Mocker() as m:
         mock_claim_job.return_value = {"id": "nmdc:1234", "detail": {"id": "nmdc:1234"}}
-        job_state = json.load(open(fixtures_dir / "mags_workflow_state.json"))
+        job_state = json.load(open(fixtures_dir / wf_state_json))
         # remove the opid
         job_state.pop("opid")
         unclaimed_wfj = WorkflowJob(site_config, workflow_state=job_state)
@@ -438,8 +452,9 @@ def test_reclaim_job(requests_mock, site_config_file, mock_api):
 
 
 def test_watcher_restore_from_checkpoint_and_report(site_config_file, fixtures_dir):
-    # state_file = fixtures_dir / "agent_state_1_failure.json"
-    state_file = fixtures_dir / "metatranscriptome_rqc_agent_state_failure.json"
+    global wf_state_fail_1
+    global wdl
+    state_file = fixtures_dir / wf_state_fail_1
     w = Watcher(site_config_file, state_file)
     w.restore_from_checkpoint()
     assert w.job_manager.job_cache
@@ -451,6 +466,6 @@ def test_watcher_restore_from_checkpoint_and_report(site_config_file, fixtures_d
 
     rpt = reports[0]
     assert rpt
-    assert rpt['wdl'] == "rqcfilter.wdl"
+    assert rpt['wdl'] == wdl
     assert rpt['last_status'] == "Failed"
 

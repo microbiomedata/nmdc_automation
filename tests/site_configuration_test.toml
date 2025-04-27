@@ -22,7 +22,7 @@ watch_state = "State File"
 activity_id_state = "/Path/to/activity_id_state"
 
 [workflows]
-workflows_config = "workflows-mt.yaml"
+workflows_config = "workflows-all.yaml"
 
 [credentials]
 client_id = "sys0wm66"

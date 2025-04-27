@@ -95,7 +95,7 @@ def get_current_workflow_process_nodes(
     Returns a list of WorkflowProcessNode objects.
     """
     workflow_process_nodes = set()
-    analyte_category = _determine_analyte_category(workflows)
+    analyte_categories = _determine_analyte_category(workflows)
 
     data_generation_ids = set()
     data_generation_workflows = [wf for wf in workflows if wf.collection == "data_generation_set"]
@@ -103,23 +103,24 @@ def get_current_workflow_process_nodes(
     workflow_execution_workflows = [wf for wf in workflows if wf.collection == "workflow_execution_set"]
 
     # default query for data_generation_set records filtered by analyte category
-    q = {"analyte_category": analyte_category}
-    # override query with allowlist
-    if allowlist:
-        q["id"] = {"$in": list(allowlist)}
-    dg_execution_records = db["data_generation_set"].find(q)
-    dg_execution_records = list(dg_execution_records)
+    for analyte in analyte_categories: 
+        q = {"analyte_category": analyte}
+        # override query with allowlist
+        if allowlist:
+            q["id"] = {"$in": list(allowlist)}
+        dg_execution_records = db["data_generation_set"].find(q)
+        dg_execution_records = list(dg_execution_records)
 
-    for wf in data_generation_workflows:
-        # Sequencing workflows don't have a git repo
-        for rec in dg_execution_records:
-            # legacy JGI sequencing records won't have output but we still want to include them
-            # The graph in that case will be rooted at the ReadsQC node
-            data_generation_ids.add(rec["id"])
-            if _is_missing_required_input_output(wf, rec, data_objects_by_id):
-                continue
-            wfp_node = WorkflowProcessNode(rec, wf)
-            workflow_process_nodes.add(wfp_node)
+        for wf in data_generation_workflows:
+            # Sequencing workflows don't have a git repo
+            for rec in dg_execution_records:
+                # legacy JGI sequencing records won't have output but we still want to include them
+                # The graph in that case will be rooted at the ReadsQC node
+                data_generation_ids.add(rec["id"])
+                if _is_missing_required_input_output(wf, rec, data_objects_by_id):
+                    continue
+                wfp_node = WorkflowProcessNode(rec, wf)
+                workflow_process_nodes.add(wfp_node)
 
     for wf in workflow_execution_workflows:
         q = {}
@@ -148,13 +149,14 @@ def get_current_workflow_process_nodes(
 
 
 def _determine_analyte_category(workflows: List[WorkflowConfig]) -> str:
-    analyte_categories = set([wf.analyte_category for wf in workflows])
-    if len(analyte_categories) > 1:
-        raise ValueError("Multiple analyte categories not supported")
-    elif len(analyte_categories) == 0:
-        raise ValueError("No analyte category found")
-    analyte_category = analyte_categories.pop()
-    return analyte_category.lower()
+    analyte_categories = set([wf.analyte_category.lower() for wf in workflows])
+    # if len(analyte_categories) > 1:
+    #     raise ValueError("Multiple analyte categories not supported") 
+    # elif len(analyte_categories) == 0:
+    #     raise ValueError("No analyte category found")
+    # analyte_category = analyte_categories.pop()
+    # return analyte_category.lower()
+    return analyte_categories
 
 
 # TODO: Make public, give a better name, add type hints and unit tests.

@@ -94,6 +94,7 @@ def test_workflow_process_node(workflows_config_dir,record_file, record_type, fi
     # load all workflows for both metagenome and metatranscriptome
     wfs = load_workflow_configs(workflows_config_dir / "workflows.yaml")
     wfs += load_workflow_configs(workflows_config_dir / "workflows-mt.yaml")
+    wfs += load_workflow_configs(workflows_config_dir / "workflows-all.yaml")
 
     # NuclotideSequencing workflows have no type
     if record_type == "nmdc:NucleotideSequencing":

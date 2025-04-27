@@ -18,7 +18,7 @@ from nmdc_automation.workflow_automation.wfutils import WorkflowJob
 @fixture(scope="session")
 def mock_job_state():
     state = db_utils.read_json(
-        "metatranscriptome_rqc_workflow_state.json "
+        "mags_workflow_state.json "
     )
     return state
 
@@ -55,7 +55,7 @@ def mock_metagenome_assembly():
 
 @fixture(scope="session")
 def mags_config(fixtures_dir)->WorkflowConfig:
-    yaml_file = fixtures_dir / "workflows_all.yaml"
+    yaml_file = fixtures_dir / "workflows-all.yaml"
     wf = load(open(yaml_file), Loader)
     # normalize the keys from Key Name to key_name
     wf = {k.replace(" ", "_").lower(): v for k, v in wf.items()}
@@ -142,11 +142,9 @@ def site_config(site_config_file):
 
 @fixture
 def initial_state_file_1_failure(fixtures_dir, tmp_path):
-    # state_file = fixtures_dir / "agent_state_1_failure.json"
-    state_file = fixtures_dir / "mt_rqc_agent_state_failure.json"
+    state_file = fixtures_dir / "agent_state_1_failure.json"
     # make a working copy in tmp_path
-    # copied_state_file = tmp_path / "agent_state_1_failure.json"
-    copied_state_file = tmp_path / "mt_rqc_agent_state_failure.json"
+    copied_state_file = tmp_path / "agent_state_1_failure.json"
     shutil.copy(state_file, copied_state_file)
     return copied_state_file
 

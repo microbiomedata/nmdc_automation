@@ -7,7 +7,7 @@ import pytest
 from nmdc_automation.import_automation.import_mapper import ImportMapper
 
 nucleotide_sequencing_id = "nmdc:omprc-11-importT"
-import_yaml = "import_all.yaml"
+import_yaml = "import-all.yaml"
 
 @pytest.fixture
 def mock_runtime_api():
@@ -22,18 +22,22 @@ def import_mapper_instance(mock_runtime_api, base_test_dir, ):
     yaml_file = base_test_dir / import_yaml
     return ImportMapper(
         nucleotide_sequencing_id=nucleotide_sequencing_id, import_project_dir=base_test_dir / "import_project_dir",
-        # 22 files in here
+        # 22 files in here, so the assert searches for 22?
         import_yaml=yaml_file, runtime_api=mock_runtime_api
     )
 
 @pytest.fixture
 def mock_minted_ids():
-    return {"data_object_ids": {"Metatranscriptome Raw Reads": "existing_data_object_id"},
+    return {"data_object_ids": {
+        # "Metatranscriptome Raw Reads": "existing_data_object_id",
+        "Metagenome Raw Reads": "mocked_id_for_nmdc:DataObject"},
         "workflow_execution_ids": {"WorkflowA": "existing_workflow_id"}}
 
 
 def test_update_do_mappings_from_import_files(import_mapper_instance):
     import_mapper_instance.update_do_mappings_from_import_files()
+    for map in import_mapper_instance.mappings:
+        print(f"{map}")
     assert len(import_mapper_instance.mappings) == 22
     for fm_all in import_mapper_instance.mappings:
         print("Import File:", fm_all.import_file)

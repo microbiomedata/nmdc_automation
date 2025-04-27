@@ -9,8 +9,9 @@ from tests.fixtures.db_utils import init_test, load_fixture, read_json, reset_db
 
 
 @mark.parametrize("workflow_file", [
-    "workflows.yaml",
-    "workflows-mt.yaml"
+    # "workflows.yaml",
+    # "workflows-mt.yaml",
+    "workflows-all.yaml"
 ])
 def test_scheduler_cycle(test_db, mock_api, workflow_file, workflows_config_dir, site_config_file):
     """
@@ -40,8 +41,9 @@ def test_scheduler_cycle(test_db, mock_api, workflow_file, workflows_config_dir,
     assert len(resp) == exp_num_jobs_cycle_1
 
 @mark.parametrize("workflow_file", [
-    "workflows.yaml",
-    "workflows-mt.yaml"
+    # "workflows.yaml",
+    # "workflows-mt.yaml",
+    "workflows-all.yaml"
 ])
 def test_progress(test_db, mock_api, workflow_file, workflows_config_dir, site_config_file):
     reset_db(test_db)
@@ -211,8 +213,9 @@ def test_type_resolving(test_db, mock_api, workflows_config_dir, site_config_fil
 
 
 @mark.parametrize("workflow_file", [
-    "workflows.yaml",
-    "workflows-mt.yaml"
+    # "workflows.yaml",
+    # "workflows-mt.yaml",
+    "workflows-all.yaml"
 ])
 def test_scheduler_add_job_rec(test_db, mock_api, workflow_file, workflows_config_dir, site_config_file):
     """

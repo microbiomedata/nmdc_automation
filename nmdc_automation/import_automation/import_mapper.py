@@ -38,6 +38,7 @@ class ImportMapper:
     - mappings_by_workflow_type: Return the file mappings by workflow type.
     """
     METAGENOME_RAW_READS = "Metagenome Raw Reads"
+    METATRANSCRIPTOME_RAW_READS = "Metatranscriptome Raw Reads"
     NMDC_DATA_OBJECT = "nmdc:DataObject"
 
 

@@ -13,7 +13,10 @@ from tests.fixtures.db_utils import  load_fixture, reset_db
 
 
 @mark.parametrize(
-    "workflow_file", ["workflows.yaml", "workflows-mt.yaml"]
+    "workflow_file", [
+        # "workflows.yaml", 
+        # "workflows-mt.yaml", 
+        "workflows-all.yaml"]
 )
 def test_load_workflow_process_nodes(test_db, workflow_file, workflows_config_dir):
     """
@@ -33,6 +36,8 @@ def test_load_workflow_process_nodes(test_db, workflow_file, workflows_config_di
    # sanity checking these - they are used in the next step
     data_objs_by_id = get_required_data_objects_map(test_db, workflow_configs)
     current_nodes = get_current_workflow_process_nodes(test_db, workflow_configs, data_objs_by_id)
+    for node in current_nodes:
+        print(f"{node}")
     assert current_nodes
     assert len(current_nodes) == 2
 
@@ -181,48 +186,61 @@ def test_load_workflow_process_nodes_does_not_load_metagenome_sequencing(test_db
 
 
 @mark.parametrize(
-    "workflow_file", ["workflows.yaml", "workflows-mt.yaml"]
+    "workflow_file", [
+        # "workflows.yaml", 
+        # "workflows-mt.yaml", 
+        "workflows-all.yaml"]
 )
 def test_load_workflows(workflows_config_dir, workflow_file):
     """
     Test Workflow object creation
     """
-    metatranscriptome = False
-    if workflow_file == "workflows-mt.yaml":
-        metatranscriptome = True
+    mg_wf_names = ["Sequencing Noninterleaved", "Sequencing Interleaved", 
+                "Reads QC", "Reads QC Interleave", "Metagenome Assembly", 
+                "Metagenome Annotation", "MAGs", "Readbased Analysis"]
+    mt_wf_names = ["Metatranscriptome Sequencing Noninterleaved", "Metatranscriptome Sequencing Interleaved",
+                "Metatranscriptome Reads QC", "Metatranscriptome Reads QC Interleave",
+                "Metatranscriptome Assembly", "Metatranscriptome Annotation", "Expression Analysis Antisense",
+                "Expression Analysis Sense", "Expression Analysis Nonstranded"]
+    
 
-    shared_wf_names = ["Sequencing Noninterleaved", "Sequencing Interleaved"]
-    if metatranscriptome:
+    if workflow_file == "workflows-mt.yaml":
         exp_num_workflow_config = 9
-        exp_wf_names = ["Metatranscriptome Reads QC", "Metatranscriptome Reads QC Interleave",
-                        "Metatranscriptome Assembly", "Metatranscriptome Annotation", "Expression Analysis Antisense",
-                        "Expression Analysis Sense", "Expression Analysis Nonstranded", ]
-    else:
+        exp_wf_names = mt_wf_names
+    elif workflow_file == "workflows.yaml":
         exp_num_workflow_config = 8
-        exp_wf_names = ["Reads QC", "Reads QC Interleave", "Metagenome Assembly", "Metagenome Annotation", "MAGs",
-                        "Readbased Analysis", ]
+        exp_wf_names = mg_wf_names
+    else:
+        exp_wf_names = mg_wf_names + mt_wf_names
 
     workflow_config = load_workflow_configs(workflows_config_dir / workflow_file)
     assert workflow_config
     wfm = {}
-    assert len(workflow_config) == len(exp_wf_names) + len(shared_wf_names)
+    assert len(workflow_config) == len(exp_wf_names)
     for wf in workflow_config:
         wfm[wf.name] = wf
     for wf_name in exp_wf_names:
-        assert wf_name in wfm
-        wf = wfm[wf_name]
-        assert wf is not None
-        assert wf.type is not None
-        assert wf.name is not None
-        assert wf.collection is not None
-        assert wf.git_repo is not None
-        assert wf.version is not None
-        assert wf.analyte_category is not None
+        if "Sequencing" in wf_name:
+            pass
+        else:
+            assert wf_name in wfm
+            wf = wfm[wf_name]
+            assert wf is not None
+            assert wf.type is not None
+            assert wf.name is not None
+            assert wf.collection is not None
+            assert wf.git_repo is not None
+            assert wf.version is not None
+            assert wf.analyte_category is not None
 
 
 @mark.parametrize(
-    "workflow_file", ["workflows.yaml", "workflows-mt.yaml"]
+    "workflow_file", [
+        # "workflows.yaml", 
+        # "workflows-mt.yaml", 
+        "workflows-all.yaml"]
 )
+
 def test_get_required_data_objects_by_id(test_db, workflows_config_dir, workflow_file):
     """
     Test get_required_data_objects_by_id
@@ -230,10 +248,12 @@ def test_get_required_data_objects_by_id(test_db, workflows_config_dir, workflow
     """
     # non-comprehensive list of expected data object types
     exp_do_mg_types = ["Metagenome Raw Read 1", "Metagenome Raw Read 2", "Filtered Sequencing Reads"]
-    exp_do_mt_types = ["Filtered Sequencing Reads", "Metatranscriptome Raw Read 1", "Metatranscriptome Raw Read 2"]
+    exp_do_mt_types = ["Metatranscriptome Raw Read 1", "Metatranscriptome Raw Read 2", "Filtered Sequencing Reads"]
     
     if "mt" in workflow_file:
         exp_do_types = exp_do_mt_types
+    elif "all" in workflow_file:
+        exp_do_types = exp_do_mt_types + exp_do_mg_types
     else: 
         exp_do_types = exp_do_mg_types
         
