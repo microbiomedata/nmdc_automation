@@ -17,9 +17,8 @@ def mock_runtime_api():
 
 @pytest.fixture
 def import_mapper_instance(mock_runtime_api, base_test_dir, ):
-    global import_yaml
-    global nucleotide_sequencing_id
-    yaml_file = base_test_dir / import_yaml
+    yaml_file = base_test_dir / "import_test.yaml"
+    nucleotide_sequencing_id = "nmdc:omprc-11-importT"
     return ImportMapper(
         nucleotide_sequencing_id=nucleotide_sequencing_id, import_project_dir=base_test_dir / "import_project_dir",
         # 22 files in here
