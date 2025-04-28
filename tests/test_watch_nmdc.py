@@ -450,6 +450,6 @@ def test_watcher_restore_from_checkpoint_and_report(site_config_file, fixtures_d
 
     rpt = reports[0]
     assert rpt
-    assert rpt['wdl'] == "rqcfilter.wdl"
+    assert rpt['wdl'] == "mbin_nmdc.wdl"
     assert rpt['last_status'] == "Failed"
 
