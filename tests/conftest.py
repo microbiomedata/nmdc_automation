@@ -18,7 +18,7 @@ from nmdc_automation.workflow_automation.wfutils import WorkflowJob
 @fixture(scope="session")
 def mock_job_state():
     state = db_utils.read_json(
-        "mags_workflow_state.json "
+        "mags_workflow_state.json"
     )
     return state
 
