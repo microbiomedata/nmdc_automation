@@ -27,7 +27,7 @@ def import_mapper_instance(mock_runtime_api, base_test_dir, ):
 
 @pytest.fixture
 def mock_minted_ids():
-    return {"data_object_ids": {"Metatranscriptome Raw Reads": "existing_data_object_id"},
+    return {"data_object_ids": {"Metagenome Raw Reads": "existing_data_object_id"},
         "workflow_execution_ids": {"WorkflowA": "existing_workflow_id"}}
 
 
