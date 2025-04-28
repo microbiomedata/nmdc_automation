@@ -11,6 +11,7 @@ from nmdc_automation.workflow_automation.workflow_process import (
 from nmdc_automation.workflow_automation.workflows import load_workflow_configs
 from tests.fixtures.db_utils import  load_fixture, reset_db
 
+workflow_file = "workflows-all.yaml"
 
 @mark.parametrize(
     "workflow_file", [
@@ -61,11 +62,12 @@ def test_get_required_data_objects_map(test_db, workflows_config_dir):
     """
     Test get_required_data_objects_map
     """
+    global workflow_file
     reset_db(test_db)
     load_fixture(test_db, "data_object_set.json")
     load_fixture(test_db, "lipidomics_data_objects.json")
 
-    workflow_config = load_workflow_configs(workflows_config_dir / "workflows.yaml")
+    workflow_config = load_workflow_configs(workflows_config_dir / workflow_file)
     required_data_object_map = get_required_data_objects_map(test_db, workflow_config)
     assert required_data_object_map
     for do in required_data_object_map.values():
@@ -78,12 +80,13 @@ def test_load_workflow_process_nodes_with_obsolete_versions(test_db, workflows_c
     """
     Test loading workflow process nodes for a case where there are obsolete versions of the same workflow
     """
+    global workflow_file
     reset_db(test_db)
     load_fixture(test_db, "data_objects_2.json", "data_object_set")
     load_fixture(test_db, "data_generation_2.json", "data_generation_set")
     load_fixture(test_db, "workflow_execution_2.json", "workflow_execution_set")
 
-    workflow_config = load_workflow_configs(workflows_config_dir / "workflows.yaml")
+    workflow_config = load_workflow_configs(workflows_config_dir / workflow_file)
     data_objs_by_id = get_required_data_objects_map(test_db, workflow_config)
 
     # There are 8 workflow executions in the fixture, but only 4 are current:
@@ -133,7 +136,8 @@ def test_resolve_relationships(test_db, workflows_config_dir):
     """
     Test that the relationships between workflow process nodes are resolved
     """
-    allow_list = ["nmdc:omprc-11-metag1",]
+    global workflow_file
+    allow_list = ["nmdc:omprc-11-metag1","nmdc:omprc-11-metat1"]
     reset_db(test_db)
     load_fixture(test_db, "data_object_set.json")
     load_fixture(test_db, "data_generation_set.json")
@@ -141,7 +145,7 @@ def test_resolve_relationships(test_db, workflows_config_dir):
     load_fixture(test_db, "metagenome_assembly.json", "workflow_execution_set")
     load_fixture(test_db, "metagenome_annotation.json", "workflow_execution_set")
 
-    workflow_config = load_workflow_configs(workflows_config_dir / "workflows.yaml")
+    workflow_config = load_workflow_configs(workflows_config_dir / workflow_file)
     data_objs_by_id = get_required_data_objects_map(test_db, workflow_config)
     current_nodes = get_current_workflow_process_nodes(test_db, workflow_config, data_objs_by_id)
     current_nodes_by_data_object_id, current_nodes = _map_nodes_to_data_objects(
@@ -167,13 +171,14 @@ def test_load_workflow_process_nodes_does_not_load_metagenome_sequencing(test_db
     """
     Test that legacy nmdc:MetagenomeSequencing instances are not loaded
     """
+    global workflow_file
     exp_omprc = "nmdc:omprc-11-cegmwy02"
     reset_db(test_db)
     load_fixture(test_db, "legacy_data_obj.json", "data_object_set")
     load_fixture(test_db, "legacy_data_generation.json", "data_generation_set")
     load_fixture(test_db, "metagenome_sequencing.json", "workflow_execution_set")
 
-    workflow_config = load_workflow_configs(workflows_config_dir / "workflows.yaml")
+    workflow_config = load_workflow_configs(workflows_config_dir / workflow_file)
     data_objs_by_id = get_required_data_objects_map(test_db, workflow_config)
     wf_execs = get_current_workflow_process_nodes(test_db, workflow_config, data_objs_by_id, allowlist=[exp_omprc,])
     # We only expect the data generation to be loaded
