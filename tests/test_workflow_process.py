@@ -221,7 +221,10 @@ def test_load_workflows(workflows_config_dir, workflow_file):
 
 
 @mark.parametrize(
-    "workflow_file", ["workflows.yaml", "workflows-mt.yaml"]
+    "workflow_file", [
+        "workflows.yaml",
+        "workflows-mt.yaml"
+    ]
 )
 def test_get_required_data_objects_by_id(test_db, workflows_config_dir, workflow_file):
     """
