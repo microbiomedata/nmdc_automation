@@ -37,24 +37,24 @@ def test_load_workflow_process_nodes(test_db, workflow_file, workflows_config_di
    # sanity checking these - they are used in the next step
     data_objs_by_id = get_required_data_objects_map(test_db, workflow_configs)
     current_nodes = get_current_workflow_process_nodes(test_db, workflow_configs, data_objs_by_id)
-    for node in current_nodes:
-        print(f"{node}")
     assert current_nodes
-    assert len(current_nodes) == 2
+    assert len(current_nodes) == 4
 
     workflow_process_nodes = load_workflow_process_nodes(test_db, workflow_configs)
     # sanity check
     assert workflow_process_nodes
-    assert len(workflow_process_nodes) == 2
+    assert len(workflow_process_nodes) == 4
 
-    # Omics and RQC share data_object_type for metagenome and metatranscriptome
+    # Omics and RQC share data_object_type for metagenome and metatranscriptome # not sure if this still holds true
     # they can be distinguished by analyte category so we expect 1 of each
-    # for metagenome and metatranscriptome
-    data_generation_nodes = [node for node in workflow_process_nodes if node.type == "nmdc:NucleotideSequencing"][0]
+    # for metagenome and metatranscriptome, taking out [0] leaves for 1 of each sequencing
+    data_generation_nodes = [node for node in workflow_process_nodes if node.type == "nmdc:NucleotideSequencing"]#[0]
+    single_data_gen_node = data_generation_nodes[0]
     assert data_generation_nodes
-    assert data_generation_nodes.children
-    assert len(data_generation_nodes.children) == 1
-    assert data_generation_nodes.children[0].type == "nmdc:ReadQcAnalysis"
+    assert len(data_generation_nodes) == 2
+    assert single_data_gen_node.children
+    assert len(single_data_gen_node.children) == 1
+    assert single_data_gen_node.children[0].type == "nmdc:ReadQcAnalysis"
 
 
 

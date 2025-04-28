@@ -86,6 +86,10 @@ poetry install
 ```bash  
 poetry shell
 ```
+or from base directory of this repository 
+```bash
+source .venv/bin/activate
+```
 
 4. Run the tests
 ```bash
