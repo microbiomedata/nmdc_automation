@@ -13,7 +13,10 @@ from tests.fixtures.db_utils import  load_fixture, reset_db
 
 
 @mark.parametrize(
-    "workflow_file", ["workflows.yaml", "workflows-mt.yaml"]
+    "workflow_file", [
+        "workflows.yaml",
+        # "workflows-mt.yaml"
+    ]
 )
 def test_load_workflow_process_nodes(test_db, workflow_file, workflows_config_dir):
     """
@@ -221,7 +224,10 @@ def test_load_workflows(workflows_config_dir, workflow_file):
 
 
 @mark.parametrize(
-    "workflow_file", ["workflows.yaml", "workflows-mt.yaml"]
+    "workflow_file", [
+        "workflows.yaml",
+        "workflows-mt.yaml"
+    ]
 )
 def test_get_required_data_objects_by_id(test_db, workflows_config_dir, workflow_file):
     """

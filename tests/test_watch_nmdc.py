@@ -438,8 +438,7 @@ def test_reclaim_job(requests_mock, site_config_file, mock_api):
 
 
 def test_watcher_restore_from_checkpoint_and_report(site_config_file, fixtures_dir):
-    # state_file = fixtures_dir / "agent_state_1_failure.json"
-    state_file = fixtures_dir / "metatranscriptome_rqc_agent_state_failure.json"
+    state_file = fixtures_dir / "agent_state_1_failure.json"
     w = Watcher(site_config_file, state_file)
     w.restore_from_checkpoint()
     assert w.job_manager.job_cache
@@ -451,6 +450,6 @@ def test_watcher_restore_from_checkpoint_and_report(site_config_file, fixtures_d
 
     rpt = reports[0]
     assert rpt
-    assert rpt['wdl'] == "rqcfilter.wdl"
+    assert rpt['wdl'] == "mbin_nmdc.wdl"
     assert rpt['last_status'] == "Failed"
 
