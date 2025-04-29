@@ -10,6 +10,7 @@ import tempfile
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
+from tenacity import retry, wait_exponential, stop_after_attempt
 from typing import Any, Dict, List, Optional, Union
 import pytz
 import requests
@@ -17,6 +18,8 @@ import zipfile
 
 from nmdc_automation.config import SiteConfig
 from nmdc_automation.models.nmdc import DataObject, WorkflowExecution, workflow_process_factory
+
+from nmdc_schema.nmdc import DataCategoryEnum
 
 from jaws_client import api as jaws_api
 from jaws_client.config import Configuration as jaws_Configuration
@@ -127,6 +130,7 @@ class JawsRunner(JobRunnerABC):
         self.no_submit_states = self.JAWS_NO_SUBMIT_STATES + self.NO_SUBMIT_STATES
 
 
+    @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(2))
     def submit_job(self, force: bool = False) -> Optional[int]:
         """
         Submit a job to J.A.W.S. Update the workflow state with the job id and status.
@@ -137,7 +141,7 @@ class JawsRunner(JobRunnerABC):
         if status and status.lower() in self.no_submit_states and not force:
             logger.info(f"Job {self.job_id} in state {status}, skipping submission")
             return None
-        cleanup_zip_files = []
+        cleanup_zip_dirs = []
         try:
             files = self.workflow.generate_submission_files(for_jaws=True)
 
@@ -146,7 +150,7 @@ class JawsRunner(JobRunnerABC):
                 extract_dir = os.path.dirname(files["sub"])
                 with zipfile.ZipFile(files["sub"], 'r') as zip_ref:
                     zip_ref.extractall(extract_dir)
-                cleanup_zip_files.append(extract_dir)
+                cleanup_zip_dirs.append(extract_dir)
 
             # Validate
             validation_resp = self.jaws_api.validate(
@@ -190,9 +194,10 @@ class JawsRunner(JobRunnerABC):
             raise e
 
         finally:
-            _cleanup_files(cleanup_zip_files)
+            _cleanup_dirs(cleanup_zip_dirs)
 
 
+    @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(3))
     def get_job_metadata(self) -> Dict[str, Any]:
         """ Get metadata for a job. In JAWS this is the response from the status call and the
         logical names and file paths for the outputs specified in outputs.json """
@@ -213,6 +218,7 @@ class JawsRunner(JobRunnerABC):
         self.metadata = metadata
         return metadata
 
+    @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(3))
     def get_job_status(self) -> str:
         """
         Get the status of a job. In JAWS this is the response from the status call
@@ -761,14 +767,21 @@ class WorkflowJob:
                 logger.warning(f"Output directory not provided, not copying {output_file} to output directory")
 
             # create a DataObject object
-            data_object = DataObject(
-                id=output_spec["id"], name=output_file.name, type="nmdc:DataObject", url=file_url,
-                data_object_type=output_spec["data_object_type"], md5_checksum=md5_sum,
+            data_object = DataObject (
+                id=output_spec["id"], 
+                name=output_file.name, 
+                type="nmdc:DataObject", 
+                url=file_url,
+                data_object_type=output_spec["data_object_type"], 
+                md5_checksum=md5_sum,
                 file_size_bytes=file_size_bytes,
                 description=output_spec["description"].replace('{id}', self.workflow_execution_id),
-                was_generated_by=self.workflow_execution_id, )
+                was_generated_by=self.workflow_execution_id, 
+                data_category=DataCategoryEnum.processed_data
+            )
 
             data_objects.append(data_object)
+            
         return data_objects
 
     def make_workflow_execution(self, data_objects: List[DataObject]) -> WorkflowExecution:
@@ -846,3 +859,10 @@ def _cleanup_files(files: List[Union[tempfile.NamedTemporaryFile, tempfile.Spool
             os.unlink(file.name)
         except Exception as e:
             logger.error(f"Failed to cleanup file: {e}")
+
+def _cleanup_dirs(dir_paths: list[str | Path]):
+    for path in dir_paths:
+        try:
+            shutil.rmtree(path)
+        except Exception as e:
+            logger.error(f"Error removing directory {path}: {e}")
