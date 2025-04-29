@@ -25,6 +25,7 @@ def test_scheduler_cycle(test_db, mock_api, workflow_file, workflows_config_dir,
     reset_db(test_db)
 
     load_fixture(test_db, "data_object_set.json")
+    # TODO add MetaT data generation records to ths fixture to get this test working for workflows-mt.yaml
     load_fixture(test_db, "data_generation_set.json")
 
     # Scheduler will find one job to create
@@ -50,6 +51,8 @@ def test_progress(test_db, mock_api, workflow_file, workflows_config_dir, site_c
     metatranscriptome = False
     if workflow_file == "workflows-mt.yaml":
         metatranscriptome = True
+
+    # TODO add MetaT data generation records to ths fixture to get this test working for workflows-mt.yaml
     load_fixture(test_db, "data_object_set.json")
     load_fixture(test_db, "data_generation_set.json")
 
