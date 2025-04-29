@@ -27,7 +27,7 @@
             "type": "nmdc:DataObject",
             "name": "nmdc_wfrqc-11-8emfgd73.1_190755.filtered.fastq.gz",
             "description": "TEST DATA",
-            "data_object_type": "Metagenome Raw Reads",
+            "data_object_type": "Metatranscriptome Raw Reads",
             "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-6tsbsj78/nmdc:wfrqc-11-8emfgd73.1/nmdc_wfrqc-11-8emfgd73.1_190755.filtered.fastq.gz"
           }
         ],

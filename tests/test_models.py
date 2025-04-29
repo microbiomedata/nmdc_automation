@@ -77,6 +77,16 @@ def test_process_factory_with_db_record():
     wfe = workflow_process_factory(record)
     assert wfe.type == "nmdc:NucleotideSequencing"
 
+# def test_process_factory_with_db_record():
+#     record = {'_id': ObjectId('66f4d5f10de8ad0b72100069'), 'id': 'nmdc:omprc-11-metat1',
+#               'name': 'Test Metatranscriptome Processing', 'has_input': ['nmdc:bsm-11-qezc0h51'],
+#               'has_output': ['nmdc:dobj-11-rawreads3', 'nmdc:dobj-11-rawreads4'], 'analyte_category': 'metatranscriptome',
+#               'associated_studies': ['nmdc:sty-11-test001'], "processing_institution": "JGI",
+#               'principal_investigator': {'has_raw_value': 'PI Name', 'email': 'pi_name@example.com',
+#                                          'name': 'PI Name', "type": "nmdc:PersonValue"},
+#               'type': 'nmdc:NucleotideSequencing'}
+#     wfe = workflow_process_factory(record)
+#     assert wfe.type == "nmdc:NucleotideSequencing"
 
 @mark.parametrize("record_file, record_type", [
     ("mags_analysis_record.json", "nmdc:MagsAnalysis"),

@@ -20,8 +20,8 @@ from functools import lru_cache
 from jaws_client.api import JawsApi
 from jaws_client.config import Configuration
 
-wf_state_json = "mags_workflow_state.json"
-wf_meta_json = "mags_job_metadata.json"
+WF_STATE_JSON = "mags_workflow_state.json"
+WF_META_JSON = "mags_job_metadata.json"
 
 @lru_cache(maxsize=None)
 def get_nmdc_materialized():
@@ -30,10 +30,8 @@ def get_nmdc_materialized():
 
 
 def test_workflow_job(site_config, fixtures_dir):
-    global wf_state_json
-    global wf_meta_json
-    workflow_state = json.load(open(fixtures_dir / wf_state_json))
-    job_metadata = json.load(open(fixtures_dir / wf_meta_json))
+    workflow_state = json.load(open(fixtures_dir / WF_STATE_JSON))
+    job_metadata = json.load(open(fixtures_dir / WF_META_JSON))
 
     job = WorkflowJob(site_config, workflow_state, job_metadata)
     assert job
@@ -42,10 +40,8 @@ def test_workflow_job(site_config, fixtures_dir):
 
 def test_cromwell_job_runner(site_config, fixtures_dir):
     # load cromwell metadata
-    global wf_state_json
-    global wf_meta_json
-    job_metadata = json.load(open(fixtures_dir / wf_meta_json))
-    job_state = json.load(open(fixtures_dir / wf_state_json))
+    job_metadata = json.load(open(fixtures_dir / WF_META_JSON))
+    job_state = json.load(open(fixtures_dir / WF_STATE_JSON))
     state_manager = WorkflowStateManager(job_state)
     job_runner = CromwellRunner(site_config, state_manager, job_metadata)
     assert job_runner
@@ -53,10 +49,8 @@ def test_cromwell_job_runner(site_config, fixtures_dir):
 
 def test_cromwell_job_runner_get_job_status(site_config, fixtures_dir, mock_cromwell_api):
     # load cromwell metadata
-    global wf_state_json
-    global wf_meta_json
-    job_metadata = json.load(open(fixtures_dir / wf_meta_json))
-    job_state = json.load(open(fixtures_dir / wf_state_json))
+    job_metadata = json.load(open(fixtures_dir / WF_META_JSON))
+    job_state = json.load(open(fixtures_dir / WF_STATE_JSON))
     # successful job from the test fixtures
     job_state['cromwell_jobid'] = "cromwell-job-id-12345"
     job_metadata['id'] = "cromwell-job-id-12345"
@@ -79,10 +73,8 @@ def test_cromwell_job_runner_get_job_status(site_config, fixtures_dir, mock_crom
 
 def test_cromwell_job_runner_get_job_metadata(site_config, fixtures_dir, mock_cromwell_api):
     # load cromwell metadata
-    global wf_state_json
-    global wf_meta_json
-    job_metadata = json.load(open(fixtures_dir / wf_meta_json))
-    job_state = json.load(open(fixtures_dir / wf_state_json))
+    job_metadata = json.load(open(fixtures_dir / WF_META_JSON))
+    job_state = json.load(open(fixtures_dir / WF_STATE_JSON))
     # successful job from the test fixtures
     job_state['cromwell_jobid'] = "cromwell-job-id-12345"
     job_metadata['id'] = "cromwell-job-id-12345"
@@ -97,8 +89,7 @@ def test_cromwell_job_runner_get_job_metadata(site_config, fixtures_dir, mock_cr
 
 
 def test_jaws_job_runner(site_config, fixtures_dir, jaws_config_file_test, jaws_test_token_file):
-    global wf_state_json
-    job_state = json.load(open(fixtures_dir / wf_state_json))
+    job_state = json.load(open(fixtures_dir / WF_STATE_JSON))
     state_manager = WorkflowStateManager(job_state)
     config = Configuration.from_files(jaws_config_file_test, jaws_test_token_file)
     api = JawsApi(config)
@@ -113,10 +104,8 @@ def mock_jaws_api():
 
 
 def test_workflow_job_as_workflow_execution_dict(site_config, fixtures_dir):
-    global wf_state_json
-    global wf_meta_json
-    workflow_state = json.load(open(fixtures_dir / wf_state_json))
-    job_metadata = json.load(open(fixtures_dir / wf_meta_json))
+    workflow_state = json.load(open(fixtures_dir / WF_STATE_JSON))
+    job_metadata = json.load(open(fixtures_dir / WF_META_JSON))
 
     wfj = WorkflowJob(site_config, workflow_state, job_metadata)
 
@@ -143,8 +132,7 @@ def test_jaws_workflow_job_as_workflow_execution_dict(fixture_pair, site_config,
 
 
 def test_workflow_state_manager(fixtures_dir):
-    global wf_state_json
-    mags_job_state = json.load(open(fixtures_dir / wf_state_json))
+    mags_job_state = json.load(open(fixtures_dir / WF_STATE_JSON))
 
     state = WorkflowStateManager(mags_job_state)
     assert state.workflow_execution_id == mags_job_state['config']['activity_id']
@@ -168,8 +156,7 @@ def test_workflow_manager_fetch_release_file_success(mock_get, fixtures_dir):
     mock_get.return_value = mock_response
 
     # Test the function
-    global wf_state_json
-    initial_state = json.load(open(fixtures_dir / wf_state_json))
+    initial_state = json.load(open(fixtures_dir / WF_STATE_JSON))
     state = WorkflowStateManager(initial_state)
 
     file_path = state.fetch_release_file("test_file", ".txt")
@@ -191,8 +178,7 @@ def test_workflow_manager_fetch_release_file_failed_download(mock_get, fixtures_
     mock_get.return_value = mock_response
 
     # Test the function
-    global wf_state_json
-    initial_state = json.load(open(fixtures_dir / wf_state_json))
+    initial_state = json.load(open(fixtures_dir / WF_STATE_JSON))
     state = WorkflowStateManager(initial_state)
 
     with pytest.raises(requests.exceptions.HTTPError):
@@ -205,7 +191,6 @@ def test_workflow_manager_fetch_release_file_failed_download(mock_get, fixtures_
 @mock.patch('requests.get')
 def test_workflow_manager_fetch_release_file_failed_write(mock_get, fixtures_dir):
     # Mock the response
-    global wf_state_json
     mock_response = mock.Mock()
     mock_response.iter_content = mock.Mock(
         return_value=[MOCK_FILE_CONTENT[i:i + MOCK_CHUNK_SIZE]
@@ -217,7 +202,7 @@ def test_workflow_manager_fetch_release_file_failed_write(mock_get, fixtures_dir
     # Patch the tempfile.mkstemp function to raise an exception during file creation
     with mock.patch('tempfile.NamedTemporaryFile', side_effect=OSError("Failed to create file")):
         # Test the function
-        initial_state = json.load(open(fixtures_dir / wf_state_json))
+        initial_state = json.load(open(fixtures_dir / WF_STATE_JSON))
         state = WorkflowStateManager(initial_state)
 
         with pytest.raises(OSError):
@@ -228,8 +213,7 @@ def test_workflow_manager_fetch_release_file_failed_write(mock_get, fixtures_dir
 
 
 def test_cromwell_runner_setup_inputs_and_labels(site_config, fixtures_dir):
-    global wf_state_json
-    job_state = json.load(open(fixtures_dir / wf_state_json))
+    job_state = json.load(open(fixtures_dir / WF_STATE_JSON))
     workflow = WorkflowStateManager(job_state)
     runner = CromwellRunner(site_config, workflow)
     inputs = workflow.generate_workflow_inputs()
@@ -252,8 +236,7 @@ def test_workflow_manager_generate_submission_files( mock_fetch_release_file, si
         '/tmp/test_workflow.wdl',
         '/tmp/test_bundle.zip',
     ]
-    global wf_state_json
-    job_state = json.load(open(fixtures_dir / wf_state_json))
+    job_state = json.load(open(fixtures_dir / WF_STATE_JSON))
     assert job_state
     workflow = WorkflowStateManager(job_state)
 
@@ -307,8 +290,7 @@ def test_cromwell_runner_generate_submission_files_exception(mock_cleanup_files,
         '/tmp/test_workflow.wdl',  # First file fetch is successful
         '/tmp/test_bundle.zip',  # Second file fetch is successful
     ]
-    global wf_state_json
-    job_state = json.load(open(fixtures_dir / wf_state_json))
+    job_state = json.load(open(fixtures_dir / WF_STATE_JSON))
     assert job_state
     workflow = WorkflowStateManager(job_state)
 
@@ -342,8 +324,7 @@ def test_jaws_job_runner_generate_submission_files(mock_fetch_release_file, site
         f.write("mock bundle content")
 
     # Load job state and set up objects
-    global wf_state_json
-    job_state = json.load(open(fixtures_dir / wf_state_json))
+    job_state = json.load(open(fixtures_dir / WF_STATE_JSON))
     state_manager = WorkflowStateManager(job_state)
     config = Configuration.from_files(jaws_config_file_test, jaws_test_token_file)
     api = JawsApi(config)
@@ -374,8 +355,7 @@ def test_cromwell_job_runner_submit_job_new_job(mock_generate_submission_files, 
     }
     # A new workflow job that has not been submitted - it has a workflow state
     # but no job metadata
-    global wf_state_json
-    wf_state = json.load(open(fixtures_dir / wf_state_json))
+    wf_state = json.load(open(fixtures_dir / WF_STATE_JSON))
     wf_state['last_status'] = None # simulate a job that has not been submitted
     wf_state['cromwell_jobid'] = None # simulate a job that has not been submitted
     wf_state['done'] = False # simulate a job that has not been submitted
@@ -387,8 +367,6 @@ def test_cromwell_job_runner_submit_job_new_job(mock_generate_submission_files, 
 
 
 def test_workflow_job_data_objects_and_execution_record_mags(site_config, fixtures_dir, tmp_path):
-    global wf_state_json
-    global wf_meta_json
     job_metadata = json.load(open(fixtures_dir / "mags_job_metadata.json"))
     workflow_state = json.load(open(fixtures_dir / "mags_workflow_state.json"))
     job = WorkflowJob(site_config, workflow_state, job_metadata)
@@ -421,10 +399,8 @@ def test_workflow_job_data_objects_and_execution_record_mags(site_config, fixtur
 
 
 def test_workflow_execution_record_from_workflow_job(site_config, fixtures_dir, tmp_path):
-    global wf_state_json
-    global wf_meta_json
-    job_metadata = json.load(open(fixtures_dir / wf_meta_json))
-    workflow_state = json.load(open(fixtures_dir / wf_state_json))
+    job_metadata = json.load(open(fixtures_dir / WF_META_JSON))
+    workflow_state = json.load(open(fixtures_dir / WF_STATE_JSON))
     # remove 'end' from the workflow state to simulate a job that is still running
     workflow_state.pop('end')
     job = WorkflowJob(site_config, workflow_state, job_metadata)
@@ -436,10 +412,8 @@ def test_workflow_execution_record_from_workflow_job(site_config, fixtures_dir, 
 
 
 def test_make_data_objects_includes_workflow_execution_id_and_file_size(site_config, fixtures_dir, tmp_path):
-    global wf_state_json
-    global wf_meta_json
-    job_metadata = json.load(open(fixtures_dir / wf_meta_json))
-    workflow_state = json.load(open(fixtures_dir / wf_state_json))
+    job_metadata = json.load(open(fixtures_dir / WF_META_JSON))
+    workflow_state = json.load(open(fixtures_dir / WF_STATE_JSON))
     job = WorkflowJob(site_config, workflow_state, job_metadata)
     data_objects = job.make_data_objects(output_dir=tmp_path)
     assert data_objects

@@ -48,6 +48,32 @@ def mock_nucleotide_sequencing():
         "type": "nmdc:NucleotideSequencing"
     }
 
+# @fixture(scope="session")
+# def mock_nucleotide_sequencing():
+#     return {
+#         "id": "nmdc:omprc-11-metat1",
+#         "name": "Test Transcriptome Processing",
+#         "has_input": [
+#             "nmdc:bsm-11-qezc0h51"
+#         ],
+#         "has_output": [
+#             "nmdc:dobj-11-rawreads3",
+#             "nmdc:dobj-11-rawreads4"
+#         ],
+#         "analyte_category": "metatranscriptome",
+#         "associated_studies": [
+#             "nmdc:sty-11-test001"
+#         ],
+#         "processing_institution": "JGI",
+#         "principal_investigator": {
+#             "has_raw_value": "PI Name",
+#             "email": "pi_name@example.com",
+#             "name": "PI Name",
+#             "type": "nmdc:PersonValue"
+#         },
+#         "type": "nmdc:NucleotideSequencing"
+#     }
+
 
 @fixture(scope="session")
 def mock_metagenome_assembly():

@@ -6,8 +6,8 @@ import pytest
 
 from nmdc_automation.import_automation.import_mapper import ImportMapper
 
-nucleotide_sequencing_id = "nmdc:omprc-11-importT"
-import_yaml = "import-all.yaml"
+NUCLEOTIDE_SEQUENCING_ID = "nmdc:omprc-11-importT"
+IMPORT_YAML = "import_test.yaml"
 
 @pytest.fixture
 def mock_runtime_api():
@@ -17,11 +17,9 @@ def mock_runtime_api():
 
 @pytest.fixture
 def import_mapper_instance(mock_runtime_api, base_test_dir, ):
-    global import_yaml
-    global nucleotide_sequencing_id
-    yaml_file = base_test_dir / import_yaml
+    yaml_file = base_test_dir / IMPORT_YAML
     return ImportMapper(
-        nucleotide_sequencing_id=nucleotide_sequencing_id, import_project_dir=base_test_dir / "import_project_dir",
+        nucleotide_sequencing_id=NUCLEOTIDE_SEQUENCING_ID, import_project_dir=base_test_dir / "import_project_dir",
         # 22 files in here, so the assert searches for 22?
         import_yaml=yaml_file, runtime_api=mock_runtime_api
     )
@@ -63,8 +61,7 @@ def test_update_do_mapping_from_import_files_correct_binning_mapping(import_mapp
 
 def test_write_minted_id_file(import_mapper_instance, base_test_dir):
     import_project_dir = base_test_dir / "import_project_dir"
-    global nucleotide_sequencing_id
-    id_file = os.path.join(import_project_dir, f"{nucleotide_sequencing_id}_minted_ids.json")
+    id_file = os.path.join(import_project_dir, f"{NUCLEOTIDE_SEQUENCING_ID}_minted_ids.json")
     if os.path.exists(id_file):
         os.remove(id_file)
     import_mapper_instance.write_minted_id_file()
@@ -196,8 +193,7 @@ def test_get_has_input_has_output_for_workflow_type_returns_lists(import_mapper_
 
 def test_root_directory(import_mapper_instance):
     root_dir = import_mapper_instance.root_directory
-    global nucleotide_sequencing_id
-    assert root_dir == os.path.join("import_project_dir", nucleotide_sequencing_id)
+    assert root_dir == os.path.join("import_project_dir", NUCLEOTIDE_SEQUENCING_ID)
 
 
 def test_data_source_url(import_mapper_instance):
