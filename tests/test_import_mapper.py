@@ -7,7 +7,6 @@ import pytest
 from nmdc_automation.import_automation.import_mapper import ImportMapper
 
 nucleotide_sequencing_id = "nmdc:omprc-11-importT"
-import_yaml = "import_all.yaml"
 
 @pytest.fixture
 def mock_runtime_api():

@@ -15,52 +15,6 @@ from nmdc_automation.models.workflow import WorkflowConfig
 from tests.fixtures import db_utils
 from nmdc_automation.workflow_automation.wfutils import WorkflowJob
 
-@fixture(scope="session")
-def mock_job_state():
-    state = db_utils.read_json(
-        "metatranscriptome_rqc_workflow_state.json "
-    )
-    return state
-
-@fixture(scope="session")
-def mock_nucleotide_sequencing():
-    return {
-        "id": "nmdc:omprc-11-metag1",
-        "name": "Test Metagenome Processing",
-        "has_input": [
-            "nmdc:bsm-11-qezc0h51"
-        ],
-        "has_output": [
-            "nmdc:dobj-11-rawreads1",
-            "nmdc:dobj-11-rawreads2"
-        ],
-        "analyte_category": "metagenome",
-        "associated_studies": [
-            "nmdc:sty-11-test001"
-        ],
-        "processing_institution": "JGI",
-        "principal_investigator": {
-            "has_raw_value": "PI Name",
-            "email": "pi_name@example.com",
-            "name": "PI Name",
-            "type": "nmdc:PersonValue"
-        },
-        "type": "nmdc:NucleotideSequencing"
-    }
-
-
-@fixture(scope="session")
-def mock_metagenome_assembly():
-    return
-
-@fixture(scope="session")
-def mags_config(fixtures_dir)->WorkflowConfig:
-    yaml_file = fixtures_dir / "workflows_all.yaml"
-    wf = load(open(yaml_file), Loader)
-    # normalize the keys from Key Name to key_name
-    wf = {k.replace(" ", "_").lower(): v for k, v in wf.items()}
-    return WorkflowConfig(**wf)
-
 
 @fixture(scope="session")
 def test_db():
