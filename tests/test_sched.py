@@ -29,7 +29,7 @@ def test_scheduler_cycle(test_db, mock_api, workflow_file, workflows_config_dir,
     load_fixture(test_db, "data_generation_set.json")
 
     # Scheduler will find one job to create
-    exp_num_jobs_initial = 1
+    exp_num_jobs_initial = 2 # one for each metaT and metaG QC
     exp_num_jobs_cycle_1 = 0
     jm = Scheduler(test_db, workflow_yaml=workflows_config_dir / workflow_file,
                    site_conf=site_config_file)
@@ -48,9 +48,15 @@ def test_scheduler_cycle(test_db, mock_api, workflow_file, workflows_config_dir,
 ])
 def test_progress(test_db, mock_api, workflow_file, workflows_config_dir, site_config_file):
     reset_db(test_db)
-    metatranscriptome = False
+    analytes = ""
     if workflow_file == "workflows-mt.yaml":
-        metatranscriptome = True
+        analytes = "mt"
+    elif workflow_file == "workflows-all.yaml":
+        analytes = "all"
+    else:
+        analytes = "mg"
+
+
 
     # TODO add MetaT data generation records to ths fixture to get this test working for workflows-mt.yaml
     load_fixture(test_db, "data_object_set.json")
@@ -66,20 +72,23 @@ def test_progress(test_db, mock_api, workflow_file, workflows_config_dir, site_c
 
     # There should be 1 RQC job for each omics_processing_set record
     resp = jm.cycle()
-    assert len(resp) == 1
+    assert len(resp) == 2
 
     # We simulate the RQC job finishing
     load_fixture(test_db, "read_qc_analysis.json", col="workflow_execution_set")
 
     resp = jm.cycle()
-    if metatranscriptome:
+    if analytes == "mt":
         # assembly
         exp_num_post_rqc_jobs = 1
         exp_num_post_annotation_jobs = 1
-    else:
-        # assembly, rba
+    elif analytes == "mg":
+        # assembly, rba, mt_assembly
         exp_num_post_rqc_jobs = 2
         exp_num_post_annotation_jobs = 2
+    else:
+        exp_num_post_rqc_jobs = 3
+        exp_num_post_annotation_jobs = 3
 
         # Get the assembly job record from resp and check the inputs
         asm_job = [j for j in resp if j["config"]["activity"]["type"] == "nmdc:MetagenomeAssembly"][0]
@@ -88,7 +97,7 @@ def test_progress(test_db, mock_api, workflow_file, workflows_config_dir, site_c
 
     assert len(resp) == exp_num_post_rqc_jobs
 
-    if metatranscriptome:
+    if analytes == "mt":
         # simulate assembly job finishing
         load_fixture(test_db, "metatranscriptome_assembly.json", col="workflow_execution_set")
         # We should see a metatranscriptome annotation job
@@ -105,7 +114,7 @@ def test_progress(test_db, mock_api, workflow_file, workflows_config_dir, site_c
         resp = jm.cycle()
         assert len(resp) == 1
         assert resp[0]["config"]["activity"]["type"] == "nmdc:MetatranscriptomeExpressionAnalysis"
-    else:
+    elif analytes == "mg":
         # simulate assembly job finishing
         load_fixture(test_db, "metagenome_assembly.json", col="workflow_execution_set")
         # We should see a metagenome annotation job
