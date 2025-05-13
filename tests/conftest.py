@@ -1,3 +1,5 @@
+import ast
+import configparser
 import json
 import os
 from pymongo import MongoClient
@@ -6,7 +8,7 @@ from pytest import fixture
 import requests_mock
 import shutil
 from time import time
-from unittest.mock import MagicMock
+import pandas as pd
 from yaml import load, Loader
 
 
@@ -219,6 +221,16 @@ def gold_import_files(gold_import_dir):
     # One (1) file is a nucleotide sequencing file. All the other files are RQC, assembly, MAGs, etc.
     return [str(f) for f in gold_import_dir.iterdir() if f.is_file()]
 
+@fixture(scope="session")
+def import_config():
+    config = configparser.ConfigParser()
+    config.read(Path(__file__).parent / "fixtures" / "import_config.ini")
+    return config
+
+@fixture(scope="session")
+def import_config_file():
+    return Path(__file__).parent / "fixtures" / "import_config.ini"
+
 
 class MockNmdcRuntimeApi:
     def __init__(self):
@@ -255,11 +267,54 @@ class MockNmdcRuntimeApi:
         }
 
 
-
-
-
-
-
 @fixture(scope="session")
 def mock_nmdc_runtime_api():
     return MockNmdcRuntimeApi()
+
+
+@fixture
+def grow_analysis_df(fixtures_dir):
+    grow_analysis_df = pd.read_csv(fixtures_dir / "grow_analysis_projects.csv")
+    grow_analysis_df.columns = [
+        "apGoldId",
+        "studyId",
+        "itsApId",
+        "project_name",
+        "biosample_id",
+        "seq_id",
+        "file_name",
+        "file_status",
+        "file_size",
+        "jdp_file_id",
+        "md5sum",
+        "analysis_project_id",
+    ]
+    grow_analysis_df = grow_analysis_df[
+        [
+            "apGoldId",
+            "studyId",
+            "itsApId",
+            "project_name",
+            "biosample_id",
+            "seq_id",
+            "file_name",
+            "file_status",
+            "file_size",
+            "jdp_file_id",
+            "md5sum",
+            "analysis_project_id",
+        ]
+    ]
+    # grow_analysis_df["project_name"] = grow_analysis_df["project_name"].apply(ast.literal_eval)
+    return grow_analysis_df
+
+@fixture
+def jgi_staging_config(fixtures_dir, tmp_path):
+    config_file = fixtures_dir / "jgi_staging_config.ini"
+    config = configparser.ConfigParser()
+    read_files = config.read(config_file)
+    if not read_files:
+        raise FileNotFoundError(f"Config file {config_file} not found.")
+    # set Globus root dir to tmp_path
+    config["GLOBUS"]["globus_root_dir"] = str(tmp_path)
+    return config
