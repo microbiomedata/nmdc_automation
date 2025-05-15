@@ -272,6 +272,16 @@ class JawsRunner(JobRunnerABC):
         """ Get the maximum number of retries - Set this at 1 for now """
         return DEFAULT_MAX_RETRIES
 
+    @property
+    def started_at_time(self) -> Optional[str]:
+        """ Get the start time of the job """
+        return self.metadata.get("submitted", None)
+
+    @property
+    def ended_at_time(self) -> Optional[str]:
+        """ Get the end time of the job """
+        return self.metadata.get("updated", None)
+
 
 class CromwellRunner(JobRunnerABC):
     """Job runner for Cromwell"""
@@ -395,6 +405,16 @@ class CromwellRunner(JobRunnerABC):
     def max_retries(self) -> int:
         return self._max_retries
 
+    @property
+    def started_at_time(self) -> Optional[str]:
+        """ Get the start time of the job """
+        return self.metadata.get("start", None)
+
+    @property
+    def ended_at_time(self) -> Optional[str]:
+        """ Get the end time of the job """
+        return self.metadata.get("end", None)
+
 
 class WorkflowStateManager:
     CHUNK_SIZE = 1000000  # 1 MB
@@ -486,8 +506,8 @@ class WorkflowStateManager:
         return self.cached_state.get("conf", self.cached_state.get("config", {}))
 
     @property
-    def last_status(self) -> Optional[str]:
-        return self.cached_state.get("last_status", None)
+    def last_status(self) -> str:
+        return self.cached_state.get("last_status", "unknown")
 
     @last_status.setter
     def last_status(self, status: str):
@@ -713,11 +733,16 @@ class WorkflowJob:
         """
         Create a dictionary representation of the basic workflow execution attributes for a WorkflowJob.
         """
-        base_dict = {"id": self.workflow_execution_id, "type": self.workflow.workflow_execution_type,
-            "name": self.workflow.workflow_execution_name, "git_url": self.workflow.config["git_repo"],
-            "execution_resource": self.execution_resource, "was_informed_by": self.was_informed_by,
+        base_dict = {
+            "id": self.workflow_execution_id,
+            "type": self.workflow.workflow_execution_type,
+            "name": self.workflow.workflow_execution_name,
+            "git_url": self.workflow.config["git_repo"],
+            "execution_resource": self.execution_resource,
+            "was_informed_by": self.was_informed_by,
             "has_input": [dobj["id"] for dobj in self.workflow.config["input_data_objects"]],
-            "started_at_time": self.workflow.state.get("start"), "ended_at_time": self.workflow.state.get("end"),
+            "started_at_time": self.job.started_at_time,
+            "ended_at_time": self.job.ended_at_time,
             "version": self.workflow.config["release"], }
         return base_dict
 
