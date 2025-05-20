@@ -69,6 +69,11 @@ class SchedulerJob:
         self.trigger_id = trigger_act.id
 
 
+class MissingDataObjectException(Exception):
+    """ Custom exception for missing data objects"""
+    pass
+
+
 class Scheduler:
 
     def __init__(self, db, workflow_yaml,
@@ -127,7 +132,7 @@ class Scheduler:
                 if not dobj:
                     if k in optional_inputs:
                         continue
-                    raise ValueError(f"Unable to find {do_type} in {do_by_type}")
+                    raise MissingDataObjectException(f"Unable to find {do_type} in {do_by_type}")
                 input_data_objects.append(dobj.as_dict())
 
                 if k == "input_files":
@@ -338,9 +343,13 @@ class Scheduler:
                     self.db.jobs.insert_one(jr)
                     if jr:
                         job_recs.append(jr)
-                except Exception as ex:
-                    logger.error(str(ex))
-                    raise ex
+                except MissingDataObjectException as e:
+                    logger.warning(f"Caught missing Data Object(s) for {job.informed_by}: Skipping")
+                    logger.warning(e)
+                    continue
+                except Exception as e:
+                    logger.exception(e)
+
         return job_recs
 
 
