@@ -69,7 +69,7 @@ Workflows:
     Import: false
     Type: nmdc:MetatranscriptomeAnnotation
     Git_repo: https://github.com/microbiomedata/mg_annotation
-    Version: v1.1.4
+    Version: v1.2.0
     Collection: workflow_execution_set
     WorkflowExecutionRange: MetatranscriptomeAnnotation
     Inputs:
@@ -83,7 +83,7 @@ Workflows:
       - Functional Annotation GFF
       - Annotation KEGG Orthology
       - Annotation Enzyme Commission
-      - Scaffold Lineage tsv
+      - Scaffold Lineage TSV
       - Clusters of Orthologous Groups (COG) Annotation GFF
       - Pfam Annotation GFF
       - TIGRFam Annotation GFF
@@ -97,12 +97,15 @@ Workflows:
       - RFAM Annotation GFF
       - KO_EC Annotation GFF
       - Product Names
-      - Gene Phylogeny tsv
+      - Gene Phylogeny TSV
       - Crispr Terms
       - Annotation Statistics
       - Contig Mapping File
       - Annotation Info File
       - Assembly Contigs
+      - GeNomad Virus Summary
+      - GeNomad Plasmid Summary
+      - GeNomad Aggregated Classification
 
 
   - Name: Expression Analysis Generic
@@ -188,8 +191,8 @@ Data Objects:
       output_of: nmdc:MetatranscriptomeAnnotation
       multiple: false
       action: rename
-    - data_object_type: Scaffold Lineage tsv
-      description: Scaffold Lineage tsv for {id}
+    - data_object_type: Scaffold Lineage TSV
+      description: Scaffold Lineage TSV for {id}
       name: Phylogeny at the scaffold level
       import_suffix: _scaffold_lineage\.tsv$
       nmdc_suffix: _scaffold_lineage.tsv
@@ -313,7 +316,7 @@ Data Objects:
       output_of: nmdc:MetatranscriptomeAnnotation
       multiple: false
       action: rename
-    - data_object_type: Gene Phylogeny tsv
+    - data_object_type: Gene Phylogeny TSV
       description: Gene Phylogeny for {id}
       name: Gene Phylogeny file
       import_suffix: _gene_phylogeny\.tsv$
@@ -356,6 +359,33 @@ Data Objects:
       input_to: []
       output_of: nmdc:MetatranscriptomeAnnotation
       multiple: false 
+    - data_object_type: GeNomad Virus Summary
+      description: GeNomad virus summary for {id}
+      name: TSV summary of virus annotation 
+      import_suffix: _virus_summary\.tsv$
+      nmdc_suffix: _genomad_virus_summary.tsv
+      input_to: []
+      output_of: nmdc:MetatranscriptomeAnnotation
+      multiple: false
+      action: rename    
+    - data_object_type: GeNomad Plasmid Summary
+      description: GeNomad plasmid summary for {id}
+      name: TSV summary of plasmid annotation 
+      import_suffix: _plasmid_summary\.tsv$
+      nmdc_suffix: _genomad_plasmid_summary.tsv
+      input_to: []
+      output_of: nmdc:MetatranscriptomeAnnotation
+      multiple: false
+      action: rename  
+    - data_object_type: GeNomad Aggregated Classification
+      description: GeNomad aggregated classification for {id}
+      name: TSV of chromosome, plasmid, and virus scores
+      import_suffix: _aggregated_classification\.tsv$
+      nmdc_suffix: _genomad_aggregated_classification.tsv
+      input_to: []
+      output_of: nmdc:MetatranscriptomeAnnotation
+      multiple: false
+      action: rename  
     - data_object_type: Filtered Sequencing Reads
       description: Reads QC for {id}
       name: Reads QC result fastq (clean data)
