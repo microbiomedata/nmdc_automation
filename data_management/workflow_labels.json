@@ -37,7 +37,10 @@
     "Structural Annotation Stats Json": "stats_json",
     "Contig Mapping File": "contig_names_mapping_tsv",
     "Annotation Info File": "imgap_info",
-    "Assembly Contigs": "renamed_fasta"
+    "Assembly Contigs": "renamed_fasta",
+    "Virus Summary": "virus_summary",
+    "Plasmid Summary": "plasmid_summary",
+    "GeNomad Aggregated Classification": "aggregated_class"
   },
   "MetagenomeAssembly": {
     "Assembly Contigs": "contigs",
@@ -72,7 +75,10 @@
     "Annotation Statistics": "stats_tsv",
     "Contig Mapping File": "contig_names_mapping_tsv",
     "Annotation Info File": "imgap_info",
-    "Assembly Contigs": "renamed_fasta"
+    "Assembly Contigs": "renamed_fasta",
+    "Virus Summary": "virus_summary",
+    "Plasmid Summary": "plasmid_summary",
+    "GeNomad Aggregated Classification": "aggregated_class"
   },
   "MetatranscriptomeAssembly": {
     "Assembly Contigs": "metatranscriptome_assembly",

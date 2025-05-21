@@ -285,6 +285,18 @@ Workflows:
         data_object_type: Assembly Contigs
         description: Assembly contigs (remapped) for {id}
         name: File containing contigs with annotation headers
+      - output: virus_summary
+        data_object_type: Virus Summary
+        description: Virus Summary for {id}
+        name: TSV summary of virus annotation 
+      - output: plasmid_summary
+        data_object_type: Plasmid Summary
+        description: Plasmid Summary for {id}
+        name: TSV summary of plasmid annotation 
+      - output: aggregated_class
+        data_object_type: GeNomad Aggregated Classification
+        description: GeNomad aggregated classification for {id}
+        name: TSV of chromosome, plasmid, and virus scores
 
 
   - Name: MAGs
