@@ -193,7 +193,7 @@ Workflows:
         suffix: _ec.tsv
       - output: lineage_tsv
         data_object_type: Scaffold Lineage TSV
-        description: Scaffold Lineage TSV for {id}
+        description: Scaffold Lineage tsvfor {id}
         name: Phylogeny at the scaffold level
         suffix: _scaffold_lineage.tsv
       - output: cog_gff
@@ -249,7 +249,7 @@ Workflows:
         description: Product names for {id}
         name: Product names file
       - output: gene_phylogeny_tsv
-        data_object_type: Gene Phylogeny TSV
+        data_object_type: Gene Phylogeny tsv
         description: Gene Phylogeny for {id}
         name: Gene Phylogeny file
       - output: crt_crisprs

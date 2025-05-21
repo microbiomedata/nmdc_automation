@@ -97,7 +97,7 @@ Workflows:
       - RFAM Annotation GFF
       - KO_EC Annotation GFF
       - Product Names
-      - Gene Phylogeny TSV
+      - Gene Phylogeny tsv
       - Crispr Terms
       - Annotation Statistics
       - Contig Mapping File
@@ -192,7 +192,7 @@ Data Objects:
       multiple: false
       action: rename
     - data_object_type: Scaffold Lineage TSV
-      description: Scaffold Lineage TSV for {id}
+      description: Scaffold Lineage tsvfor {id}
       name: Phylogeny at the scaffold level
       import_suffix: _scaffold_lineage\.tsv$
       nmdc_suffix: _scaffold_lineage.tsv
@@ -316,7 +316,7 @@ Data Objects:
       output_of: nmdc:MetatranscriptomeAnnotation
       multiple: false
       action: rename
-    - data_object_type: Gene Phylogeny TSV
+    - data_object_type: Gene Phylogeny tsv
       description: Gene Phylogeny for {id}
       name: Gene Phylogeny file
       import_suffix: _gene_phylogeny\.tsv$

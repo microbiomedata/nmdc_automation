@@ -118,7 +118,7 @@ Workflows:
       - RFAM Annotation GFF
       - KO_EC Annotation GFF
       - Product Names
-      - Gene Phylogeny TSV
+      - Gene Phylogeny tsv
       - Crispr Terms
       - Annotation Statistics
       - GeNomad Virus Summary
@@ -147,7 +147,7 @@ Workflows:
       - Assembly Coverage BAM
       - SMART Annotation GFF
       - Annotation Amino Acid FASTA
-      - Gene Phylogeny TSV
+      - Gene Phylogeny tsv
     Workflow_Execution:
       name: "Metagenome Assembled Genomes Analysis for {id}"
       type: nmdc:MagsAnalysis
@@ -366,7 +366,7 @@ Data Objects:
       output_of: nmdc:MetagenomeAnnotation
       multiple: false
       action: rename
-    - data_object_type: Gene Phylogeny TSV
+    - data_object_type: Gene Phylogeny tsv
       description: Gene Phylogeny for {id}
       name: Gene Phylogeny file
       import_suffix: _gene_phylogeny.tsv

@@ -206,7 +206,7 @@ Workflows:
         suffix: _ec.tsv
       - output: lineage_tsv
         data_object_type: Scaffold LineageTSV
-        description: Scaffold LineageTSV for {id}
+        description: Scaffold Lineage tsvfor {id}
         name: Phylogeny at the scaffold level
         suffix: _scaffold_lineage.tsv
       - output: cog_gff
@@ -262,7 +262,7 @@ Workflows:
         description: Product names for {id}
         name: Product names file
       - output: gene_phylogeny_tsv
-        data_object_type: Gene PhylogenyTSV
+        data_object_type: Gene Phylogeny tsv
         description: Gene Phylogeny for {id}
         name: Gene Phylogeny file
       - output: crt_crisprs
@@ -323,7 +323,7 @@ Workflows:
       tigrfam_file: do:TIGRFam Annotation GFF
       crispr_file: do:Crispr Terms
       product_names_file: do:Product Names
-      gene_phylogeny_file: do:Gene PhylogenyTSV
+      gene_phylogeny_file: do:Gene Phylogeny tsv
       lineage_file: do:Scaffold LineageTSV
       map_file: do:Contig Mapping File
     Optional Inputs:
