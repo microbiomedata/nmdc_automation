@@ -105,7 +105,7 @@ Workflows:
       - Functional Annotation GFF
       - Annotation KEGG Orthology
       - Annotation Enzyme Commission
-      - Scaffold Lineage TSV
+      - Scaffold Lineage tsv
       - Clusters of Orthologous Groups (COG) Annotation GFF
       - Pfam Annotation GFF
       - TIGRFam Annotation GFF
@@ -125,8 +125,8 @@ Workflows:
       - Contig Mapping File
       - Annotation Info File
       - Assembly Contigs
-      - GeNomad Virus Summary
-      - GeNomad Plasmid Summary
+      - Virus Summary
+      - Plasmid Summary
       - GeNomad Aggregated Classification
 
 
@@ -406,20 +406,20 @@ Data Objects:
       output_of: nmdc:MetagenomeAnnotation
       multiple: false
       action: rename
-    - data_object_type: GeNomad Virus Summary
-      description: GeNomad virus summary for {id}
+    - data_object_type: Virus Summary
+      description: Virus Summary for {id}
       name: TSV summary of virus annotation 
       import_suffix: _virus_summary\.tsv$
-      nmdc_suffix: _genomad_virus_summary.tsv
+      nmdc_suffix: _virus_summary.tsv
       input_to: []
       output_of: nmdc:MetagenomeAnnotation
       multiple: false
       action: rename    
-    - data_object_type: GeNomad Plasmid Summary
-      description: GeNomad plasmid summary for {id}
+    - data_object_type: Plasmid Summary
+      description: Plasmid Summary for {id}
       name: TSV summary of plasmid annotation 
       import_suffix: _plasmid_summary\.tsv$
-      nmdc_suffix: _genomad_plasmid_summary.tsv
+      nmdc_suffix: _plasmid_summary.tsv
       input_to: []
       output_of: nmdc:MetagenomeAnnotation
       multiple: false
@@ -428,7 +428,7 @@ Data Objects:
       description: GeNomad aggregated classification for {id}
       name: TSV of chromosome, plasmid, and virus scores
       import_suffix: _aggregated_classification\.tsv$
-      nmdc_suffix: _genomad_aggregated_classification.tsv
+      nmdc_suffix: _aggregated_classification.tsv
       input_to: []
       output_of: nmdc:MetagenomeAnnotation
       multiple: false

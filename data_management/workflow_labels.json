@@ -17,7 +17,7 @@
     "Functional Annotation GFF": "functional_annotation_gff",
     "Annotation KEGG Orthology": "ko_tsv",
     "Annotation Enzyme Commission": "ec_tsv",
-    "Scaffold Lineage TSV": "lineage_tsv",
+    "Scaffold Lineage tsv": "lineage_tsv",
     "Clusters of Orthologous Groups (COG) Annotation GFF": "cog_gff",
     "Pfam Annotation GFF": "pfam_gff",
     "TIGRFam Annotation GFF": "tigrfam_gff",
@@ -38,8 +38,8 @@
     "Contig Mapping File": "contig_names_mapping_tsv",
     "Annotation Info File": "imgap_info",
     "Assembly Contigs": "renamed_fasta",
-    "GeNomad Virus Summary": "virus_summary",
-    "GeNomad Plasmid Summary": "plasmid_summary",
+    "Virus Summary": "virus_summary",
+    "Plasmid Summary": "plasmid_summary",
     "GeNomad Aggregated Classification": "aggregated_class"
   },
   "MetagenomeAssembly": {
@@ -57,7 +57,7 @@
     "Functional Annotation GFF": "functional_annotation_gff",
     "Annotation KEGG Orthology": "ko_tsv",
     "Annotation Enzyme Commission": "ec_tsv",
-    "Scaffold Lineage TSV": "lineage_tsv",
+    "Scaffold Lineage tsv": "lineage_tsv",
     "Pfam Annotation GFF": "pfam_gff",
     "TIGRFam Annotation GFF": "tigrfam_gff",
     "SMART Annotation GFF": "smart_gff",
@@ -76,8 +76,8 @@
     "Contig Mapping File": "contig_names_mapping_tsv",
     "Annotation Info File": "imgap_info",
     "Assembly Contigs": "renamed_fasta",
-    "GeNomad Virus Summary": "virus_summary",
-    "GeNomad Plasmid Summary": "plasmid_summary",
+    "Virus Summary": "virus_summary",
+    "Plasmid Summary": "plasmid_summary",
     "GeNomad Aggregated Classification": "aggregated_class"
   },
   "MetatranscriptomeAssembly": {

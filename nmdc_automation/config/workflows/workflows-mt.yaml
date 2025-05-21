@@ -192,8 +192,8 @@ Workflows:
         name: Tab delimited file for EC annotation
         suffix: _ec.tsv
       - output: lineage_tsv
-        data_object_type: Scaffold Lineage TSV
-        description: Scaffold Lineage tsvfor {id}
+        data_object_type: Scaffold Lineage tsv
+        description: Scaffold Lineage tsv for {id}
         name: Phylogeny at the scaffold level
         suffix: _scaffold_lineage.tsv
       - output: cog_gff
@@ -273,12 +273,12 @@ Workflows:
         description: Assembly contigs (remapped) for {id}
         name: File containing contigs with annotation headers
       - output: virus_summary
-        data_object_type: GeNomad Virus Summary
-        description: GeNomad virus summary for {id}
+        data_object_type: Virus Summary
+        description: Virus Summary for {id}
         name: TSV summary of virus annotation 
       - output: plasmid_summary
-        data_object_type: GeNomad Plasmid Summary
-        description: GeNomad plasmid summary for {id}
+        data_object_type: Plasmid Summary
+        description: Plasmid Summary for {id}
         name: TSV summary of plasmid annotation 
       - output: aggregated_class
         data_object_type: GeNomad Aggregated Classification
