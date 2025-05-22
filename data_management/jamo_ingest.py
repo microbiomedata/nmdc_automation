@@ -385,7 +385,15 @@ def generate_workflow_labels_json(template_dir: str = None, output_file: str = '
         return
 
     # Save the generated workflow labels to JSON
-    save_json(workflow_labels, output_file)
+    # Handle the case when output_file is just a filename without directory path
+    if os.path.dirname(output_file) == '':
+        # Simply write to the file in the current directory
+        with open(output_file, 'w+') as f:
+            json.dump(workflow_labels, f, indent=4)
+    else:
+        # Use save_json for paths with directories
+        save_json(workflow_labels, output_file)
+    
     logging.info(f"Generated workflow labels file: {output_file}")
 
     return workflow_labels
