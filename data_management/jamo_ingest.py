@@ -7,12 +7,14 @@ Handles workflow execution records and their associated data objects.
 import json
 import yaml
 import os
+import sys
 import requests
 import click
+import glob
+import argparse
 from typing import Dict, List, Optional
 import logging
 import traceback
-import argparse
 
 _BASE_URL = "https://api.microbiomedata.org/"
 
@@ -85,7 +87,7 @@ def get_data_object_set(base_api_url: str, max_page_size: int) -> Dict:
     """
     Retrieve data objects with URLs from the data_object_set collection.
 
-    Creates a lookup dictionary mapping object IDs to their full record data.
+    Creates a lookup dictionary mapping object ID to their full record data.
     Only includes records that have a URL field.
 
     Args:
@@ -248,11 +250,17 @@ def generate_metadata_file(workflow_execution_id: str, workflow_execution: str, 
         workflow_execution: Type/name of the workflow execution
         records: List of record dictionaries containing workflow output data
     """
-    with open('workflow_labels.json', 'r') as workflow_labels_file:
-        workflow_labels = json.load(workflow_labels_file)
-        if workflow_execution not in workflow_labels.keys():
-            logging.warning(f"workflow_execution {workflow_execution} {workflow_execution_id} type not supported")
-            return
+    try:
+        # Try to load workflow labels from file
+        with open('workflow_labels.json', 'r') as workflow_labels_file:
+            workflow_labels = json.load(workflow_labels_file)
+    except (FileNotFoundError, json.JSONDecodeError):
+        logging.error("workflow_labels.json not found or invalid, generating from templates...")
+        return
+    
+    if workflow_execution not in workflow_labels.keys():
+        logging.warning(f"workflow_execution {workflow_execution} {workflow_execution_id} type not supported")
+        return
 
     metadata_keys_list: List[Dict] = []
 
@@ -311,6 +319,77 @@ def process_data(valid_data: Dict[str, List]):
     click.echo(f"number of records of each workflow execution: {count_workflow_execution_records}")
 
 
+def parse_workflow_templates(template_dir: str = None) -> Dict[str, Dict[str, str]]:
+    """
+    Parse all NMDC workflow template YAML files to extract label and data_object_type mappings.
+
+    Args:
+        template_dir: Directory containing workflow template YAML files
+                     (defaults to current directory if None)
+
+    Returns:
+        Dictionary mapping workflow types to their data_object_type -> label mappings
+    """
+    if template_dir is None:
+        template_dir = os.path.dirname(os.path.abspath(__file__))
+
+    workflow_labels = {}
+    template_pattern = os.path.join(template_dir, "nmdc_*.yaml")
+
+    for template_file in glob.glob(template_pattern):
+        try:
+            with open(template_file, 'r') as file:
+                template_data = yaml.safe_load(file)
+
+            workflow_name = template_data.get('name', '')
+            if not workflow_name.startswith('NMDC'):
+                continue
+
+            # Extract the workflow type (remove NMDC prefix)
+            workflow_type = workflow_name.removeprefix('NMDC')
+
+            # Initialize the mapping dictionary for this workflow type
+            workflow_labels[workflow_type] = {}
+
+            # Process each output to extract label and data_object_type mapping
+            for output in template_data.get('outputs', []):
+                label = output.get('label')
+                data_object_type = output.get('default_metadata_values', {}).get('data_object_type')
+
+                if label and data_object_type:
+                    workflow_labels[workflow_type][data_object_type] = label
+
+        except Exception as e:
+            logging.error(f"Error parsing template file {template_file}: {str(e)}")
+            continue
+
+    return workflow_labels
+
+
+def generate_workflow_labels_json(template_dir: str = None, output_file: str = 'workflow_labels.json') -> None:
+    """
+    Generate the workflow_labels.json file from workflow template YAML files.
+
+    Args:
+        template_dir: Directory containing workflow template YAML files
+        output_file: Path to the output JSON file
+
+    Returns:
+        None
+    """
+    workflow_labels = parse_workflow_templates(template_dir)
+
+    # Check if we have any valid workflow mappings
+    if not workflow_labels:
+        logging.warning("No valid workflow templates found")
+        return
+
+    # Save the generated workflow labels to JSON
+    save_json(workflow_labels, output_file)
+    logging.info(f"Generated workflow labels file: {output_file}")
+
+    return workflow_labels
+
 def main():
     """
     Main execution function that orchestrates the workflow:
@@ -320,7 +399,17 @@ def main():
     """
     parser = argparse.ArgumentParser(description="Run specific methods based on flags")
     parser.add_argument("-clean", action="store_true", help="Start a clean run with a fresh pull of NMDC data from the runtime api")
+    parser.add_argument("--generate-labels", action="store_true", help="Generate workflow_labels.json from YAML templates")
+    parser.add_argument("--template-dir", type=str, help="Directory containing workflow template YAML files")
     args = parser.parse_args()
+    
+    # Generate workflow labels if requested
+    if args.generate_labels:
+        workflow_labels = generate_workflow_labels_json(args.template_dir)
+        if workflow_labels:
+            logging.info(f"Generated workflow labels for: {', '.join(workflow_labels.keys())}")
+        return
+    
     if args.clean:
         get_workflow_execution_set() # Produces valid_data.json
 
@@ -331,7 +420,18 @@ def main():
     process_data(valid_data)  # Pass valid_data as argument
 
 if __name__ == "__main__":
-    main()
-
+    # Configure logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    
+    try:
+        main()
+    except Exception as e:
+        logging.error(f"Error in main execution: {str(e)}")
+        logging.error(traceback.format_exc())
+        sys.exit(1)
 
 # todo logging
