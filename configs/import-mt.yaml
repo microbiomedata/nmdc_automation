@@ -7,7 +7,7 @@ Workflows:
     Collection: workflow_execution_set
     WorkflowExecutionRange: ReadQcAnalysis
     Inputs:
-      - Metagenome Raw Reads
+      - Metatranscriptome Raw Reads
     Workflow_Execution:
       name: "Read QC for {id}"
       input_read_bases: "{outputs.stats.input_read_bases}"
