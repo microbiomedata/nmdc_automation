@@ -238,7 +238,7 @@ def _get_file_suffix():
     return data_object_type_suffix_dict
 
 
-def generate_metadata_file(workflow_execution_id: str, workflow_execution: str, was_informed_by: str, records: List):
+def generate_metadata_file(workflow_execution_id: str, workflow_execution: str, was_informed_by: str, records: List, emsl_only: bool = False, nersc_only: bool = False):
     """
     Generate and save metadata file for a specific workflow execution.
 
@@ -249,6 +249,8 @@ def generate_metadata_file(workflow_execution_id: str, workflow_execution: str, 
         workflow_execution_id: Unique identifier for the workflow execution
         workflow_execution: Type/name of the workflow execution
         records: List of record dictionaries containing workflow output data
+        emsl_only: If True, only process EMSL data records
+        nersc_only: If True, only process NERSC data records
     """
     try:
         # Try to load workflow labels from file
@@ -274,6 +276,12 @@ def generate_metadata_file(workflow_execution_id: str, workflow_execution: str, 
         # Handle both NERSC and EMSL data URLs
         nersc_prefix = "https://data.microbiomedata.org/data/"
         emsl_prefix = "https://nmdcdemo.emsl.pnnl.gov/"
+        
+        # Apply URL filtering based on flags
+        if emsl_only and not url.startswith(emsl_prefix):
+            continue
+        if nersc_only and not url.startswith(nersc_prefix):
+            continue
         
         if url.startswith(nersc_prefix):
             file = "/global/cfs/cdirs/m3408/results/" + url.removeprefix(nersc_prefix)
@@ -310,7 +318,7 @@ def generate_metadata_file(workflow_execution_id: str, workflow_execution: str, 
     save_json(json_structure, f"metadata_files/metadata_{was_informed_by}_{workflow_execution_id}.json")
 
 
-def process_data(valid_data: Dict[str, List]):
+def process_data(valid_data: Dict[str, List], emsl_only: bool = False, nersc_only: bool = False):
     """
     Process valid data and generate metadata files for each workflow type.
 
@@ -318,11 +326,13 @@ def process_data(valid_data: Dict[str, List]):
         valid_data: Dictionary where:
             - key (str): workflow_execution_id
             - value (List): [workflow_execution_type (str), list_of_records (List[Dict])]
+        emsl_only: If True, only process EMSL data records
+        nersc_only: If True, only process NERSC data records
     """
     count_workflow_execution_records = {} # sanity check
     for workflow_execution_id, [workflow_execution, was_informed_by, records] in valid_data.items():
         count_workflow_execution_records[workflow_execution] = count_workflow_execution_records.get(workflow_execution, 0) + 1
-        generate_metadata_file(workflow_execution_id, workflow_execution, was_informed_by, records)
+        generate_metadata_file(workflow_execution_id, workflow_execution, was_informed_by, records, emsl_only, nersc_only)
 
     click.echo(f"number of records of each workflow execution: {count_workflow_execution_records}")
 
@@ -407,9 +417,15 @@ def main():
     3. Generates individual metadata files for each workflow execution
     """
     parser = argparse.ArgumentParser(description="Run specific methods based on flags")
-    parser.add_argument("-clean", action="store_true", help="Start a clean run with a fresh pull of NMDC data from the runtime api")
+    parser.add_argument("--clean", action="store_true", help="Start a clean run with a fresh pull of NMDC data from the runtime api")
     parser.add_argument("--generate-labels", type=str, metavar="TEMPLATE_DIR", help="Generate workflow_labels.json from YAML templates in the specified directory")
+    parser.add_argument("--emsl-only", action="store_true", help="Only process EMSL data records")
+    parser.add_argument("--nersc-only", action="store_true", help="Only process NERSC data records")
     args = parser.parse_args()
+    
+    # Validate mutually exclusive flags
+    if args.emsl_only and args.nersc_only:
+        parser.error("--emsl-only and --nersc-only are mutually exclusive")
     
     # Generate workflow labels if requested
     if args.generate_labels:
@@ -422,7 +438,7 @@ def main():
         valid_data = json.load(valid_data_file)
 
     # Process valid data
-    process_data(valid_data)  # Pass valid_data as argument
+    process_data(valid_data, args.emsl_only, args.nersc_only)
 
 if __name__ == "__main__":
     # Configure logging
