@@ -270,12 +270,20 @@ def generate_metadata_file(workflow_execution_id: str, workflow_execution: str, 
 
         url = record["url"]
         metadata_keys["url"] = url
-        prefix = "https://data.microbiomedata.org/data/"
-        if not url.startswith(prefix):
-            logging.warning(f"Data {url} outside NERSC")
+        
+        # Handle both NERSC and EMSL data URLs
+        nersc_prefix = "https://data.microbiomedata.org/data/"
+        emsl_prefix = "https://nmdcdemo.emsl.pnnl.gov/"
+        
+        if url.startswith(nersc_prefix):
+            file = "/global/cfs/cdirs/m3408/results/" + url.removeprefix(nersc_prefix)
+        elif url.startswith(emsl_prefix):
+            file = "/global/cfs/cdirs/m3408/emsl_backup/" + url.removeprefix(emsl_prefix)
+        else:
+            logging.warning(f"Data {url} outside NERSC and EMSL")
             continue
 
-        file = record["name"] = "/global/cfs/cdirs/m3408/results/" + url.removeprefix(prefix)
+        record["name"] = file
         metadata_keys["file"] = file
 
         data_object_id = record["id"]
