@@ -393,18 +393,11 @@ def generate_workflow_labels_json(template_dir: str = None, output_file: str = '
         return
 
     # Save the generated workflow labels to JSON
-    # Handle the case when output_file is just a filename without directory path
-    if os.path.dirname(output_file) == '':
-        # Simply write to the file in the current directory
-        with open(output_file, 'w+') as f:
-            json.dump(workflow_labels, f, indent=4)
-    else:
-        # Use save_json for paths with directories
-        save_json(workflow_labels, output_file)
-    
+    save_json(workflow_labels, output_file)
     logging.info(f"Generated workflow labels file: {output_file}")
+    logging.debug(f"Generated workflow labels for: {', '.join(workflow_labels.keys())}")
 
-    return workflow_labels
+    return
 
 def main():
     """
@@ -415,16 +408,12 @@ def main():
     """
     parser = argparse.ArgumentParser(description="Run specific methods based on flags")
     parser.add_argument("-clean", action="store_true", help="Start a clean run with a fresh pull of NMDC data from the runtime api")
-    parser.add_argument("--generate-labels", action="store_true", help="Generate workflow_labels.json from YAML templates")
-    parser.add_argument("--template-dir", type=str, help="Directory containing workflow template YAML files")
+    parser.add_argument("--generate-labels", type=str, metavar="TEMPLATE_DIR", help="Generate workflow_labels.json from YAML templates in the specified directory")
     args = parser.parse_args()
     
     # Generate workflow labels if requested
     if args.generate_labels:
-        workflow_labels = generate_workflow_labels_json(args.template_dir)
-        if workflow_labels:
-            logging.info(f"Generated workflow labels for: {', '.join(workflow_labels.keys())}")
-        return
+        generate_workflow_labels_json(args.generate_labels)
     
     if args.clean:
         get_workflow_execution_set() # Produces valid_data.json
