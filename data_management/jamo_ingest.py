@@ -32,7 +32,9 @@ def save_json(data: Dict, filename: str):
         OSError: If directory creation or file writing fails
     """
     # Create directory path if it doesn't exist
-    os.makedirs(os.path.dirname(filename), exist_ok=True)
+    dirname = os.path.dirname(filename)
+    if dirname:  # Only create directory if dirname is not empty
+        os.makedirs(dirname, exist_ok=True)
 
     with open(filename, 'w+') as f:
         json.dump(data, f, indent=4)
@@ -55,18 +57,21 @@ def load_json(filename: str) -> Dict:
 # API Query Functions
 def query_collection(base_url: str, collection_name: str,
                      max_page_size: Optional[int] = None,
-                     filter_param: Optional[str] = None) -> Dict:
+                     filter_param: Optional[str] = None,
+                     paginate: bool = True) -> Dict:
     """
-    Query the metadata from a specific collection.
+    Query the metadata from a specific collection with optional pagination support.
 
     Args:
         base_url: The base URL of the API
         collection_name: The name of the collection to query
         max_page_size: Maximum number of records to query per page
         filter_param: Optional MongoDB-style filter query string
+        paginate: If True, automatically fetches all pages and combines results
 
     Returns:
-        Dictionary containing the API response data
+        Dictionary containing the API response data. If paginate=True, returns
+        combined results from all pages in the same format as a single page response.
 
     Raises:
         requests.RequestException: If the API request fails
@@ -78,9 +83,45 @@ def query_collection(base_url: str, collection_name: str,
     if filter_param:
         params['filter'] = filter_param
 
-    response = requests.get(url, params=params)
-    response.raise_for_status()
-    return response.json()
+    if not paginate:
+        # Single page request (original behavior)
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        return response.json()
+    
+    # Paginated request - collect all pages
+    all_resources = []
+    page_token = None
+    page_count = 0
+    
+    while True:
+        current_params = params.copy()
+        if page_token:
+            current_params['page_token'] = page_token
+            
+        response = requests.get(url, params=current_params)
+        response.raise_for_status()
+        response_data = response.json()
+        
+        # Add resources from this page
+        if "resources" in response_data:
+            all_resources.extend(response_data["resources"])
+            page_count += 1
+            click.echo(f"Fetched page {page_count} with {len(response_data['resources'])} records")
+        
+        # Check if there are more pages
+        if "next_page_token" not in response_data or not response_data["next_page_token"]:
+            break
+            
+        page_token = response_data["next_page_token"]
+    
+    # Return the combined results in the same format as the original response
+    if page_count > 1:
+        click.echo(f"Pagination complete: {page_count} pages fetched, {len(all_resources)} total records")
+    
+    # Use the last response as the template and replace resources with combined results
+    response_data["resources"] = all_resources
+    return response_data
 
 
 def get_data_object_set(base_api_url: str, max_page_size: int) -> Dict:
@@ -88,11 +129,11 @@ def get_data_object_set(base_api_url: str, max_page_size: int) -> Dict:
     Retrieve data objects with URLs from the data_object_set collection.
 
     Creates a lookup dictionary mapping object ID to their full record data.
-    Only includes records that have a URL field.
+    Only includes records that have a URL field. Uses pagination to fetch all records.
 
     Args:
         base_api_url: Base API URL
-        max_page_size: Maximum number of records to retrieve
+        max_page_size: Maximum number of records to retrieve per page
 
     Returns:
         Dictionary mapping object IDs to their complete record data
@@ -109,7 +150,7 @@ def get_data_object_set(base_api_url: str, max_page_size: int) -> Dict:
     return kv_store
 
 
-def get_workflow_execution_set(base_api_url: str = _BASE_URL, max_page_size: int = 150000) -> Dict[str, List[str]]:
+def get_workflow_execution_set(base_api_url: str = _BASE_URL, max_page_size: int = 100000) -> Dict[str, List[str]]:
     """
     Query workflow execution records and organize them by workflow type.
 
@@ -126,13 +167,11 @@ def get_workflow_execution_set(base_api_url: str = _BASE_URL, max_page_size: int
             - key (str): workflow_execution_id
             - value (List): [workflow_execution_type (str), list_of_records (List[Dict])]
     """
-    # TODO: support pagination if records exceed max_page_size
-
-    # Get workflow records
+    # Get workflow records with pagination support
     workflow_records = query_collection(base_api_url, "workflow_execution_set", max_page_size)
     click.echo(f"Workflow Executions Set: {len(workflow_records.get('resources', []))} records retrieved.")
 
-    # Get data object set
+    # Get data object set with pagination support
     data_object_set = get_data_object_set(base_api_url, max_page_size)
     click.echo(f"Data Object Set: {len(data_object_set)} records retrieved.")
 
@@ -433,6 +472,11 @@ def main():
     
     if args.clean:
         get_workflow_execution_set() # Produces valid_data.json
+
+    # Check if valid_data.json exists before trying to load it
+    if not os.path.exists('valid_data/valid_data.json'):
+        logging.error("valid_data/valid_data.json not found. Run with --clean first.")
+        return
 
     with open('valid_data/valid_data.json', 'r') as valid_data_file:
         valid_data = json.load(valid_data_file)

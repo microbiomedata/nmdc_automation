@@ -13,6 +13,11 @@ attic/data/dryrun_data/
 nmdc_automation/workflow_automation/_state/*.state
 nmdc_automation/workflow_automation/_state/*.json
 
+# data management byproducts
+workflow_labels.json
+metadata_files/
+valid_data/
+
 # Ignore `coverage.xml` file in this directory.
 /coverage.xml
 prof/
