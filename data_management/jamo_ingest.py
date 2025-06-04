@@ -263,20 +263,6 @@ def create_json_structure(workflow_execution_id: str, workflow_execution: str, w
     }
 
 
-def _get_file_suffix():
-    config_yaml = 'config.yaml'
-
-    with open(config_yaml, 'r') as config_file:
-        config_yaml_data = yaml.safe_load(config_file)
-    config_json = json.loads(json.dumps(config_yaml_data, indent=4))
-
-    data_object_type_suffix_dict = {}
-    for data_object in config_json["Data Objects"]["Unique"]:
-        data_object_type_suffix_dict[data_object['data_object_type']] = data_object['nmdc_suffix']
-
-    return data_object_type_suffix_dict
-
-
 def generate_metadata_file(workflow_execution_id: str, workflow_execution: str, was_informed_by: str, records: List, emsl_only: bool = False, nersc_only: bool = False):
     """
     Generate and save metadata file for a specific workflow execution.
