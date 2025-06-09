@@ -17,7 +17,10 @@ import logging
 import traceback
 
 _BASE_URL = "https://api.microbiomedata.org/"
-
+NERSC_URL_PREFIX = "https://data.microbiomedata.org/data/"
+EMSL_URL_PREFIX = "https://nmdcdemo.emsl.pnnl.gov/"
+NERSC_BACKUP_PREFIX = "/global/cfs/cdirs/m3408/results/"
+EMSL_BACKUP_PREFIX = "/global/cfs/cdirs/m3408/emsl_backup/"
 
 # File Operations
 def save_json(data: Dict, filename: str):
@@ -282,7 +285,7 @@ def generate_metadata_file(workflow_execution_id: str, workflow_execution: str, 
         with open('workflow_labels.json', 'r') as workflow_labels_file:
             workflow_labels = json.load(workflow_labels_file)
     except (FileNotFoundError, json.JSONDecodeError):
-        logging.error("workflow_labels.json not found or invalid, generating from templates...")
+        logging.error("workflow_labels.json not found or invalid")
         return
     
     if workflow_execution not in workflow_labels.keys():
@@ -299,8 +302,8 @@ def generate_metadata_file(workflow_execution_id: str, workflow_execution: str, 
         metadata_keys["url"] = url
         
         # Handle both NERSC and EMSL data URLs
-        nersc_prefix = "https://data.microbiomedata.org/data/"
-        emsl_prefix = "https://nmdcdemo.emsl.pnnl.gov/"
+        nersc_prefix = NERSC_URL_PREFIX
+        emsl_prefix = EMSL_URL_PREFIX
         
         # Apply URL filtering based on flags
         if emsl_only and not url.startswith(emsl_prefix):
@@ -309,9 +312,9 @@ def generate_metadata_file(workflow_execution_id: str, workflow_execution: str, 
             continue
         
         if url.startswith(nersc_prefix):
-            file = "/global/cfs/cdirs/m3408/results/" + url.removeprefix(nersc_prefix)
+            file = os.path.join(NERSC_BACKUP_PREFIX, url.removeprefix(nersc_prefix))
         elif url.startswith(emsl_prefix):
-            file = "/global/cfs/cdirs/m3408/emsl_backup/" + url.removeprefix(emsl_prefix)
+            file = os.path.join(EMSL_BACKUP_PREFIX, url.removeprefix(emsl_prefix))
         else:
             logging.warning(f"Data {url} outside NERSC and EMSL")
             continue
@@ -324,6 +327,7 @@ def generate_metadata_file(workflow_execution_id: str, workflow_execution: str, 
         data_object_type = record["data_object_type"]
         metadata_keys["data_object_type"] = data_object_type
 
+        # TODO: See if this is still needed
         if file.endswith("scaffold_lineage.tsv"): # hardcoding label for this file format # bug in referenced nmdc config file?
             metadata_keys["label"] = "lineage_tsv"
         else:
@@ -340,7 +344,11 @@ def generate_metadata_file(workflow_execution_id: str, workflow_execution: str, 
     json_structure = create_json_structure(workflow_execution_id, workflow_execution, was_informed_by, metadata_keys_list)
     if json_structure is None:
         logging.error(f"Could not generate metadata structure for {workflow_execution} {workflow_execution_id}")
-    save_json(json_structure, f"metadata_files/metadata_{was_informed_by}_{workflow_execution_id}.json")
+    elif not json_structure["outputs"]:
+        logging.debug(f"Skip. No valid outputs found for workflow_execution {workflow_execution} {workflow_execution_id}")
+    else:
+        # Save the JSON structure to a file
+        save_json(json_structure, f"metadata_files/metadata_{was_informed_by}_{workflow_execution_id}.json")
 
 
 def process_data(valid_data: Dict[str, List], emsl_only: bool = False, nersc_only: bool = False):
