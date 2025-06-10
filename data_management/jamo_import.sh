@@ -11,6 +11,9 @@ declare -A wf_dict=(
   ["wfmgas"]="nmdc_metagenome_assembly"
   ["wfrbt"]="nmdc_read_based_taxonomy_analysis"
   ["wfrqc"]="nmdc_readqc_analysis"
+  ["wfmb"]="nmdc_metabolomics_analysis"
+  ["wfnom"]="nmdc_nom_analysis"
+  ["wfmp"]="nmdc_metaproteomics_analysis"
 )
 
 cd $1
