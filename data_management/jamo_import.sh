@@ -8,6 +8,7 @@
 # Parse command line arguments
 DEV_FLAG=false
 METADATA_DIR=""
+DATA_CENTER="nersc"
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -47,9 +48,9 @@ for file in metadata*.json; do
   wf=$(echo "$file" | cut -d':' -f3 | cut -d'-' -f1)
   # if dev flag is set run use dev/${wf_dict[$wf]}
   if [ "$DEV_FLAG" = true ]; then
-    jat import dev/${wf_dict[$wf]} $file
+    jat import dev/${wf_dict[$wf]} $file $DATA_CENTER
   else
-    jat import ${wf_dict[$wf]} $file
+    jat import ${wf_dict[$wf]} $file $DATA_CENTER
   fi
 
   if [ $? -eq 0 ]; then
