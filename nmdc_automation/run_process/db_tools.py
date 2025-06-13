@@ -202,7 +202,10 @@ def release_jobs(config_file, id_list_file):
     for job_id in job_ids:
         logger.info(f"Releasing job {job_id}")
         resp = nmdc_api.release_job(job_id)
-        logger.info(resp)
+        if resp is None:
+            logger.warning(f"Failed to release job {job_id}: No response returned (job not found or already released).")
+        else:
+            logger.info(resp)
 
 
 
