@@ -75,7 +75,7 @@ def study_report(config_file, study_id):
     logger.info(f"Workflow status found: {json.dumps(workflow_status_count, indent=2)}")
 
     # print the IDs of data generations that are not done to standard out 1 id per line
-    logger.info(f"{len(metagenome_ids_not_done)}Data generations not done:")
+    logger.info(f"{len(metagenome_ids_not_done)} Data generations not done:")
     for data_generation_id in metagenome_ids_not_done:
         print(data_generation_id)
 
