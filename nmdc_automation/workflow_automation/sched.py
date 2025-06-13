@@ -349,7 +349,7 @@ class Scheduler:
                     continue
                 except Exception as e:
                     logger.exception(e)
-
+                    raise
         return job_recs
 
 
