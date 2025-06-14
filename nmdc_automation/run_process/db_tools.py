@@ -4,6 +4,7 @@ DB Tools.
 import logging
 import json
 import os
+import requests
 
 import click
 
@@ -179,6 +180,32 @@ def fix_data_object_urls(config_file, update_db):
 
 
 
+@cli.command()
+@click.argument("config_file", type=click.Path(exists=True))
+@click.argument("id_list_file", type=click.Path(exists=True))
+def release_jobs(config_file, id_list_file):
+    """
+    Release jobs from a list of IDs.
+    """
+    logger.info(f"Releasing jobs from {id_list_file} using config {config_file}")
+
+    site_config = SiteConfig(config_file)
+
+    nmdc_api = NmdcRuntimeApi(site_config)
+    # Set up the API URL
+    api_url = site_config.api_url
+
+    # Read the job IDs from the file
+    with open(id_list_file, 'r') as f:
+        job_ids = [line.strip() for line in f if line.strip()]
+    logger.info(f"Found {len(job_ids)} job IDs to release")
+    for job_id in job_ids:
+        logger.info(f"Releasing job {job_id}")
+        resp = nmdc_api.release_job(job_id)
+        if resp is None:
+            logger.warning(f"Failed to release job {job_id}: No response returned (job not found or already released).")
+        else:
+            logger.info(resp)
 
 
 
