@@ -436,8 +436,7 @@ def test_workflow_job_from_database_job_record(site_config, fixtures_dir):
     ("read_based_analysis_workflow_state.json", "read_based_analysis_jaws_status.json"),
     ("rqc_workflow_state.json", "rqc_jaws_status.json"),
 ])
-def test_jaws_workflow_execution_record_has_ended_at_time(fixture_pair, site_config, fixtures_dir, mock_jaws_api,
-                                                       tmp_path):
+def test_jaws_workflow_execution_record_has_ended_at_time(fixture_pair, site_config, fixtures_dir, mock_jaws_api):
     workflow_state = json.load(open(fixtures_dir / fixture_pair[0]))
     job_metadata = json.load(open(fixtures_dir / fixture_pair[1]))
 
