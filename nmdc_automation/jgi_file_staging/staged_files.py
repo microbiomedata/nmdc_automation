@@ -5,18 +5,31 @@ import argparse
 import logging
 from pathlib import Path
 
-from mongo import get_mongo_db
+from WDL.Type import Boolean
+from mongomock.database import Database
+from mongomock.mongo_client import MongoClient
+
+from nmdc_automation.db.nmdc_mongo import get_db
 
 logging.basicConfig(
     filename="file_staging.log",
     format="%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s",
     datefmt="%Y-%m-%d,%H:%M:%S",
-    level=logging.DEBUG,
+    level=logging.DEBUG, force=True
 )
 
 
-def get_list_staged_files(project, config, save_file_list=None):
-    base_dir = Path(config["GLOBUS"]["dest_root_dir"], f"{project}_analysis_projects")
+def get_list_staged_files(project: str, config: configparser, save_file_list: Boolean = None) -> pd.DataFrame:
+    """
+    Get list of files that have been staged to filesystem
+    :param project: name of the project
+    :param config: configparser instance
+    :param save_file_list: Save list of staged files
+    """
+    # project root based on current file location
+    base_dir = Path(config["PROJECT"]["analysis_projects_dir"]) / project / f"analysis_files"
+
+
     proj_list = []
     for analysis_proj in os.listdir(base_dir):
         [
@@ -31,26 +44,30 @@ def get_list_staged_files(project, config, save_file_list=None):
 
 
 def get_list_missing_staged_files(
-    project_name, config_file, save_file_list=None
+    project_name:str, config: configparser, mdb: Database, save_file_list: Boolean=False
 ) -> list:
     """
     Get list of files on file system for a project and compare to list of files in database
+    :param project_name: name of the project
+    :param config: configparser instance
+    :param mdb: MongoDB instance
+    :param save_file_list: Save list of staged files
     """
-    config = configparser.ConfigParser()
-    config.read(config_file)
+
     stage_df = get_list_staged_files(project_name, config, save_file_list)
     stage_df["file_key"] = stage_df.apply(
-        lambda x: f"{x.analysis_project}-{x.import_file}", axis=1
+        lambda x: f"{x.analysis_project}-{x.file}", axis=1
     )
-    mdb = get_mongo_db()
-    samples_df = pd.DataFrame([s for s in mdb.samples.find({"project": project_name})])
+    samples_df = pd.DataFrame(mdb.samples.find({"project_name": project_name}))
     samples_df["file_key"] = samples_df.apply(
         lambda x: f"{x.apGoldId}-{x.file_name}", axis=1
     )
     db_samples_df = pd.merge(
         samples_df, stage_df, left_on="file_key", right_on="file_key", how="outer"
     )
-    db_samples_df.to_csv("merge_db_staged.csv", index=False)
+    db_samples_df.loc[
+        pd.isna(db_samples_df.analysis_project), ["apGoldId", "file_name"]
+    ].to_csv("missing_staged.csv", index=False)
     return db_samples_df.loc[
         pd.isna(db_samples_df.analysis_project), ["apGoldId", "file_name"]
     ].to_dict("records")
@@ -68,6 +85,18 @@ if __name__ == "__main__":
         default=False,
     )
     args = vars((parser.parse_args()))
-    get_list_missing_staged_files(
-        args["project_name"], args["config_file"], args["save_file_list"]
+    project_name = args["project_name"]
+    config_file = args["config_file"]
+    save_file_list = args["save_file_list"]
+    # Get the database connection
+    mdb = get_db()
+    if mdb is None:
+        logging.error("MongoDB connection failed")
+        exit(1)
+
+    # Get the list of missing staged files
+    config = configparser.ConfigParser()
+    config.read(config_file)
+    missing_files = get_list_missing_staged_files(
+        project_name, config, mdb, save_file_list
     )
