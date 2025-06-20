@@ -441,6 +441,7 @@ def test_jaws_workflow_execution_record_has_ended_at_time(fixture_pair, site_con
     job_metadata = json.load(open(fixtures_dir / fixture_pair[1]))
 
     wfj = WorkflowJob(site_config, workflow_state, job_metadata, jaws_api=mock_jaws_api)
+    # passing empty data_objects array - not needed within the scope of this test
     wfe = wfj.make_workflow_execution([])
     assert wfe.started_at_time
     assert wfe.ended_at_time
