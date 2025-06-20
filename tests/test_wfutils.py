@@ -427,3 +427,21 @@ def test_workflow_job_from_database_job_record(site_config, fixtures_dir):
     job = WorkflowJob(site_config, job_rec)
     assert job
     assert job.workflow.nmdc_jobid == job_rec['id']
+
+
+@pytest.mark.parametrize("fixture_pair", [
+    ("mags_workflow_state.json", "mags_jaws_status.json"),
+    ("annotation_workflow_state.json", "annotation_jaws_status.json"),
+    ("meta_assembly_workflow_state.json", "meta_assembly_jaws_status.json"),
+    ("read_based_analysis_workflow_state.json", "read_based_analysis_jaws_status.json"),
+    ("rqc_workflow_state.json", "rqc_jaws_status.json"),
+])
+def test_jaws_workflow_execution_record_has_ended_at_time(fixture_pair, site_config, fixtures_dir, mock_jaws_api,
+                                                       tmp_path):
+    workflow_state = json.load(open(fixtures_dir / fixture_pair[0]))
+    job_metadata = json.load(open(fixtures_dir / fixture_pair[1]))
+
+    wfj = WorkflowJob(site_config, workflow_state, job_metadata, jaws_api=mock_jaws_api)
+    wfe = wfj.make_workflow_execution([])
+    assert wfe.started_at_time
+    assert wfe.ended_at_time
