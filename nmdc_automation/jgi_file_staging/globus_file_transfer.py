@@ -92,7 +92,7 @@ def create_globus_dataframe(project_name: str, config: configparser.ConfigParser
 
 
 def create_globus_batch_file(project: str, config: configparser.ConfigParser, mdb,
-                             output_dir: Optional[Union[str, Path]]) -> (str, pd.DataFrame):
+                             output_dir: Optional[Union[str, Path]]=None) -> (str, pd.DataFrame):
     """
     Creates batch file for the globus file transfer
     :param project: name of project
@@ -208,5 +208,5 @@ if __name__ == '__main__':
     elif args['get_project_manifests']:
         get_project_globus_manifests(args['project_name'], mdb, config_file)
     else:
-        submit_globus_batch_file(args['project_name'], args['config_file'])
+        submit_globus_batch_file(args['project_name'], args['config_file'], mdb)
 
