@@ -13,8 +13,14 @@ class WorkflowProcessNode(object):
     Class to represent a workflow processing node. This is a node in a tree
     structure that represents the tree of data generation and
     workflow execution objects with their associated data objects.
+
+    Workflow refers to a WorkflowConfig, defined in a workflow config file e.g. workflow.yaml
+    Process refers to a PlannedProcess, either a DataGeneration or WorkflowExecution.
     """
-    def __init__(self, record: Dict[str, Any], workflow: "WorkflowConfig"):
+    def __init__(self, record: Dict[str, Any], workflow: "WorkflowConfig") -> None:
+        """
+        Initialize a workflow processing node.
+        """
         self.parent = None
         self.children = []
         self.data_objects_by_type = {}
@@ -25,30 +31,51 @@ class WorkflowProcessNode(object):
     def __hash__(self):
         return hash((self.id, self.type))
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
+        """
+        Compare two workflow processing nodes by process id and type
+        """
         return self.id == other.id and self.type == other.type
 
-    def add_data_object(self, data_object):
+    def add_data_object(self, data_object) -> None:
+        """
+        Add a data object to this workflow processing node.
+        """
         self.data_objects_by_type[data_object.data_object_type.code.text] = data_object
 
     @property
     def id(self):
+        """
+        Return the workflow processing node id based on its process id.
+        """
         return self.process.id
 
     @property
     def type(self):
+        """
+        Return the workflow processing node type based on its process type.
+        """
         return self.process.type
 
     @property
     def name(self):
+        """
+        Return the workflow processing node name based on its process name.
+        """
         return self.process.name
 
     @property
-    def has_input(self):
+    def has_input(self) -> list[str]:
+        """
+        Return the list of DataObject (or Biosample for DataGeneration) IDs that are input for this workflow processing node.
+        """
         return self.process.has_input
 
     @property
-    def has_output(self):
+    def has_output(self) -> list[str]:
+        """
+        Return the list of DataObject IDs that are output for this workflow processing node.
+        """
         return self.process.has_output
 
     @property
@@ -119,89 +146,17 @@ class WorkflowConfig:
     def __hash__(self):
         return hash(self.name)
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
+        """
+        Compare two workflow configs by name.
+        """
         return self.name == other.name
 
 
-    def add_child(self, child: "WorkflowConfig"):
-        """ Add a child workflow """
+    def add_child(self, child: "WorkflowConfig") -> None:
+        """ Add a child workflow config """
         self.children.add(child)
 
-    def add_parent(self, parent: "WorkflowConfig"):
-        """ Add a parent workflow """
+    def add_parent(self, parent: "WorkflowConfig") -> None:
+        """ Add a parent workflow config"""
         self.parents.add(parent)
-
-
-@dataclass
-class JobWorkflow:
-    id: str
-
-
-@dataclass
-class JobConfig:
-    """ Represents a job configuration from the NMDC API jobs endpoint / MongoDB jobs collection """
-    git_repo: str
-    release: str
-    wdl: str
-    activity_id: str
-    activity_set: str
-    was_informed_by: str
-    trigger_activity: str
-    iteration: int
-    input_prefix: str
-    inputs: Dict[str, str]
-    input_data_objects: List[DataObject]
-    activity: Dict[str, str]
-    outputs: List[Dict[str, str]]
-
-
-@dataclass
-class JobClaim:
-    op_id: str
-    site_id: str
-
-
-@dataclass
-class JobOutput:
-    """ Represents a job output specification. """
-    output: str
-    data_object: DataObject = field(init=False)
-
-    # Raw fields that will map to DataObject fields
-    data_object_type: str
-    description: Optional[str]
-    name: str
-    id: str
-
-    def __post_init__(self):
-        """ Initialize the object """
-        self.data_object = DataObject(
-            id=self.id,
-            name=self.name,
-            data_object_type=self.data_object_type,
-            description=self.description,
-        )
-
-
-@dataclass
-class Job:
-    """ Represents a job from the NMDC API jobs endpoint / MongoDB jobs collection """
-    id: str
-    workflow: JobWorkflow
-    config: JobConfig
-    created_at: Optional[datetime] = field(default=None)
-    claims: List[JobClaim] = field(default_factory=list)
-
-    def __post_init__(self):
-        """ If created_at is a string, convert it to a datetime object """
-        if isinstance(self.created_at, str):
-            self.created_at = parser.isoparse(self.created_at)
-
-        if isinstance(self.workflow, dict):
-            self.workflow = JobWorkflow(**self.workflow)
-
-        if isinstance(self.config, dict):
-            self.config = JobConfig(**self.config)
-
-        if isinstance(self.claims, list):
-            self.claims = [JobClaim(**claim) for claim in self.claims]
