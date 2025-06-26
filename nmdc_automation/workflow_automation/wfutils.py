@@ -818,7 +818,6 @@ class WorkflowJob:
         """
         wf_dict = self.as_workflow_execution_dict
         wf_dict["has_output"] = [dobj.id for dobj in data_objects]
-        wf_dict["ended_at_time"] = self.job.metadata.get("end")
 
         # workflow-specific keys
         logical_names = set()
