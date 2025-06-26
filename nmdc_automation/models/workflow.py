@@ -13,8 +13,14 @@ class WorkflowProcessNode(object):
     Class to represent a workflow processing node. This is a node in a tree
     structure that represents the tree of data generation and
     workflow execution objects with their associated data objects.
+
+    Workflow refers to a WorkflowConfig, defined in a workflow config file e.g. workflow.yaml
+    Process refers to a PlannedProcess, either a DataGeneration or WorkflowExecution.
     """
-    def __init__(self, record: Dict[str, Any], workflow: "WorkflowConfig"):
+    def __init__(self, record: Dict[str, Any], workflow: "WorkflowConfig") -> None:
+        """
+        Initialize a workflow processing node.
+        """
         self.parent = None
         self.children = []
         self.data_objects_by_type = {}
@@ -25,30 +31,51 @@ class WorkflowProcessNode(object):
     def __hash__(self):
         return hash((self.id, self.type))
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
+        """
+        Compare two workflow processing nodes by process id and type
+        """
         return self.id == other.id and self.type == other.type
 
-    def add_data_object(self, data_object):
+    def add_data_object(self, data_object) -> None:
+        """
+        Add a data object to this workflow processing node.
+        """
         self.data_objects_by_type[data_object.data_object_type.code.text] = data_object
 
     @property
     def id(self):
+        """
+        Return the workflow processing node id based on its process id.
+        """
         return self.process.id
 
     @property
     def type(self):
+        """
+        Return the workflow processing node type based on its process type.
+        """
         return self.process.type
 
     @property
     def name(self):
+        """
+        Return the workflow processing node name based on its process name.
+        """
         return self.process.name
 
     @property
-    def has_input(self):
+    def has_input(self) -> list[str]:
+        """
+        Return the list of DataObject (or Biosample for DataGeneration) IDs that are input for this workflow processing node.
+        """
         return self.process.has_input
 
     @property
-    def has_output(self):
+    def has_output(self) -> list[str]:
+        """
+        Return the list of DataObject IDs that are output for this workflow processing node.
+        """
         return self.process.has_output
 
     @property
@@ -119,16 +146,19 @@ class WorkflowConfig:
     def __hash__(self):
         return hash(self.name)
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
+        """
+        Compare two workflow configs by name.
+        """
         return self.name == other.name
 
 
-    def add_child(self, child: "WorkflowConfig"):
-        """ Add a child workflow """
+    def add_child(self, child: "WorkflowConfig") -> None:
+        """ Add a child workflow config """
         self.children.add(child)
 
-    def add_parent(self, parent: "WorkflowConfig"):
-        """ Add a parent workflow """
+    def add_parent(self, parent: "WorkflowConfig") -> None:
+        """ Add a parent workflow config"""
         self.parents.add(parent)
 
 
