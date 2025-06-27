@@ -130,7 +130,7 @@ class ImportMapper:
         """Return the import specifications by data object type (unique and multiple)."""
         import_specs = {do['data_object_type']: do for do in self.import_specifications["Data Objects"]["Unique"]}
         import_specs.update(
-            {do['data_object_type']: do for do in self.import_specifications["Data Objects"]["Multiples"]}
+            {do['data_object_type']: do for do in self.import_specifications["Data Objects"].get("Multiples", [])}
             )
         return import_specs
 
@@ -224,30 +224,49 @@ class ImportMapper:
                         has_input.add(fm.data_object_id)
         return list(has_input), list(has_output)
 
-
     def add_do_mappings_from_data_generation(self) -> None:
         """
-        Create the initial list of Data Object Mapping based on the data generation
-        record in the DB.
+        Create a DataObjectMapping instance based on the output of a DataGeneration record.
 
-        If the DG has_output is empty we create a mapping for Metagenome Raw Reads with
-        the data generation ID as the process_id, but no data object.
+        This function queries the runtime API to retrieve a DataGeneration record by its ID
+        (`self.data_generation_id`). If the record contains one or more outputs (i.e.,
+        associated DataObjects), the function uses the first output DataObject to construct
+        a mapping, including its type and process associations.
+
+        If the DataGeneration record has no outputs, a placeholder mapping is created using
+        the `analyte_category` field to determine the appropriate data object type:
+          - "metagenome" → "Metagenome Raw Reads"
+          - "metatranscriptome" → "Metatranscriptome Raw Reads"
+
+        The mapping is stored in `self.data_object_mappings`.
+
+        Raises:
+            ValueError: If the number of matching DataGeneration records is not exactly 1.
         """
-        # Find the data generation and it's output data object
+        # Look up the data generation record using its ID
         id_filter = {'id': self.data_generation_id}
         data_generation_recs = self.runtime_api.find_planned_processes(id_filter)
+
+        # Ensure exactly one matching record was found
         if len(data_generation_recs) != 1:
             raise ValueError(f"Found {len(data_generation_recs)} data generation records but expected 1")
+
         data_generation = data_generation_recs[0]
 
+        # Check if the data generation record has an output DataObject
         if 'has_output' in data_generation and len(data_generation['has_output']) > 0:
+            # Retrieve the first output DataObject
             data_object_id = data_generation['has_output'][0]
             data_object = self.runtime_api.find_data_objects(data_object_id)
         else:
+            # No output object found; use None
             data_object = None
 
         if data_object:
+            # Retrieve import specification for the DataObject type
             import_spec = self.import_specs_by_data_object_type[data_object["data_object_type"]]
+
+            # Add a DataObjectMapping using the actual DataObject
             self.data_object_mappings.add(
                 DataObjectMapping(
                     data_object_type=data_object["data_object_type"],
@@ -258,12 +277,21 @@ class ImportMapper:
                     nmdc_process_id=data_generation['id'],
                     data_object_in_db=True,
                     process_id_in_db=True,
-                    data_category=DataCategoryEnum.processed_data 
+                    data_category=DataCategoryEnum.processed_data
                 )
             )
         else:
-            data_object_type = "Metagenome Raw Reads"
+            # Determine data_object_type based on analyte_category
+            analyte_category = data_generation.get("analyte_category")
+            if analyte_category == "metatranscriptome":
+                data_object_type = "Metatranscriptome Raw Reads"
+            else:
+                # Default to metagenome if analyte_category is missing or "metagenome"
+                data_object_type = "Metagenome Raw Reads"
+
             import_spec = self.import_specs_by_data_object_type[data_object_type]
+
+            # Add a placeholder DataObjectMapping based on inferred type
             self.data_object_mappings.add(
                 DataObjectMapping(
                     data_object_type=data_object_type,
@@ -276,7 +304,6 @@ class ImportMapper:
                     data_category=DataCategoryEnum.instrument_data
                 )
             )
-
 
     def add_do_mappings_from_workflow_executions(self) -> None:
         """
@@ -411,7 +438,8 @@ class DataObjectMapping:
             )
 
     def __hash__(self):
-        return hash((self.data_object_type, self.import_file, self.output_of, self.data_object_id, self.nmdc_process_id, self.data_category))
+        return hash((self.data_object_type, self.import_file, self.output_of, self.data_object_id,
+                     self.nmdc_process_id, str(self.data_category)))
         
 
 @lru_cache
