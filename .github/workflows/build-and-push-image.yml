@@ -34,7 +34,7 @@ jobs:
                   context: .
                   file: Dockerfile
                   push: true
-                  tags: ghcr.io/microbiomedata/sched:${{ steps.date.outputs.date }}
+                  tags: ghcr.io/microbiomedata/sched:$(date +'%Y%m%d')
 
             # - name: Build the Docker image
             #   run: docker build . --file Dockerfile --tag microbiomedata/sched:$(date +'%Y%m%d')
