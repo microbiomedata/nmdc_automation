@@ -3,10 +3,6 @@ name: Build and push img-omics container image to GHCR
 # Run this workflow whenever a Dockerfile is updated.
 on:
     workflow_dispatch:
-    pull_request:
-    push:
-        branches:
-            - '**'
         paths:
             - 'Dockerfile'
 
@@ -39,11 +35,7 @@ jobs:
                   push: true
                   tags: ghcr.io/microbiomedata/sched:${{ steps.date.outputs.date }}
 
-            # - name: Build the Docker image
-            #   run: docker build . --file Dockerfile --tag microbiomedata/sched:$(date +'%Y%m%d')
-
 # References:
-# - https://docs.github.com/en/actions/learn-github-actions/variables#using-the-vars-context-to-access-configuration-variable-values
 # - https://docs.github.com/en/actions/publishing-packages/publishing-docker-images#publishing-images-to-github-packages
 # - https://github.com/microbiomedata/nmdc-edge/blob/main/.github/workflows/build-and-push-image.yml
 # - https://stackoverflow.com/questions/59191913/how-do-i-get-the-output-of-a-specific-step-in-github-actions
