@@ -237,19 +237,13 @@ class Scheduler:
     @lru_cache(maxsize=128)
     def get_existing_jobs(self, wf: WorkflowConfig):
         """
-        Get the existing jobs for a workflow. Ignore cancelled jobs.
+        Get the existing jobs for a workflow, including cancelled jobs
         """
         existing_jobs = set()
         # Filter by git_repo and version
         # Find all existing jobs for this workflow
         q = {"config.git_repo": wf.git_repo, "config.release": wf.version}
         for j in self.db.jobs.find(q):
-            # If all claims are 'cancelled' then we can ignore this job for scheduling purposes
-            claims = j.get("claims", [])
-            if claims:
-                all_cancelled = all([c.get('cancelled', False) for c in claims])
-                if all_cancelled:
-                    continue
             # the assumption is that a job in any state has been triggered by an activity
             # that was the result of an existing (completed) job
             act = j["config"]["trigger_activity"]

@@ -294,3 +294,35 @@ def test_scheduler_create_job_rec_has_input_files_as_array(test_db, mock_api, wo
     assert isinstance(assembly["config"]["inputs"]["input_files"], list)
 
 
+@pytest.mark.parametrize("job_fixture", [
+    "job_req_2.json",
+    "cancelled_job_req_2.json"
+])
+def test_scheduler_find_new_jobs_with_existing_job(job_fixture, test_db, workflows_config_dir, site_config_file):
+    """
+    Test that the find_new_jobs method works as expected. We load an existing job fixture so we expect no new jobs to be found.
+    """
+    reset_db(test_db)
+    load_fixture(test_db, "data_objects_2.json", "data_object_set")
+    load_fixture(test_db, "data_generation_2.json", "data_generation_set")
+    load_fixture(test_db, "workflow_execution_2.json", "workflow_execution_set")
+    load_fixture(test_db, job_fixture, "jobs")
+
+    workflow_config = load_workflow_configs(workflows_config_dir / "workflows.yaml")
+
+    workflow_process_nodes = load_workflow_process_nodes(test_db, workflow_config)
+    # sanity check
+    assert workflow_process_nodes
+
+    scheduler = Scheduler(test_db, workflow_yaml=workflows_config_dir / "workflows.yaml", site_conf=site_config_file)
+    assert scheduler
+
+    new_jobs = []
+    for node in workflow_process_nodes:
+        new_jobs.extend(scheduler.find_new_jobs(node))
+    assert not new_jobs
+
+
+
+
+
