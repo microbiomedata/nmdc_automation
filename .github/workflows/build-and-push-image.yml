@@ -32,7 +32,8 @@ jobs:
         with:
           images: ghcr.io/microbiomedata/nmdc-scheduler
           flavor: latest=auto
-          tags: type=semver,pattern={{version}}
+          # tags: type=semver,pattern={{version}}
+          tags: type=semver,pattern=0.0.0
           # References:
           # - https://github.com/opencontainers/image-spec/blob/main/annotations.md
           # - https://github.com/docker/metadata-action/blob/master/README.md#tag
