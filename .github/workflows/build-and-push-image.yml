@@ -5,13 +5,6 @@ name: Build and push container image to GHCR
 on:
   release:
     types: [ published ]
-  # for testing
-  workflow_dispatch:
-  push:
-      branches:
-          - 563-adjust-githuub-action-of-schduler-image
-          - "**"
-  pull_request:
 
 
 jobs:
@@ -32,8 +25,7 @@ jobs:
         with:
           images: ghcr.io/microbiomedata/nmdc-scheduler
           flavor: latest=auto
-          # tags: type=semver,pattern={{version}}
-          tags: type=semver,pattern=0.0.0
+          tags: type=semver,pattern={{version}}
           # References:
           # - https://github.com/opencontainers/image-spec/blob/main/annotations.md
           # - https://github.com/docker/metadata-action/blob/master/README.md#tag
