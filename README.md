@@ -166,7 +166,7 @@ https://ipo.lbl.gov/joint-genome-institute-analysis-workflow-service-jaws-for-co
 
 The legacy job running service is a self-managed SLURM/Condor/Cromwell stack running on Permutter. 
 
-Details can be found in [README_Slurm.md](README_Slurm.md)
+Details can be found in [README_Slurm.md](docs/README_Slurm.md)
 
 The `JobRunner` is also responsible for processing the resulting data and metadata when the job completes.  
 The watcher maintains a record of it's current activity in a `State File`
