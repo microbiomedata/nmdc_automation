@@ -48,7 +48,6 @@ jobs:
         id: push
         uses: docker/build-push-action@v5
         with:
-          # Build the "production" target (stage) defined in the `Dockerfile`.
           context: .
           file: Dockerfile
           tags: ${{ steps.meta.outputs.tags }}

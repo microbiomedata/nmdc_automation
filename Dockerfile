@@ -14,3 +14,5 @@ RUN pip install semver
 
 ADD . /src
 
+WORKDIR /conf
+ADD ./run_scheduler.sh /conf

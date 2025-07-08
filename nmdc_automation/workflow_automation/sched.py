@@ -270,7 +270,7 @@ class Scheduler:
                 continue
             # See if we already have a job for this
             if wfp_node.id in self.get_existing_jobs(wf):
-                msg = f"Skipping existing job for{wfp_node.id} {wf.name}:{wf.version}"
+                msg = f"Skipping existing job for {wfp_node.id} {wf.name}:{wf.version}"
                 if msg not in self._messages:
                     logger.info(msg)
                     self._messages.append(msg)
