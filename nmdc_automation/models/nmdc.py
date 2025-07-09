@@ -17,6 +17,7 @@ import nmdc_schema.nmdc as nmdc
 
 @lru_cache(maxsize=None)
 def get_nmdc_materialized():
+    """ Get and cache the NMDC materialized schema"""
     with importlib.resources.open_text("nmdc_schema", "nmdc_materialized_patterns.yaml") as f:
         return yaml.safe_load(f)
 
@@ -25,9 +26,11 @@ WorkflowExecution]:
     """
     Factory function to create a PlannedProcess subclass object from a record.
     Subclasses are determined by the "type" field in the record, and can be
-    either a WorkflowExecution or DataGeneration object.
+    either a WorkflowExecution or DataGeneration object. Created objects are validated
+    via LinkML validation to the materialized schema imported from nmdc-schema.
     """
     nmdc_materialized = get_nmdc_materialized()
+    # Map of type URI to nmdc-schema dataclass
     process_types = {
         "nmdc:MagsAnalysis": MagsAnalysis,
         "nmdc:MetagenomeAnnotation": MetagenomeAnnotation,
@@ -121,8 +124,8 @@ class DataObject(nmdc.DataObject):
     # override the base class data_object_type (FileTypeEnum) to return a string
     @property
     def data_object_type_text(self) -> str:
+        """ Return the data object type text """
         return self.data_object_type.code.text
-
 
 
     def as_dict(self) -> Dict[str, Any]:
