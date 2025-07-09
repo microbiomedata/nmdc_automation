@@ -69,6 +69,11 @@ class SchedulerJob:
         self.trigger_id = trigger_act.id
 
 
+class MissingDataObjectException(Exception):
+    """ Custom exception for missing data objects"""
+    pass
+
+
 class Scheduler:
 
     def __init__(self, db, workflow_yaml,
@@ -127,7 +132,7 @@ class Scheduler:
                 if not dobj:
                     if k in optional_inputs:
                         continue
-                    raise ValueError(f"Unable to find {do_type} in {do_by_type}")
+                    raise MissingDataObjectException(f"Unable to find {do_type} in {do_by_type}")
                 input_data_objects.append(dobj.as_dict())
 
                 if k == "input_files":
@@ -231,6 +236,9 @@ class Scheduler:
 
     @lru_cache(maxsize=128)
     def get_existing_jobs(self, wf: WorkflowConfig):
+        """
+        Get the existing jobs for a workflow, including cancelled jobs
+        """
         existing_jobs = set()
         # Filter by git_repo and version
         # Find all existing jobs for this workflow
@@ -244,8 +252,10 @@ class Scheduler:
 
     def find_new_jobs(self, wfp_node: WorkflowProcessNode) -> list[SchedulerJob]:
         """
-        For a given activity see if there are any new jobs
-        that should be created.
+        Find new jobs for a workflow process node. A new job:
+        - Is either not in the Jobs collection or is cancelled
+        - Is not satisfied by an existing version of a workflow execution
+        - Is for a workflow that is enabled
         """
         new_jobs = []
         # Loop over the derived workflows for this
@@ -327,9 +337,13 @@ class Scheduler:
                     self.db.jobs.insert_one(jr)
                     if jr:
                         job_recs.append(jr)
-                except Exception as ex:
-                    logger.error(str(ex))
-                    raise ex
+                except MissingDataObjectException as e:
+                    logger.warning(f"Caught missing Data Object(s) for {job.informed_by}: Skipping")
+                    logger.warning(e)
+                    continue
+                except Exception as e:
+                    logger.exception(e)
+                    raise
         return job_recs
 
 
