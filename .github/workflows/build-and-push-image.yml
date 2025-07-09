@@ -6,36 +6,53 @@ on:
   release:
     types: [ published ]
 
+
 jobs:
   build-and-push-image:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout branch
         uses: actions/checkout@v4
-      # get date in yyyymmdd format for tag
-      - name: Get current date
-        id: date
-        run: echo "::set-output name=date::$(date +'%Y%m%d')"
       - name: Authenticate with container registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Prepare metadata of container image
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/microbiomedata/nmdc-scheduler
+          flavor: latest=auto
+          tags: type=semver,pattern={{version}}
+          # References:
+          # - https://github.com/opencontainers/image-spec/blob/main/annotations.md
+          # - https://github.com/docker/metadata-action/blob/master/README.md#tag
+          # - https://github.com/docker/metadata-action/blob/master/README.md#sha
+          labels: |
+            org.opencontainers.image.title=NMDC Automation Scheduler
+            org.opencontainers.image.description=The Scheduler polls the NMDC database based upon an Allowlist of DataGeneration IDs. Based on an allowed data-generation ID, the scheduler examines WorkflowExecutions and DataObjects that was_informed_by by the data generation, and builds a graph of Workflow Process Nodes.
+            org.opencontainers.image.vendor=National Microbiome Data Collaborative
+            org.opencontainers.image.documentation=https://github.com/microbiomedata/nmdc_automation
+            org.opencontainers.image.url=https://github.com/microbiomedata/nmdc_automation
+            org.opencontainers.image.source=https://github.com/microbiomedata/nmdc_automation
+            org.opencontainers.image.version={{tag}}
+            org.opencontainers.image.revision={{sha}}
         # Use the `docker/build-push-action` action to build the image described
         # by the specified Dockerfile. If the build succeeds, push the image to GHCR.
-        # This action uses the `tags` parameters to tag the image with the Git tag name
-        # the image, respectively, with the output from the "Get current date" step above.
-        # For more info: https://github.com/docker/build-push-action#usage.
+        # This action uses the `tags` and `labels` parameters to tag and label
+        # the image, respectively, with the _outputs_ from the "meta" step above.
+        # Docs: https://github.com/docker/build-push-action#usage
       - name: Build and push container image
         id: push
         uses: docker/build-push-action@v5
         with:
           context: .
           file: Dockerfile
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           push: true
-          tags: ghcr.io/microbiomedata/sched:${{ steps.date.outputs.date }}
-
 # References:
 # - https://docs.github.com/en/actions/publishing-packages/publishing-docker-images#publishing-images-to-github-packages
 # - https://github.com/microbiomedata/nmdc-edge/blob/main/.github/workflows/build-and-push-image.yml
