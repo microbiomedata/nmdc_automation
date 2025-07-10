@@ -1,9 +1,8 @@
-from nmdc_automation.workflow_automation.sched import Scheduler, SchedulerJob
-from nmdc_automation.workflow_automation.workflows import load_workflow_configs
-from nmdc_automation.models.workflow import WorkflowConfig, WorkflowProcessNode
+from nmdc_automation.workflow_automation.sched import Scheduler, SchedulerJob, MissingDataObjectException
 from pytest import mark
+import pytest
 
-from nmdc_automation.workflow_automation.workflow_process import get_required_data_objects_map, load_workflow_process_nodes
+from nmdc_automation.workflow_automation.workflow_process import load_workflow_process_nodes
 from nmdc_automation.workflow_automation.workflows import load_workflow_configs
 from tests.fixtures.db_utils import init_test, load_fixture, read_json, reset_db
 
@@ -266,6 +265,43 @@ def test_scheduler_find_new_jobs(test_db, mock_api, workflows_config_dir, site_c
     assert job_req["config"]["input_data_objects"]
 
 
+def test_scheduler_create_job_rec_raises_missing_data_object_exception(test_db, mock_api, workflows_config_dir, site_config_file):
+    """
+    Test that create_job_rec raises a MissingDataObjectException for missing data files
+    """
+    reset_db(test_db)
+    load_fixture(test_db, "data_objects_2.json", "data_object_set")
+    load_fixture(test_db, "data_generation_2.json", "data_generation_set")
+    load_fixture(test_db, "workflow_execution_2.json", "workflow_execution_set")
+
+    workflow_config = load_workflow_configs(workflows_config_dir / "workflows.yaml")
+
+    workflow_process_nodes = load_workflow_process_nodes(test_db, workflow_config)
+    # sanity check
+    assert workflow_process_nodes
+
+    scheduler = Scheduler(test_db, workflow_yaml=workflows_config_dir / "workflows.yaml", site_conf=site_config_file)
+    assert scheduler
+
+    new_jobs = []
+    for node in workflow_process_nodes:
+        new_jobs.extend(scheduler.find_new_jobs(node))
+    assert new_jobs
+    assert len(new_jobs) == 1
+    new_job = new_jobs[0]
+    assert isinstance(new_job, SchedulerJob)
+    assert new_job.workflow.type == "nmdc:MagsAnalysis"
+    assert new_job.trigger_act.type == "nmdc:MetagenomeAnnotation"
+    assert new_job.trigger_act.data_objects_by_type
+    # remove contig file data object
+    del new_job.trigger_act.data_objects_by_type["Assembly Contigs"]
+    parent = new_job.trigger_act.parent
+    del parent.data_objects_by_type["Assembly Contigs"]
+
+    with pytest.raises(MissingDataObjectException):
+        job_req = scheduler.create_job_rec(new_job)
+
+
 def test_scheduler_create_job_rec_has_input_files_as_array(test_db, mock_api, workflows_config_dir, site_config_file):
     """
     Test that the input_data_objects field is an array of strings.
@@ -288,5 +324,37 @@ def test_scheduler_create_job_rec_has_input_files_as_array(test_db, mock_api, wo
     assert isinstance(assembly["config"]["inputs"]["shortRead"], bool)
     assert assembly["config"]["inputs"]["shortRead"] == True
     assert isinstance(assembly["config"]["inputs"]["input_files"], list)
+
+
+@pytest.mark.parametrize("job_fixture", [
+    "job_req_2.json",
+    "cancelled_job_req_2.json"
+])
+def test_scheduler_find_new_jobs_with_existing_job(job_fixture, test_db, workflows_config_dir, site_config_file):
+    """
+    Test that the find_new_jobs method works as expected. We load an existing job fixture so we expect no new jobs to be found.
+    """
+    reset_db(test_db)
+    load_fixture(test_db, "data_objects_2.json", "data_object_set")
+    load_fixture(test_db, "data_generation_2.json", "data_generation_set")
+    load_fixture(test_db, "workflow_execution_2.json", "workflow_execution_set")
+    load_fixture(test_db, job_fixture, "jobs")
+
+    workflow_config = load_workflow_configs(workflows_config_dir / "workflows.yaml")
+
+    workflow_process_nodes = load_workflow_process_nodes(test_db, workflow_config)
+    # sanity check
+    assert workflow_process_nodes
+
+    scheduler = Scheduler(test_db, workflow_yaml=workflows_config_dir / "workflows.yaml", site_conf=site_config_file)
+    assert scheduler
+
+    new_jobs = []
+    for node in workflow_process_nodes:
+        new_jobs.extend(scheduler.find_new_jobs(node))
+    assert not new_jobs
+
+
+
 
 

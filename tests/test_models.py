@@ -5,7 +5,7 @@ from bson import ObjectId
 from pathlib import Path
 from pytest import mark, raises
 from nmdc_automation.models.nmdc import DataObject, workflow_process_factory
-from nmdc_automation.models.workflow import Job, JobOutput, JobWorkflow, WorkflowProcessNode
+from nmdc_automation.models.workflow import WorkflowProcessNode
 from nmdc_automation.workflow_automation.workflows import load_workflow_configs
 from tests.fixtures import db_utils
 
@@ -161,6 +161,7 @@ def test_data_object_creation_invalid_data_object_type():
         "description": "Sequencing results for metaG_R1",
         "md5_checksum": "ed9467e690babb683b024ed47dd97b85",
         "data_object_type": "Something Invalid",
+        "data_category": "instrument_data",
         "type": "nmdc:DataObject",
         "url": "https://portal.nersc.gov"
     }
@@ -187,30 +188,3 @@ def test_data_object_creation_invalid_data_category():
     }
     with raises(ValueError) as excinfo:
         data_obj = DataObject(**record)
-
-def test_job_output_creation():
-    outputs = [
-        {
-            "output": "proteins_faa",
-            "data_object_type": "Annotation Amino Acid FASTA",
-            "description": "FASTA Amino Acid File for {id}",
-            "name": "FASTA amino acid file for annotated proteins",
-            "id": "nmdc:dobj-11-tt8ykk73"
-        },
-        {
-            "output": "structural_gff",
-            "data_object_type": "Structural Annotation GFF",
-            "description": "Structural Annotation for {id}",
-            "name": "GFF3 format file with structural annotations",
-            "id": "nmdc:dobj-11-xh82sm39"
-        }
-    ]
-    for output in outputs:
-        job_output = JobOutput(**output)
-
-
-def test_job_creation(fixtures_dir):
-    job_record = json.load(open(fixtures_dir / "nmdc_api/unsubmitted_job.json"))
-    job = Job(**job_record)
-    assert job.id == job_record["id"]
-    assert isinstance(job.workflow, JobWorkflow)

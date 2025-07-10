@@ -312,6 +312,19 @@ class NmdcRuntimeApi:
         data["claimed"] = claimed
         return data
 
+    @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
+    @refresh_token
+    def release_job(self, job_id: str):
+        """
+        Release a job that was previously claimed.
+        """
+        url = "%sjobs/%s:release" % (self._base_url, job_id)
+        resp = requests.post(url, headers=self.header)
+        if resp.status_code == 404:
+            logging.warning(f"Job {job_id} not found or already released.")
+            return None
+        return resp.json()
+
     def _page_query(self, url):
         orig_url = url
         results = []

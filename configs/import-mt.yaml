@@ -3,11 +3,11 @@ Workflows:
     Import: true
     Type: nmdc:ReadQcAnalysis
     Git_repo: https://github.com/microbiomedata/metaT_ReadsQC
-    Version: v0.0.7
+    Version: v0.0.10
     Collection: workflow_execution_set
     WorkflowExecutionRange: ReadQcAnalysis
     Inputs:
-      - Metagenome Raw Reads
+      - Metatranscriptome Raw Reads
     Workflow_Execution:
       name: "Read QC for {id}"
       input_read_bases: "{outputs.stats.input_read_bases}"
@@ -25,13 +25,13 @@ Workflows:
     Import: false
     Type: nmdc:MetatranscriptomeAssembly
     Git_repo: https://github.com/microbiomedata/metaT_Assembly
-    Version: v0.0.2
+    Version: v0.0.4
     Collection: workflow_execution_set
     WorkflowExecutionRange: MetatranscriptomeAssembly
     Inputs:
       - Filtered Sequencing Reads
     Workflow_Execution:
-      name: "Metagenome Assembly for {id}"
+      name: "Metatranscriptome Assembly for {id}"
       type: nmdc:MetatranscriptomeAssembly
       asm_score: "{outputs.stats.asm_score}"
       contig_bp: "{outputs.stats.contig_bp}"
@@ -112,7 +112,7 @@ Workflows:
     Import: false
     Type: nmdc:MetatranscriptomeExpressionAnalysis
     Git_repo: https://github.com/microbiomedata/metaT_ReadCounts
-    Version: v0.0.5
+    Version: v0.0.7
     Collection: metatranscriptome_expression_analysis_set
     WorkflowExecutionRange: MetatranscriptomeExpressionAnalysis
     Inputs:
@@ -128,8 +128,8 @@ Workflows:
 
 Data Objects:
   Unique:
-    - data_object_type: Metagenome Raw Reads
-      description: Metagenome Raw Reads for {id}
+    - data_object_type: Metatranscriptome Raw Reads
+      description: Metatranscriptome Raw Reads for {id}
       name: Raw sequencer read data
       import_suffix:  \.[ACGT]+-[ACGT]+\.fastq\.gz$
       nmdc_suffix: .fastq.gz

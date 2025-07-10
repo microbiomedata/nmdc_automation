@@ -311,7 +311,7 @@ Workflows:
       data_object_type: Metatranscriptome Expression
       description: Expression counts for {id}
       name: Metatranscriptome expression table
-    - output: info_file
+    - output: readcount_info
       data_object_type: Metatranscriptome Expression Info File
       description: Expression info for {id}
       name: Metatranscriptome Expression Info File
@@ -340,7 +340,7 @@ Workflows:
       data_object_type: Metatranscriptome Expression
       description: Expression counts for {id}
       name: Metatranscriptome expression table
-    - output: info_file
+    - output: readcount_info
       data_object_type: Metatranscriptome Expression Info File
       description: Expression info for {id}
       name: Metatranscriptome Expression Info File
@@ -370,7 +370,7 @@ Workflows:
       data_object_type: Metatranscriptome Expression
       description: Expression counts for {id}
       name: Metatranscriptome expression table
-    - output: info_file
+    - output: readcount_info
       data_object_type: Metatranscriptome Expression Info File
       description: Expression info for {id}
       name: Metatranscriptome Expression Info File
