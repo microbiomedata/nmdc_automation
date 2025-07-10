@@ -6,7 +6,8 @@
     "file_size_bytes": 1232092144,
     "id": "nmdc:37573bca240f88091720ae61ae5c9452",
     "name": "gold:Gp0213371_Assembled contigs fasta",
-    "data_object_type": "Assembly Contigs"
+    "data_object_type": "Assembly Contigs",
+    "data_category": "processed_data"
   },
   {
     "description": "Protein FAA for gold:Gp0213371",
@@ -15,7 +16,8 @@
     "file_size_bytes": 628842156,
     "id": "nmdc:7336ecf1f0b47e6161b52aec01d56ab8",
     "name": "gold:Gp0213371_Protein FAA",
-    "data_object_type": "Annotation Amino Acid FASTA"
+    "data_object_type": "Annotation Amino Acid FASTA",
+    "data_category": "processed_data"
   },
   {
     "description": "Structural annotation GFF file for gold:Gp0213371",
@@ -24,7 +26,8 @@
     "file_size_bytes": 347373891,
     "id": "nmdc:62b6efaf7d8a21c60dd6604b04ab4c14",
     "name": "gold:Gp0213371_Structural annotation GFF file",
-    "data_object_type": "Structural Annotation GFF"
+    "data_object_type": "Structural Annotation GFF",
+    "data_category": "processed_data"
   },
   {
     "description": "Functional annotation GFF file for gold:Gp0213371",
@@ -33,7 +36,8 @@
     "file_size_bytes": 614513871,
     "id": "nmdc:4d41794368ed796500bb6d2c82a6787a",
     "name": "gold:Gp0213371_Functional annotation GFF file",
-    "data_object_type": "Functional Annotation GFF"
+    "data_object_type": "Functional Annotation GFF",
+    "data_category": "processed_data"
   },
   {
     "description": "CATH FunFams GFF file for gold:Gp0213371",
@@ -42,7 +46,8 @@
     "file_size_bytes": 614513871,
     "id": "nmdc:a225e5bf4d6a504b9823636ac9e38224",
     "name": "gold:Gp0213371_CATH FunFams (Functional Families) Annotation GFF",
-    "data_object_type": "CATH FunFams (Functional Families) Annotation GFF"
+    "data_object_type": "CATH FunFams (Functional Families) Annotation GFF",
+    "data_category": "processed_data"
   },
   {
     "description": "SUPERFam GFF file for gold:Gp0213371",
@@ -51,7 +56,8 @@
     "file_size_bytes": 614513871,
     "id": "nmdc:c2826e164cceee905d5d2878c4c87dfb",
     "name": "gold:Gp0213371_SUPERFam Annotation GFF",
-    "data_object_type": "SUPERFam Annotation GFF"
+    "data_object_type": "SUPERFam Annotation GFF",
+    "data_category": "processed_data"
   },
   {
     "description": "Clusters of Orthologous Groups (COG) Annotation GFF file for gold:Gp0213371",
@@ -60,7 +66,8 @@
     "file_size_bytes": 614513871,
     "id": "nmdc:225c2a620cc15cfd371f9aa6e0c5208c",
     "name": "gold:Gp0213371_Clusters of Orthologous Groups (COG) Annotation GFF",
-    "data_object_type": "Clusters of Orthologous Groups (COG) Annotation GFF"
+    "data_object_type": "Clusters of Orthologous Groups (COG) Annotation GFF",
+    "data_category": "processed_data"
   },
   {
     "description": "Pfam Annotation GFF file for gold:Gp0213371",
@@ -69,7 +76,8 @@
     "file_size_bytes": 614513871,
     "id": "nmdc:36c458d8648ece4e8c3af9b13319b9b8",
     "name": "gold:Gp0213371_Pfam Annotation GFF",
-    "data_object_type": "Pfam Annotation GFF"
+    "data_object_type": "Pfam Annotation GFF",
+    "data_category": "processed_data"
   },
   {
     "description": "Product Names file for gold:Gp0213371",
@@ -78,7 +86,8 @@
     "file_size_bytes": 614513871,
     "id": "nmdc:af9892ee8372ba97bff93424079221d8",
     "name": "gold:Gp0213371_Product Names",
-    "data_object_type": "Product Names"
+    "data_object_type": "Product Names",
+    "data_category": "processed_data"
   },
   {
     "description": "TIGRFam Annotation GFF file for gold:Gp0213371",
@@ -87,7 +96,8 @@
     "file_size_bytes": 614513871,
     "id": "nmdc:02f081900336db5b9553328c93c40d21",
     "name": "gold:Gp0213371_TIGRFam Annotation GFF",
-    "data_object_type": "TIGRFam Annotation GFF"
+    "data_object_type": "TIGRFam Annotation GFF",
+    "data_category": "processed_data"
   },
   {
     "description": "SMART Annotation GFF file for gold:Gp0213371",
@@ -96,7 +106,8 @@
     "file_size_bytes": 614513871,
     "id": "nmdc:5b7a1c3890012eab0fb111979dd6ca3f",
     "name": "gold:Gp0213371_SMART Annotation GFF",
-    "data_object_type": "SMART Annotation GFF"
+    "data_object_type": "SMART Annotation GFF",
+    "data_category": "processed_data"
   },
   {
     "description": "Gene Phylogeny file for gold:Gp0213371",
@@ -105,7 +116,8 @@
     "file_size_bytes": 614513871,
     "id": "nmdc:205d1c4d44756cdadc7f2263375cd5cc",
     "name": "gold:Gp0213371_Gene Phylogeny",
-    "data_object_type": "Gene Phylogeny tsv"
+    "data_object_type": "Gene Phylogeny tsv",
+    "data_category": "processed_data"
   },
   {
     "description": "KO TSV file for gold:Gp0213371",
@@ -114,7 +126,8 @@
     "file_size_bytes": 66169854,
     "id": "nmdc:a8e41f5700ab72a4f61f3d1dd45285c8",
     "name": "gold:Gp0213371_KO TSV file",
-    "data_object_type": "Annotation KEGG Orthology"
+    "data_object_type": "Annotation KEGG Orthology",
+    "data_category": "processed_data"
   },
   {
     "description": "EC TSV file for gold:Gp0213371",
@@ -123,7 +136,8 @@
     "file_size_bytes": 43666034,
     "id": "nmdc:551a7f35ff12bcd874c84b38c2adbceb",
     "name": "gold:Gp0213371_EC TSV file",
-    "data_object_type": "Annotation Enzyme Commission"
+    "data_object_type": "Annotation Enzyme Commission",
+    "data_category": "processed_data"
   },
   {
     "description": "COG GFF file for gold:Gp0213371",
@@ -131,7 +145,8 @@
     "md5_checksum": "45743fa49c9e798771285daafa4282a8",
     "file_size_bytes": 343878116,
     "id": "nmdc:45743fa49c9e798771285daafa4282a8",
-    "name": "gold:Gp0213371_COG GFF file"
+    "name": "gold:Gp0213371_COG GFF file",
+    "data_category": "processed_data"
   },
   {
     "description": "PFAM GFF file for gold:Gp0213371",
@@ -139,7 +154,8 @@
     "md5_checksum": "7059a9060fa1c387109bd687f5185789",
     "file_size_bytes": 298511774,
     "id": "nmdc:7059a9060fa1c387109bd687f5185789",
-    "name": "gold:Gp0213371_PFAM GFF file"
+    "name": "gold:Gp0213371_PFAM GFF file",
+    "data_category": "processed_data"
   },
   {
     "description": "TigrFam GFF file for gold:Gp0213371",
@@ -147,7 +163,8 @@
     "md5_checksum": "ca06b1f1d9661a8bc574be6d9e88ea61",
     "file_size_bytes": 40093221,
     "id": "nmdc:ca06b1f1d9661a8bc574be6d9e88ea61",
-    "name": "gold:Gp0213371_TigrFam GFF file"
+    "name": "gold:Gp0213371_TigrFam GFF file",
+    "data_category": "processed_data"
   },
   {
     "description": "SMART GFF file for gold:Gp0213371",
@@ -155,7 +172,8 @@
     "md5_checksum": "6aa2609c12ebfd17d481772725a4ea10",
     "file_size_bytes": 85832787,
     "id": "nmdc:6aa2609c12ebfd17d481772725a4ea10",
-    "name": "gold:Gp0213371_SMART GFF file"
+    "name": "gold:Gp0213371_SMART GFF file",
+    "data_category": "processed_data"
   },
   {
     "description": "SuperFam GFF file for gold:Gp0213371",
@@ -163,7 +181,8 @@
     "md5_checksum": "794ad11fd53f99ab3801227614b4ec3b",
     "file_size_bytes": 403971945,
     "id": "nmdc:794ad11fd53f99ab3801227614b4ec3b",
-    "name": "gold:Gp0213371_SuperFam GFF file"
+    "name": "gold:Gp0213371_SuperFam GFF file",
+    "data_category": "processed_data"
   },
   {
     "description": "Cath FunFam GFF file for gold:Gp0213371",
@@ -171,7 +190,8 @@
     "md5_checksum": "de7b26c212d063e5e0d2b47378252d4b",
     "file_size_bytes": 344881743,
     "id": "nmdc:de7b26c212d063e5e0d2b47378252d4b",
-    "name": "gold:Gp0213371_Cath FunFam GFF file"
+    "name": "gold:Gp0213371_Cath FunFam GFF file",
+    "data_category": "processed_data"
   },
   {
     "description": "KO_EC GFF file for gold:Gp0213371",
@@ -179,7 +199,8 @@
     "md5_checksum": "3c18be56eef0b4cdbc514764cb724f06",
     "file_size_bytes": 213745863,
     "id": "nmdc:3c18be56eef0b4cdbc514764cb724f06",
-    "name": "gold:Gp0213371_KO_EC GFF file"
+    "name": "gold:Gp0213371_KO_EC GFF file",
+    "data_category": "processed_data"
   },
   {
     "description": "Filtered Reads for gold:Gp0213371",
@@ -188,7 +209,8 @@
     "file_size_bytes": 8555617525,
     "id": "nmdc:f107af0a000ec0b90e157fc09473c337",
     "name": "gold:Gp0213371_Filtered Reads",
-    "data_object_type": "Filtered Sequencing Reads"
+    "data_object_type": "Filtered Sequencing Reads",
+    "data_category": "processed_data"
   },
   {
     "description": "Assembled scaffold fasta for gold:Gp0213371",
@@ -197,7 +219,8 @@
     "file_size_bytes": 1226941207,
     "id": "nmdc:220c85a9e2d470157aed7a7556f85656",
     "name": "gold:Gp0213371_Assembled scaffold fasta",
-    "data_object_type": "Assembly Scaffolds"
+    "data_object_type": "Assembly Scaffolds",
+    "data_category": "processed_data"
   },
   {
     "description": "Metagenome Contig Coverage Stats for gold:Gp0213371",
@@ -205,7 +228,8 @@
     "md5_checksum": "c3298d022868e8b0e7cfb783015b93ed",
     "file_size_bytes": 126810042,
     "id": "nmdc:c3298d022868e8b0e7cfb783015b93ed",
-    "name": "gold:Gp0213371_Metagenome Contig Coverage Stats"
+    "name": "gold:Gp0213371_Metagenome Contig Coverage Stats",
+    "data_category": "processed_data"
   },
   {
     "description": "Assembled AGP file for gold:Gp0213371",
@@ -214,7 +238,8 @@
     "file_size_bytes": 109293238,
     "id": "nmdc:3fc528f0105fc163876d68df26d35b29",
     "name": "gold:Gp0213371_Assembled AGP file",
-    "data_object_type": "Assembly AGP"
+    "data_object_type": "Assembly AGP",
+    "data_category": "processed_data"
   },
   {
     "description": "Metagenome Alignment BAM file for gold:Gp0213371",
@@ -223,7 +248,8 @@
     "file_size_bytes": 9331331692,
     "id": "nmdc:da186671c5a581af0a7d195bd857c871",
     "name": "gold:Gp0213371_Metagenome Alignment BAM file",
-    "data_object_type": "Assembly Coverage BAM"
+    "data_object_type": "Assembly Coverage BAM",
+    "data_category": "processed_data"
   },
   {
     "description": "metabat2 bin checkm quality assessment result for gold:Gp0452679",
@@ -232,7 +258,8 @@
     "file_size_bytes": 0,
     "id": "nmdc:d41d8cd98f00b204e9800998ecf8427e",
     "name": "gold:Gp0452679_metabat2 bin checkm quality assessment result",
-    "data_object_type": "CheckM Statistics"
+    "data_object_type": "CheckM Statistics",
+    "data_category": "processed_data"
   },
   {
     "description": "tooShort (< 3kb) filtered contigs fasta file by metaBat2 for gold:Gp0213371",
@@ -240,7 +267,8 @@
     "md5_checksum": "38f5521b558377503f6e9a635998dd37",
     "file_size_bytes": 721178096,
     "id": "nmdc:38f5521b558377503f6e9a635998dd37",
-    "name": "gold:Gp0213371_tooShort (< 3kb) filtered contigs fasta file by metaBat2"
+    "name": "gold:Gp0213371_tooShort (< 3kb) filtered contigs fasta file by metaBat2",
+    "data_category": "processed_data"
   },
   {
     "description": "unbinned fasta file from metabat2 for gold:Gp0213371",
@@ -248,7 +276,8 @@
     "md5_checksum": "cf96331e23aa34224990105374272877",
     "file_size_bytes": 337593077,
     "id": "nmdc:cf96331e23aa34224990105374272877",
-    "name": "gold:Gp0213371_unbinned fasta file from metabat2"
+    "name": "gold:Gp0213371_unbinned fasta file from metabat2",
+    "data_category": "processed_data"
   },
   {
     "description": "metabat2 bin checkm quality assessment result for gold:Gp0213371",
@@ -257,7 +286,8 @@
     "file_size_bytes": 8526,
     "id": "nmdc:4d12e1cab7ee7e72ea48151dfc0354c6",
     "name": "gold:Gp0213371_metabat2 bin checkm quality assessment result",
-    "data_object_type": "CheckM Statistics"
+    "data_object_type": "CheckM Statistics",
+    "data_category": "processed_data"
   },
   {
     "description": "high-quality and medium-quality bins for gold:Gp0213371",
@@ -266,7 +296,8 @@
     "file_size_bytes": 11787638,
     "id": "nmdc:52309bf9398a5b0c401e1e23f5e414df",
     "name": "gold:Gp0213371_high-quality and medium-quality bins",
-    "data_object_type": "Metagenome Bins"
+    "data_object_type": "Metagenome Bins",
+    "data_category": "processed_data"
   },
   {
     "description": "metabat2 bins for gold:Gp0213371",
@@ -274,7 +305,8 @@
     "md5_checksum": "77b1712067645b362aee53aad59000e2",
     "file_size_bytes": 41050703,
     "id": "nmdc:77b1712067645b362aee53aad59000e2",
-    "name": "gold:Gp0213371_metabat2 bins"
+    "name": "gold:Gp0213371_metabat2 bins",
+    "data_category": "processed_data"
   },
   {
     "id": "nmdc:22afa3d49b73eaec2e9787a6b88fbdc3",
@@ -283,7 +315,8 @@
     "file_size_bytes": 9630137511,
     "type": "nmdc:DataObject",
     "data_object_type": "Metagenome Raw Reads",
-    "url": "https://data.microbiomedata.org/data/raw/11570.5.212273.GTCTAGG-ACCTAGA.fastq.gz"
+    "url": "https://data.microbiomedata.org/data/raw/11570.5.212273.GTCTAGG-ACCTAGA.fastq.gz",
+    "data_category": "processed_data"
   },
   {
     "description": "Filtered Stats for gold:Gp0213371",
@@ -292,6 +325,7 @@
     "file_size_bytes": 294,
     "id": "nmdc:71528f677698dd6657ea7ddcc3105184",
     "name": "gold:Gp0213371_Filtered Stats",
-    "data_object_type": "QC Statistics"
+    "data_object_type": "QC Statistics",
+    "data_category": "processed_data"
   }
 ]

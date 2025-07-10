@@ -166,6 +166,7 @@ Data Objects:
     - data_object_type: Metagenome Raw Reads
       description: Metagenome Raw Reads for {id}
       name: Raw sequencer read data
+      data_category: instrument_data
       import_suffix:  \.[ACGT]+-[ACGT]+\.fastq\.gz$
       nmdc_suffix: .fastq.gz
       input_to: [nmdc:ReadQcAnalysis]
@@ -175,6 +176,7 @@ Data Objects:
     - data_object_type: CheckM Statistics
       description: CheckM for {id}
       name: CheckM statistics report
+      data_category: processed_data
       import_suffix: _checkm_qa\.out$
       nmdc_suffix: _checkm_qa.out
       input_to: []
@@ -184,6 +186,7 @@ Data Objects:
     - data_object_type: GTDBTK Bacterial Summary
       description: Bacterial Summary for {id}
       name: GTDBTK bacterial summary
+      data_category: processed_data
       import_suffix: _gtdbtk\.bac122\.summary\.tsv$
       nmdc_suffix: _gtdbtk.bac122.summary.tsv
       input_to: []
@@ -193,6 +196,7 @@ Data Objects:
     - data_object_type: GTDBTK Archaeal Summary
       description: Archaeal Summary for {id}
       name: GTDBTK archaeal summary
+      data_category: processed_data
       import_suffix: _gtdbtk\.ar122\.summary\.tsv$
       nmdc_suffix: _gtdbtk.ar122.summary.tsv
       input_to: []
@@ -202,6 +206,7 @@ Data Objects:
     - data_object_type: Annotation Amino Acid FASTA
       description: FASTA Amino Acid File for {id}
       name: FASTA amino acid file for annotated proteins
+      data_category: processed_data
       import_suffix: "^(?!.*_(cds|genemark|prodigal)_proteins\\.faa$).*proteins\\.faa$"
       nmdc_suffix: _proteins.faa
       input_to: [nmdc:MagsAnalysis]
@@ -211,6 +216,7 @@ Data Objects:
     - data_object_type: Contig Mapping File
       description: Contig mapping file for {id}
       name: Contig mappings between contigs and scaffolds
+      data_category: processed_data
       import_suffix: "_contig_names_mapping\\.tsv$"
       nmdc_suffix: _contig_names_mapping.tsv
       input_to: []
@@ -220,6 +226,7 @@ Data Objects:
     - data_object_type: Structural Annotation GFF
       description: Structural Annotation for {id}
       name: GFF3 format file with structural annotations
+      data_category: processed_data
       import_suffix: _structural_annotation\.gff$
       nmdc_suffix: _structural_annotation.gff
       input_to: []
@@ -229,6 +236,7 @@ Data Objects:
     - data_object_type: Functional Annotation GFF
       description: Functional Annotation for {id}
       name: GFF3 format file with functional annotations
+      data_category: processed_data
       import_suffix: _functional_annotation\.gff$
       nmdc_suffix: _functional_annotation.gff
       input_to: [nmdc:MagsAnalysis]
@@ -238,6 +246,7 @@ Data Objects:
     - data_object_type: Annotation KEGG Orthology
       description: KEGG Orthology for {id}
       name: Tab delimited file for KO annotation
+      data_category: processed_data
       import_suffix: _ko\.tsv$
       nmdc_suffix: _ko.tsv
       input_to: [nmdc:MagsAnalysis]
@@ -247,6 +256,7 @@ Data Objects:
     - data_object_type: Annotation Enzyme Commission
       description: EC Annotations for {id}
       name: Tab delimited file for EC annotation
+      data_category: processed_data
       import_suffix: _ec\.tsv$
       nmdc_suffix: _ec.tsv
       input_to: [nmdc:MagsAnalysis]
@@ -256,6 +266,7 @@ Data Objects:
     - data_object_type: Clusters of Orthologous Groups (COG) Annotation GFF
       description: COGs for {id}
       name: GFF3 format file with COGs
+      data_category: processed_data
       import_suffix: _cog\.gff$
       nmdc_suffix: _cog.gff
       input_to: [nmdc:MagsAnalysis]
@@ -265,6 +276,7 @@ Data Objects:
     - data_object_type: Pfam Annotation GFF
       description: Pfam Annotation for {id}
       name: GFF3 format file with Pfam
+      data_category: processed_data
       import_suffix: _pfam\.gff$
       nmdc_suffix: _pfam.gff
       input_to: [nmdc:MagsAnalysis]
@@ -274,6 +286,7 @@ Data Objects:
     - data_object_type: TIGRFam Annotation GFF
       description: TIGRFam for {id}
       name: GFF3 format file with TIGRfam
+      data_category: processed_data
       import_suffix: _tigrfam\.gff$
       nmdc_suffix: _tigrfam.gff
       input_to: [nmdc:MagsAnalysis]
@@ -283,6 +296,7 @@ Data Objects:
     - data_object_type: SMART Annotation GFF
       description: SMART Annotations for {id}
       name: GFF3 format file with SMART
+      data_category: processed_data
       import_suffix: _smart\.gff$
       nmdc_suffix: _smart.gff
       input_to: [nmdc:MagsAnalysis]
@@ -292,6 +306,7 @@ Data Objects:
     - data_object_type: SUPERFam Annotation GFF
       description: SUPERFam Annotations for {id}
       name: GFF3 format file with SUPERFam
+      data_category: processed_data
       import_suffix: _supfam\.gff$
       nmdc_suffix: _supfam.gff
       input_to: [nmdc:MagsAnalysis]
@@ -301,6 +316,7 @@ Data Objects:
     - data_object_type: CATH FunFams (Functional Families) Annotation GFF
       description: CATH FunFams for {id}
       name: GFF3 format file with CATH FunFams
+      data_category: processed_data
       import_suffix: _cath_funfam\.gff$
       nmdc_suffix: _cath_funfam.gff
       input_to: [nmdc:MagsAnalysis]
@@ -310,6 +326,7 @@ Data Objects:
     - data_object_type: CRT Annotation GFF
       description: CRT Annotations for {id}
       name: GFF3 format file with CRT
+      data_category: processed_data
       import_suffix: _crt\.gff$
       nmdc_suffix: _crt.gff
       input_to: []
@@ -319,6 +336,7 @@ Data Objects:
     - data_object_type: Genemark Annotation GFF
       description: Genemark Annotations for {id}
       name: GFF3 format file with Genemark
+      data_category: processed_data
       import_suffix: _genemark\.gff$
       nmdc_suffix: _genemark.gff
       input_to: []
@@ -328,6 +346,7 @@ Data Objects:
     - data_object_type: Prodigal Annotation GFF
       description: Prodigal Annotations {id}
       name: GFF3 format file with Prodigal
+      data_category: processed_data
       import_suffix: _prodigal\.gff$
       nmdc_suffix: _prodigal.gff
       input_to: []
@@ -337,6 +356,7 @@ Data Objects:
     - data_object_type: TRNA Annotation GFF
       description: TRNA Annotations {id}
       name: GFF3 format file with TRNA
+      data_category: processed_data
       import_suffix: _trna\.gff$
       nmdc_suffix: _trna.gff
       input_to: []
@@ -346,6 +366,7 @@ Data Objects:
     - data_object_type: RFAM Annotation GFF
       description: RFAM Annotations for {id}
       name: GFF3 format file with RFAM
+      data_category: processed_data
       import_suffix: _rfam\.gff$
       nmdc_suffix: _rfam.gff
       input_to: []
@@ -355,6 +376,7 @@ Data Objects:
     - data_object_type: KO_EC Annotation GFF
       description: KO_EC Annotations for {id}
       name: GFF3 format file with KO_EC
+      data_category: processed_data
       import_suffix: _ko_ec\.gff$
       nmdc_suffix: _ko_ec.gff
       input_to: []
@@ -364,6 +386,7 @@ Data Objects:
     - data_object_type: Product Names
       description: Product names for {id}
       name: Product names file
+      data_category: processed_data
       import_suffix: _product_names\.tsv$
       nmdc_suffix: _product_names.tsv
       input_to: [nmdc:MagsAnalysis]
@@ -373,6 +396,7 @@ Data Objects:
     - data_object_type: Gene Phylogeny tsv
       description: Gene Phylogeny for {id}
       name: Gene Phylogeny file
+      data_category: processed_data
       import_suffix: _gene_phylogeny\.tsv$
       nmdc_suffix: _gene_phylogeny.tsv
       input_to: [nmdc:MagsAnalysis]
@@ -382,6 +406,7 @@ Data Objects:
     - data_object_type: Crispr Terms
       description: Crispr Terms for {id}
       name: Crispr Terms
+      data_category: processed_data
       import_suffix: _crt\.crisprs$
       nmdc_suffix: _crt.crisprs
       input_to: []
@@ -391,6 +416,7 @@ Data Objects:
     - data_object_type: Annotation Statistics
       description: Annotation Stats for {id}
       name: Annotation statistics report
+      data_category: processed_data
       import_suffix: _stats\.tsv$
       nmdc_suffix: _stats.tsv
       input_to: []
@@ -400,6 +426,7 @@ Data Objects:
     - data_object_type: Annotation Info File
       description: Annotation Info File for {id}
       name: File containing annotation info
+      data_category: processed_data
       import_suffix: _imgap\.info$
       nmdc_suffix: _imgap.info
       input_to: []
@@ -436,6 +463,7 @@ Data Objects:
     - data_object_type: Filtered Sequencing Reads
       description: Reads QC for {id}
       name: Reads QC result fastq (clean data)
+      data_category: processed_data
       import_suffix: filter-METAGENOME\.fastq\.gz$
       nmdc_suffix: _filtered.fastq.gz
       input_to: [nmdc:ReadBasedTaxonomyAnalysis,nmdc:MetagenomeAssembly]
@@ -445,6 +473,7 @@ Data Objects:
     - data_object_type: QC Statistics 
       description: Reads QC summary for {id} 
       name: Reads QC summary statistics
+      data_category: processed_data
       import_suffix: \.filtered-report\.txt$
       nmdc_suffix: _filterStats.txt
       input_to: []
@@ -454,6 +483,7 @@ Data Objects:
     - data_object_type: Read Filtering Info File 
       description: Read Filtering Info File for {id}
       name: File containing read filtering information
+      data_category: processed_data
       import_suffix: _readsQC\.info$
       nmdc_suffix: _readsQC.info
       input_to: []
@@ -463,6 +493,7 @@ Data Objects:
     - data_object_type: Assembly Contigs
       description: Assembly contigs for {id}
       name: Final assembly contigs fasta
+      data_category: processed_data
       import_suffix: assembly\.contigs\.fasta$
       nmdc_suffix: _contigs.fna
       input_to: [nmdc:MetagenomeAnnotation,nmdc:MagsAnalysis]
@@ -472,6 +503,7 @@ Data Objects:
     - data_object_type: Assembly Scaffolds
       description: Assembly scaffolds for {id}
       name: Final assembly scaffolds fasta
+      data_category: processed_data
       import_suffix: _scaffolds\.fna$
       nmdc_suffix: _scaffolds.fna
       input_to: []
@@ -481,6 +513,7 @@ Data Objects:
     - data_object_type: Assembly Info File
       description: Assembly info file for {id}
       name: File containing assembly information
+      data_category: processed_data
       import_suffix: README\.txt$
       nmdc_suffix: _metaAsm.info
       input_to: []
@@ -490,6 +523,7 @@ Data Objects:
     - data_object_type: Assembly Coverage Stats
       description: Coverage Stats for {id}
       name: Assembled contigs coverage information
+      data_category: processed_data
       import_suffix: pairedMapped_sorted\.bam\.cov$
       nmdc_suffix: _covstats.txt
       input_to: []
@@ -499,6 +533,7 @@ Data Objects:
     - data_object_type: Assembly AGP
       description: AGP for {id}
       name: An AGP format file that describes the assembly
+      data_category: processed_data
       import_suffix: _assembly\.agp$
       nmdc_suffix: _assembly.agp
       input_to: []
@@ -508,6 +543,7 @@ Data Objects:
     - data_object_type: Assembly Coverage BAM
       description: Sorted Bam for {id}
       name: Sorted bam file of reads mapping back to the final assembly
+      data_category: processed_data
       import_suffix: pairedMapped\.sam\.gz$
       nmdc_suffix: _pairedMapped_sorted.sam.gz
       input_to: [nmdc:MagsAnalysis]
@@ -517,6 +553,7 @@ Data Objects:
     - data_object_type: Error Corrected Reads
       description: Error corrected reads for {id}
       name: bbcms error corrected reads
+      data_category: processed_data
       import_suffix: input\.corr\.fastq\.gz$
       nmdc_suffix: _input.corr.fastq.gz
       input_to: []
@@ -526,6 +563,7 @@ Data Objects:
     - data_object_type: GOTTCHA2 Report Full
       description: GOTTCHA2 Full Report for {id}
       name: GOTTCHA2 report file
+      data_category: processed_data
       import_suffix:  _gottcha2_full\.tsv$
       nmdc_suffix: _gottcha2_full.tsv
       input_to: []
@@ -535,6 +573,7 @@ Data Objects:
     - data_object_type: GOTTCHA2 Classification Report
       description: GOTTCHA2 Classification for {id}
       name: GOTTCHA2 classification report file
+      data_category: processed_data
       import_suffix: _gottcha2_classification\.tsv$
       nmdc_suffix: _gottcha2_classification.tsv
       input_to: []
@@ -544,6 +583,7 @@ Data Objects:
     - data_object_type: GOTTCHA2 Krona Plot
       description: GOTTCHA2 Krona for {id}
       name: GOTTCHA2 krona plot HTML file
+      data_category: processed_data
       import_suffix: _gottcha2_krona\.html$
       nmdc_suffix: _gottcha2_krona.html
       input_to: []
@@ -553,6 +593,7 @@ Data Objects:
     - data_object_type: Centrifuge Taxonomic Classification
       description: Centrifuge Report for {id}
       name: Centrifuge output read classification file
+      data_category: processed_data
       import_suffix: _centrifuge_classification\.tsv$
       nmdc_suffix: _centrifuge_classification.tsv
       input_to: []
@@ -562,6 +603,7 @@ Data Objects:
     - data_object_type: Centrifuge output report file
       description: Centrifuge output report file for {id}
       name: Centrifuge Classification Report
+      data_category: processed_data
       import_suffix: _centrifuge_report\.tsv$
       nmdc_suffix: _centrifuge_report.tsv
       input_to: []
@@ -571,6 +613,7 @@ Data Objects:
     - data_object_type: Centrifuge Krona Plot
       description: Centrifuge Krona for {id}
       name: Centrifuge krona plot HTML file
+      data_category: processed_data
       import_suffix: _centrifuge_krona\.html$
       nmdc_suffix: _centrifuge_krona.html
       input_to: []
@@ -580,6 +623,7 @@ Data Objects:
     - data_object_type: Kraken2 Classification Report
       description: Kraken2 report for {id}
       name: Kraken2 outpur report file
+      data_category: processed_data
       import_suffix: _kraken2_report\.tsv$
       nmdc_suffix: _kraken2_report.tsv
       input_to: []
@@ -589,6 +633,7 @@ Data Objects:
     - data_object_type: Kraken2 Taxonomic Classification
       description: Kraken2 classification for {id}
       name: Kraken2 output read classification file
+      data_category: processed_data
       import_suffix: _kraken2_classification\.tsv$
       nmdc_suffix: _kraken2_classification.tsv
       input_to: []
@@ -598,6 +643,7 @@ Data Objects:
     - data_object_type: Kraken2 Krona Plot
       description: Kraken2 Krona plot for {id}
       name: Kraken2 Krona plot HTML file
+      data_category: processed_data
       import_suffix: _kraken2_krona\.html$
       nmdc_suffix: _kraken2_krona.html
       input_to: []
@@ -608,6 +654,7 @@ Data Objects:
     - data_object_type: Metagenome HQMQ Bins Compression File
       description: Metagenome Bins for {id}
       name: Metagenome bin tarfiles archive
+      data_category: processed_data
       import_suffix: _[0-9]+\.tar\.gz$
       nmdc_suffix: _hqmq_bin.zip
       input_to: []

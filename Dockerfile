@@ -1,4 +1,4 @@
-# microbiomedata/sched:yyyymmdd
+# microbiomedata/nmdc-scheduler:[release-ver]
 FROM python:3.11
 
 RUN \
@@ -13,4 +13,3 @@ RUN \
 RUN pip install semver
 
 ADD . /src
-
