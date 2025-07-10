@@ -389,6 +389,7 @@ Data Objects:
       description: Virus Summary for {id}
       name: TSV summary of virus annotation 
       import_suffix: _virus_summary\.tsv$
+      data_category: processed_data
       nmdc_suffix: _virus_summary.tsv
       input_to: []
       output_of: nmdc:MetatranscriptomeAnnotation
@@ -397,6 +398,7 @@ Data Objects:
     - data_object_type: Plasmid Summary
       description: Plasmid Summary for {id}
       name: TSV summary of plasmid annotation 
+      data_category: processed_data
       import_suffix: _plasmid_summary\.tsv$
       nmdc_suffix: _plasmid_summary.tsv
       input_to: []
@@ -406,6 +408,7 @@ Data Objects:
     - data_object_type: GeNomad Aggregated Classification
       description: GeNomad aggregated classification for {id}
       name: TSV of chromosome, plasmid, and virus scores
+      data_category: processed_data
       import_suffix: _aggregated_classification\.tsv$
       nmdc_suffix: _aggregated_classification.tsv
       input_to: []
