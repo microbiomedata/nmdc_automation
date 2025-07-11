@@ -476,7 +476,7 @@ Similar to a `jobs` record, with these additional things to note:
 
 #### Handling Failed Jobs
 
-Be default, the watcher will retry a failed job 1 additional time via `jaws resubmit`. 
+By default, the watcher will retry a failed job 1 additional time via `jaws resubmit`. 
 If the job fails again, the watcher will mark the job as `done` and update the status to `Failed`.
 
 Some things to note:
