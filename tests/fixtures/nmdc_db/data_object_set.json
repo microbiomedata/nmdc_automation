@@ -6,6 +6,7 @@
     "md5_checksum": "4c7f1be37f805836162b49da4ed9c7e5",
     "data_object_type": "Metagenome Raw Read 2",
     "type": "nmdc:DataObject",
+    "data_category": "instrument_data",
     "url": "https://portal.nersc.gov"
   },
   {
@@ -15,6 +16,7 @@
     "md5_checksum": "ed9467e690babb683b024ed47dd97b85",
     "data_object_type": "Metagenome Raw Read 1",
     "type": "nmdc:DataObject",
+    "data_category": "instrument_data",
     "url": "https://portal.nersc.gov"
   },
   {
@@ -24,6 +26,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "7172cd332a734e002c88b35827acd991",
     "data_object_type": "QC Statistics",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -34,6 +37,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "d3812377eb0a57c9f2bdea5692d157fb",
     "data_object_type": "Read Filtering Info File",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -44,6 +48,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "fafb41665d8e00654ac0fbf80adc1b87",
     "data_object_type": "Filtered Sequencing Reads",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -54,6 +59,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "f63c857b3011dec61a08044d518291f2",
     "data_object_type": "Assembly Contigs",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -64,6 +70,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "f63c857b3011dec61a08044d518291f2",
     "data_object_type": "Assembly Coverage Stats",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -74,6 +81,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "f63c857b3011dec61a08044d518291f2",
     "data_object_type": "Assembly Coverage BAM",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -84,6 +92,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "f63c857b3011dec61a08044d518291f2",
     "data_object_type": "Assembly AGP",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -94,6 +103,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "f63c857b3011dec61a08044d518291f2",
     "data_object_type": "Assembly Scaffolds",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -104,6 +114,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "784b9fb9bc77c00107a51131362f04f9",
     "data_object_type": "Scaffold Lineage tsv",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -114,6 +125,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "a8c59594447d0bb75a8076f40a82d7ee",
     "data_object_type": "Annotation Amino Acid FASTA",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -124,6 +136,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "1ca1300284ed3cc067f01453e3ad0283",
     "data_object_type": "TIGRFam Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -134,6 +147,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "9b50f4199051c5ea157ec14ceca13ca3",
     "data_object_type": "CATH FunFams (Functional Families) Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -144,6 +158,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "7b357f155d7239fc5deee7fe97bd45e9",
     "data_object_type": "Functional Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -154,6 +169,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "f77441258769e8ed8e2525349ee66975",
     "data_object_type": "SUPERFam Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -164,6 +180,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "d91ae0035d24b15f6a043abaaa4bf446",
     "data_object_type": "Gene Phylogeny tsv",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -174,6 +191,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "3792dacaa08a4cd60b87989c0d3bffb1",
     "data_object_type": "RFAM Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -184,6 +202,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "44d16feb83187a9088c5b807148b9418",
     "data_object_type": "TRNA Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -194,6 +213,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "7c1dad9e6aec2abb8c11e0e76cf9f8b0",
     "data_object_type": "CRT Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -204,6 +224,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "318fc98aca68b8cee8296a04016eccf6",
     "data_object_type": "Prodigal Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -214,6 +235,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "701b5315d13264788fd732cf4e143c25",
     "data_object_type": "SMART Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -224,6 +246,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "34949f6cdd1a70b6fda9c3d3ed258eb3",
     "data_object_type": "Genemark Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -234,6 +257,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "cf0048b0dc658c665d95b9e2607407e2",
     "data_object_type": "Structural Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -244,6 +268,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "c0835e4fe7defa74a94e5a4c07807171",
     "data_object_type": "Clusters of Orthologous Groups (COG) Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -254,6 +279,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "5e08898f9297e60e64ba87883a36e085",
     "data_object_type": "Crispr Terms",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -264,6 +290,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "b3ca20a42a9a084ccf04a3a55e59cbe4",
     "data_object_type": "Annotation Enzyme Commission",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -274,6 +301,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "0df311e3e813d8c491f95df41fa3f0f2",
     "data_object_type": "KO_EC Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -284,6 +312,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "bc6bd72d77bd2cefcbe122bdb23ebd74",
     "data_object_type": "Annotation KEGG Orthology",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -294,6 +323,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "b556ca8e495b58ed4e445a24108226cc",
     "data_object_type": "Pfam Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -304,6 +334,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "846de5ba7a51d263718712a1a8a734b4",
     "data_object_type": "Product Names",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -314,6 +345,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "ef10a172d2b03ad799406c50493bb224",
     "data_object_type": "Misc Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -324,6 +356,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "01927890b19c724820024e147677dff3",
     "data_object_type": "Annotation Info File",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -334,6 +367,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "dc58fb1e9b8f689ec9c22b8548110197",
     "data_object_type": "Annotation Statistics",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -344,6 +378,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "64d8daa393cee5541bc22f17f3032200",
     "data_object_type": "TMRNA Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -354,6 +389,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "3e3464e36c331ab26d17930b5965b25f",
     "data_object_type": "Contig Mapping File",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -364,6 +400,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "712b640cb28d7a6a79621f8081827e11",
     "data_object_type": "GTDBTK Bacterial Summary",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -374,6 +411,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "b4a3542e2dd442320611c631c07f2671",
     "data_object_type": "Metagenome LQ Bins Compression File",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -384,6 +422,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "d628d78633d2c21e25f75fb9ac641bbd",
     "data_object_type": "Metagenome HQMQ Bins Compression File",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -394,6 +433,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "8c1e8dafc6d37a1d612ad162d4313162",
     "data_object_type": "GTDBTK Archaeal Summary",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -404,6 +444,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "da0e9f82acf55ba26ea59bfba9d45f0b",
     "data_object_type": "CheckM Statistics",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -414,6 +455,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "f9be1550554363f2e009d1551856d2e4",
     "data_object_type": "Metagenome Bins Info File",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -424,6 +466,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "b9b29b28838ea6dff7d473fc498b6d12",
     "data_object_type": "Metagenome Bins Heatmap",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/",
     "type": "nmdc:DataObject"
   },
@@ -434,6 +477,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "b9b29b28838ea6dff7d473fc498b6d12",
     "data_object_type": "Metagenome Bins Krona Plot",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -444,6 +488,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "b9b29b28838ea6dff7d473fc498b6d12",
     "data_object_type": "Metagenome Bins Barplot",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -453,7 +498,8 @@
     "description": "Sequencing results for metaT_R1",
     "file_size_bytes": 123456,
     "md5_checksum": "4c7f1be37f805836162b49da4ed9c7e5",
-    "data_object_type": "Metagenome Raw Read 1",
+    "data_object_type": "Metatranscriptome Raw Read 1",
+    "data_category": "instrument_data",
     "type": "nmdc:DataObject",
     "url": "https://portal.nersc.gov"
   },
@@ -463,7 +509,8 @@
     "description": "Sequencing results for metaT_R2",
     "file_size_bytes": 123456,
     "md5_checksum": "4c7f1be37f805836162b49da4ed9c7e5",
-    "data_object_type": "Metagenome Raw Read 2",
+    "data_object_type": "Metatranscriptome Raw Read 2",
+    "data_category": "instrument_data",
     "type": "nmdc:DataObject",
     "url": "https://portal.nersc.gov"
   },
@@ -474,6 +521,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "fafb41665d8e00654ac0fbf80adc1b87",
     "data_object_type": "Filtered Sequencing Reads",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -484,6 +532,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "7172cd332a734e002c88b35827acd991",
     "data_object_type": "QC Statistics",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -494,6 +543,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "d3812377eb0a57c9f2bdea5692d157fb",
     "data_object_type": "Read Filtering Info File",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -504,6 +554,7 @@
     "file_size_bytes":123456,
     "md5_checksum": "d3812377eb0a57c9f2bdea5692d157fb",
     "data_object_type": "rRNA Filtered Sequencing Reads",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -514,6 +565,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "f63c857b3011dec61a08044d518291f2",
     "data_object_type": "Assembly Contigs",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -524,6 +576,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "f63c857b3011dec61a08044d518291f2",
     "data_object_type": "Assembly Coverage Stats",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -534,6 +587,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "f63c857b3011dec61a08044d518291f2",
     "data_object_type": "Assembly Coverage BAM",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -544,6 +598,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "f63c857b3011dec61a08044d518291f2",
     "data_object_type": "Assembly Info File",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -554,6 +609,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "f63c857b3011dec61a08044d518291f2",
     "data_object_type": "BAI File",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -564,16 +620,18 @@
     "file_size_bytes": 123456,
     "md5_checksum": "a8c59594447d0bb75a8076f40a82d7ee",
     "data_object_type": "Annotation Amino Acid FASTA",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
-    {
+  {
     "id": "nmdc:dobj-11-tigrfamt1",
     "name": "GFF3 format file with TIGRfam",
     "description": "TIGRFam for nmdc:wfmtan-11-metat.1",
     "file_size_bytes": 123456,
     "md5_checksum": "1ca1300284ed3cc067f01453e3ad0283",
     "data_object_type": "TIGRFam Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -584,6 +642,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "9b50f4199051c5ea157ec14ceca13ca3",
     "data_object_type": "CATH FunFams (Functional Families) Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -594,6 +653,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "cf0048b0dc658c665d95b9e2607407e2",
     "data_object_type": "Structural Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -604,6 +664,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "7b357f155d7239fc5deee7fe97bd45e9",
     "data_object_type": "Functional Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -614,6 +675,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "bc6bd72d77bd2cefcbe122bdb23ebd74",
     "data_object_type": "Annotation KEGG Orthology",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -624,6 +686,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "b3ca20a42a9a084ccf04a3a55e59cbe4",
     "data_object_type": "Annotation Enzyme Commission",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -634,6 +697,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "784b9fb9bc77c00107a51131362f04f9",
     "data_object_type": "Scaffold Lineage tsv",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -644,6 +708,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "c0835e4fe7defa74a94e5a4c07807171",
     "data_object_type": "Clusters of Orthologous Groups (COG) Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -654,6 +719,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "b556ca8e495b58ed4e445a24108226cc",
     "data_object_type": "Pfam Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -664,6 +730,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "701b5315d13264788fd732cf4e143c25",
     "data_object_type": "SMART Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -674,6 +741,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "f77441258769e8ed8e2525349ee66975",
     "data_object_type": "SUPERFam Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -684,6 +752,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "7c1dad9e6aec2abb8c11e0e76cf9f8b0",
     "data_object_type": "CRT Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -694,6 +763,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "34949f6cdd1a70b6fda9c3d3ed258eb3",
     "data_object_type": "Genemark Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -704,15 +774,18 @@
     "file_size_bytes": 123456,
     "md5_checksum": "318fc98aca68b8cee8296a04016eccf6",
     "data_object_type": "Prodigal Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
-  },{
+  },
+  {
     "id": "nmdc:dobj-11-trnat1",
     "name": "GFF3 format file with TRNA",
     "description": "TRNA Annotations for nmdc:wfmtan-11-metat.1",
     "file_size_bytes": 123456,
     "md5_checksum": "44d16feb83187a9088c5b807148b9418",
     "data_object_type": "TRNA Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -723,6 +796,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "3792dacaa08a4cd60b87989c0d3bffb1",
     "data_object_type": "RFAM Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -733,6 +807,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "0df311e3e813d8c491f95df41fa3f0f2",
     "data_object_type": "KO_EC Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -743,6 +818,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "846de5ba7a51d263718712a1a8a734b4",
     "data_object_type": "Product Names",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -753,6 +829,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "d91ae0035d24b15f6a043abaaa4bf446",
     "data_object_type": "Gene Phylogeny tsv",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -763,6 +840,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "5e08898f9297e60e64ba87883a36e085",
     "data_object_type": "Crispr Terms",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -773,6 +851,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "dc58fb1e9b8f689ec9c22b8548110197",
     "data_object_type": "Annotation Statistics",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -783,6 +862,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "3e3464e36c331ab26d17930b5965b25f",
     "data_object_type": "Contig Mapping File",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -793,6 +873,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "01927890b19c724820024e147677dff3",
     "data_object_type": "Annotation Info File",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -803,6 +884,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "01927890b19c724820024e147677dff3",
     "data_object_type": "Metatranscriptome Expression",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   },
@@ -813,6 +895,7 @@
     "file_size_bytes": 123456,
     "md5_checksum": "01927890b19c724820024e147677dff3",
     "data_object_type": "Metatranscriptome Expression Info File",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org",
     "type": "nmdc:DataObject"
   }

@@ -5,10 +5,9 @@ import uuid
 import os
 from time import sleep as _sleep
 from nmdc_automation.api.nmdcapi import NmdcRuntimeApi
+from nmdc_automation.db.nmdc_mongo import get_db
 from nmdc_automation.workflow_automation.workflows import load_workflow_configs
 from functools import lru_cache
-from pymongo import MongoClient
-from pymongo.database import Database as MongoDatabase
 from nmdc_automation.workflow_automation.workflow_process import load_workflow_process_nodes
 from nmdc_automation.models.workflow import WorkflowConfig, WorkflowProcessNode
 from semver.version import Version
@@ -22,17 +21,6 @@ _WF_YAML_ENV = "NMDC_WORKFLOW_YAML_FILE"
 # configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-@lru_cache
-def get_mongo_db() -> MongoDatabase:
-    _client = MongoClient(
-        host=os.getenv("MONGO_HOST", "localhost"),
-        port=int(os.getenv("MONGO_PORT", "27018")),
-        username=os.getenv("MONGO_USERNAME", None),
-        password=os.getenv("MONGO_PASSWORD", None),
-        directConnection=True,
-    )[os.getenv("MONGO_DBNAME", "nmdc")]
-    return _client
-
 
 
 def within_range(wf1: WorkflowConfig, wf2: WorkflowConfig, force=False) -> bool:
@@ -67,6 +55,11 @@ class SchedulerJob:
         self.trigger_act = trigger_act
         self.informed_by = trigger_act.was_informed_by
         self.trigger_id = trigger_act.id
+
+
+class MissingDataObjectException(Exception):
+    """ Custom exception for missing data objects"""
+    pass
 
 
 class Scheduler:
@@ -127,7 +120,7 @@ class Scheduler:
                 if not dobj:
                     if k in optional_inputs:
                         continue
-                    raise ValueError(f"Unable to find {do_type} in {do_by_type}")
+                    raise MissingDataObjectException(f"Unable to find {do_type} in {do_by_type}")
                 input_data_objects.append(dobj.as_dict())
 
                 if k == "input_files":
@@ -231,6 +224,9 @@ class Scheduler:
 
     @lru_cache(maxsize=128)
     def get_existing_jobs(self, wf: WorkflowConfig):
+        """
+        Get the existing jobs for a workflow, including cancelled jobs
+        """
         existing_jobs = set()
         # Filter by git_repo and version
         # Find all existing jobs for this workflow
@@ -244,8 +240,10 @@ class Scheduler:
 
     def find_new_jobs(self, wfp_node: WorkflowProcessNode) -> list[SchedulerJob]:
         """
-        For a given activity see if there are any new jobs
-        that should be created.
+        Find new jobs for a workflow process node. A new job:
+        - Is either not in the Jobs collection or is cancelled
+        - Is not satisfied by an existing version of a workflow execution
+        - Is for a workflow that is enabled
         """
         new_jobs = []
         # Loop over the derived workflows for this
@@ -260,7 +258,7 @@ class Scheduler:
                 continue
             # See if we already have a job for this
             if wfp_node.id in self.get_existing_jobs(wf):
-                msg = f"Skipping existing job for{wfp_node.id} {wf.name}:{wf.version}"
+                msg = f"Skipping existing job for {wfp_node.id} {wf.name}:{wf.version}"
                 if msg not in self._messages:
                     logger.info(msg)
                     self._messages.append(msg)
@@ -327,9 +325,13 @@ class Scheduler:
                     self.db.jobs.insert_one(jr)
                     if jr:
                         job_recs.append(jr)
-                except Exception as ex:
-                    logger.error(str(ex))
-                    raise ex
+                except MissingDataObjectException as e:
+                    logger.warning(f"Caught missing Data Object(s) for {job.informed_by}: Skipping")
+                    logger.warning(e)
+                    continue
+                except Exception as e:
+                    logger.exception(e)
+                    raise
         return job_recs
 
 
@@ -339,7 +341,7 @@ def main(site_conf, wf_file):  # pragma: no cover
     Main function
     """
     # site_conf = os.environ.get("NMDC_SITE_CONF", "site_configuration.toml")
-    db = get_mongo_db()
+    db = get_db()
     logger.info("Initializing Scheduler")
     sched = Scheduler(db, wf_file, site_conf=site_conf)
 

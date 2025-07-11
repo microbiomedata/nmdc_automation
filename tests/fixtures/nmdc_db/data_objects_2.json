@@ -6,6 +6,7 @@
     "file_size_bytes": 31068664547,
     "md5_checksum": "12f380b91ff3364cd3d228505d3402b5",
     "data_object_type": "Metagenome Raw Reads",
+    "data_category": "instrument_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmsa-11-jc5cmf37.1/52832.3.464616.CTATCGCA-CTATCGCA.fastq.gz",
     "type": "nmdc:DataObject"
   },
@@ -16,6 +17,7 @@
     "file_size_bytes": 25344696626,
     "md5_checksum": "cb29b1707bf4895a7cd8d83ff48a8697",
     "data_object_type": "Filtered Sequencing Reads",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfrqc-11-4ynn6x46.1/nmdc_wfrqc-11-4ynn6x46.1_filtered.fastq.gz",
     "type": "nmdc:DataObject"
   },
@@ -26,6 +28,7 @@
     "file_size_bytes": 282135438,
     "md5_checksum": "0cc79a80feac98b1e50daacc0d124ccf",
     "data_object_type": "Assembly Coverage Stats",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgas-11-jchk0x71.1/nmdc_wfmgas-11-jchk0x71.1_covstats.txt",
     "type": "nmdc:DataObject"
   },
@@ -36,6 +39,7 @@
     "file_size_bytes": 4240,
     "md5_checksum": "8fe54fdba8957ca116f0f8a7ee90d629",
     "data_object_type": "Assembly Info File",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgas-11-jchk0x71.1/nmdc_wfmgas-11-jchk0x71.1_metaAsm.info",
     "type": "nmdc:DataObject"
   },
@@ -46,6 +50,7 @@
     "file_size_bytes": 27595203745,
     "md5_checksum": "b259993b912a0ef0c80fec91b0f90d94",
     "data_object_type": "Assembly Coverage BAM",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgas-11-jchk0x71.1/nmdc_wfmgas-11-jchk0x71.1_pairedMapped_sorted.sam.gz",
     "type": "nmdc:DataObject"
   },
@@ -56,6 +61,7 @@
     "file_size_bytes": 3212371899,
     "md5_checksum": "feee21c0746f2b5b198bb977a06ac156",
     "data_object_type": "Assembly Contigs",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgas-11-jchk0x71.1/nmdc_wfmgas-11-jchk0x71.1_contigs.fna",
     "type": "nmdc:DataObject"
   },
@@ -66,6 +72,7 @@
     "file_size_bytes": 877390716,
     "md5_checksum": "bbfc6c21a53ebbf5411b86e433868538",
     "data_object_type": "CATH FunFams (Functional Families) Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_cath_funfam.gff",
     "type": "nmdc:DataObject"
   },
@@ -76,6 +83,7 @@
     "file_size_bytes": 4938,
     "md5_checksum": "302597874e7ec5de3b9253ab43891118",
     "data_object_type": "Annotation Statistics",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_stats.tsv",
     "type": "nmdc:DataObject"
   },
@@ -86,6 +94,7 @@
     "file_size_bytes": 920242138,
     "md5_checksum": "58a8373d587600480c34a2ce2c8f9ecf",
     "data_object_type": "Genemark Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_genemark.gff",
     "type": "nmdc:DataObject"
   },
@@ -96,6 +105,7 @@
     "file_size_bytes": 525174204,
     "md5_checksum": "ef27a5eff0449f525cd6413daa481a93",
     "data_object_type": "Product Names",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_product_names.tsv",
     "type": "nmdc:DataObject"
   },
@@ -106,6 +116,7 @@
     "file_size_bytes": 211913679,
     "md5_checksum": "643105f7f4fd8c8b676bf2526a964cf9",
     "data_object_type": "Annotation KEGG Orthology",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_ko.tsv",
     "type": "nmdc:DataObject"
   },
@@ -116,6 +127,7 @@
     "file_size_bytes": 957972553,
     "md5_checksum": "30f1bdf12f691df79d922a82ae5d444f",
     "data_object_type": "Gene Phylogeny tsv",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_gene_phylogeny.tsv",
     "type": "nmdc:DataObject"
   },
@@ -126,6 +138,7 @@
     "file_size_bytes": 470,
     "md5_checksum": "2854a85740fdd20dd61bbe5c9897cc24",
     "data_object_type": "Annotation Info File",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_imgap.info",
     "type": "nmdc:DataObject"
   },
@@ -136,6 +149,7 @@
     "file_size_bytes": 1037112809,
     "md5_checksum": "4c9737b7b7ae82008c083ae204334137",
     "data_object_type": "SUPERFam Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_supfam.gff",
     "type": "nmdc:DataObject"
   },
@@ -146,6 +160,7 @@
     "file_size_bytes": 453711,
     "md5_checksum": "8679579f51b92aee605b103e28bd3a6c",
     "data_object_type": "Crispr Terms",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_crt.crisprs",
     "type": "nmdc:DataObject"
   },
@@ -156,6 +171,7 @@
     "file_size_bytes": 1554283442,
     "md5_checksum": "739fb530a23c8d60e92acf5fe5476c04",
     "data_object_type": "Annotation Amino Acid FASTA",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_proteins.faa",
     "type": "nmdc:DataObject"
   },
@@ -166,6 +182,7 @@
     "file_size_bytes": 102760331,
     "md5_checksum": "3763049accb2dbf4f90c5dee1ee0a4a1",
     "data_object_type": "TIGRFam Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_tigrfam.gff",
     "type": "nmdc:DataObject"
   },
@@ -176,6 +193,7 @@
     "file_size_bytes": 4188165,
     "md5_checksum": "712423fe174ad5f10f0bdcfb337870ea",
     "data_object_type": "RFAM Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_rfam.gff",
     "type": "nmdc:DataObject"
   },
@@ -186,6 +204,7 @@
     "file_size_bytes": 837405131,
     "md5_checksum": "e4cc21248a62bd331aec0be8146065bc",
     "data_object_type": "Pfam Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_pfam.gff",
     "type": "nmdc:DataObject"
   },
@@ -196,6 +215,7 @@
     "file_size_bytes": 204005669,
     "md5_checksum": "a393a2f356083dfa305e7e4463fb1c98",
     "data_object_type": "SMART Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_smart.gff",
     "type": "nmdc:DataObject"
   },
@@ -206,6 +226,7 @@
     "file_size_bytes": 141826750,
     "md5_checksum": "ade2c28496c61c83e84f7b679c41333f",
     "data_object_type": "Annotation Enzyme Commission",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_ec.tsv",
     "type": "nmdc:DataObject"
   },
@@ -216,6 +237,7 @@
     "file_size_bytes": 888181611,
     "md5_checksum": "aab17532f8a5a24c5f7e404dcad9280c",
     "data_object_type": "Clusters of Orthologous Groups (COG) Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_cog.gff",
     "type": "nmdc:DataObject"
   },
@@ -226,6 +248,7 @@
     "file_size_bytes": 1863009280,
     "md5_checksum": "662bc67bb5fa9aaa8381deefd16ac0f9",
     "data_object_type": "Prodigal Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_prodigal.gff",
     "type": "nmdc:DataObject"
   },
@@ -236,6 +259,7 @@
     "file_size_bytes": 1038693743,
     "md5_checksum": "768be3e91980e8f11c0df506809654aa",
     "data_object_type": "Structural Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_structural_annotation.gff",
     "type": "nmdc:DataObject"
   },
@@ -246,6 +270,7 @@
     "file_size_bytes": 940298,
     "md5_checksum": "2baadb57df21633d86e86386bc5a9740",
     "data_object_type": "CRT Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_crt.gff",
     "type": "nmdc:DataObject"
   },
@@ -256,6 +281,7 @@
     "file_size_bytes": 663224586,
     "md5_checksum": "7c889fac59d8951ed0fb02872089b66a",
     "data_object_type": "KO_EC Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_ko_ec.gff",
     "type": "nmdc:DataObject"
   },
@@ -266,6 +292,7 @@
     "file_size_bytes": 546083812,
     "md5_checksum": "acaaa810b9f458c15756afc20c14f9d0",
     "data_object_type": "Scaffold Lineage tsv",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_scaffold_lineage.tsv",
     "type": "nmdc:DataObject"
   },
@@ -276,6 +303,7 @@
     "file_size_bytes": 3269697792,
     "md5_checksum": "e03ba0e32d10d1a0fccb284e77f28743",
     "data_object_type": "Assembly Contigs",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_contigs.fna",
     "type": "nmdc:DataObject"
   },
@@ -286,6 +314,7 @@
     "file_size_bytes": 4387860,
     "md5_checksum": "3e2ab63b01da26676a9e8e34b15a764e",
     "data_object_type": "TRNA Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_trna.gff",
     "type": "nmdc:DataObject"
   },
@@ -296,6 +325,7 @@
     "file_size_bytes": 215400483,
     "md5_checksum": "ce169b9943cb55e154e593ff45bf54ec",
     "data_object_type": "Contig Mapping File",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_contig_names_mapping.tsv",
     "type": "nmdc:DataObject"
   },
@@ -306,6 +336,7 @@
     "file_size_bytes": 1718656456,
     "md5_checksum": "0602d29d19a44b25f77f34c6e27e2e61",
     "data_object_type": "Functional Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_functional_annotation.gff",
     "type": "nmdc:DataObject"
   },
@@ -316,6 +347,7 @@
     "file_size_bytes": 50,
     "md5_checksum": "e03091980f153f621fb0be9b1c50c8e7",
     "data_object_type": "GTDBTK Bacterial Summary",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmag-11-3nm9fq82.1/nmdc_wfmag-11-3nm9fq82.1_gtdbtk.bac122.summary.tsv",
     "type": "nmdc:DataObject"
   },
@@ -326,6 +358,7 @@
     "file_size_bytes": 484526,
     "md5_checksum": "4c6bf2a6eb47503967db91dbf3591a10",
     "data_object_type": "Metagenome Bins",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmag-11-3nm9fq82.1/nmdc_wfmag-11-3nm9fq82.1_hqmq_bin.zip",
     "type": "nmdc:DataObject"
   },
@@ -336,6 +369,7 @@
     "file_size_bytes": 47,
     "md5_checksum": "1b8eb198cbcb9acf83fedd297f8e5ca9",
     "data_object_type": "CheckM Statistics",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmag-11-3nm9fq82.1/nmdc_wfmag-11-3nm9fq82.1_checkm_qa.out",
     "type": "nmdc:DataObject"
   },
@@ -346,6 +380,7 @@
     "file_size_bytes": 197,
     "md5_checksum": "f9be1550554363f2e009d1551856d2e4",
     "data_object_type": "Metagenome Bins Info File",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmag-11-3nm9fq82.1/nmdc_wfmag-11-3nm9fq82.1_bin.info",
     "type": "nmdc:DataObject"
   },
@@ -356,6 +391,7 @@
     "file_size_bytes": 49,
     "md5_checksum": "f88d6b3ebf79c923a2b5438773269ac0",
     "data_object_type": "GTDBTK Archaeal Summary",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmag-11-3nm9fq82.1/nmdc_wfmag-11-3nm9fq82.1_gtdbtk.ar122.summary.tsv",
     "type": "nmdc:DataObject"
   },
@@ -366,6 +402,7 @@
     "file_size_bytes": 25186594352,
     "md5_checksum": "5a48742bbd1cfc407e4399bce74e04e1",
     "data_object_type": "Kraken2 Taxonomic Classification",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfrbt-11-7r0srx57.1/nmdc_wfrbt-11-7r0srx57.1_kraken2_classification.tsv",
     "type": "nmdc:DataObject"
   },
@@ -376,6 +413,7 @@
     "file_size_bytes": 656166,
     "md5_checksum": "af9a2f582b0f6021d181422f2ea4be4d",
     "data_object_type": "Kraken2 Classification Report",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfrbt-11-7r0srx57.1/nmdc_wfrbt-11-7r0srx57.1_kraken2_report.tsv",
     "type": "nmdc:DataObject"
   },
@@ -386,6 +424,7 @@
     "file_size_bytes": 30629289142,
     "md5_checksum": "9c21fc7b7c4959844fed1d7b82704485",
     "data_object_type": "Centrifuge Taxonomic Classification",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfrbt-11-7r0srx57.1/nmdc_wfrbt-11-7r0srx57.1_centrifuge_classification.tsv",
     "type": "nmdc:DataObject"
   },
@@ -396,6 +435,7 @@
     "file_size_bytes": 270846,
     "md5_checksum": "f93c50e8f9bde1bd0e5e43beb22cccbd",
     "data_object_type": "Centrifuge output report file",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfrbt-11-7r0srx57.1/nmdc_wfrbt-11-7r0srx57.1_centrifuge_report.tsv",
     "type": "nmdc:DataObject"
   },
@@ -406,6 +446,7 @@
     "file_size_bytes": 1479475,
     "md5_checksum": "3bf736fd66b9657e9e4a21d27b9c7eea",
     "data_object_type": "GOTTCHA2 Report Full",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfrbt-11-7r0srx57.1/nmdc_wfrbt-11-7r0srx57.1_gottcha2_full_tsv",
     "type": "nmdc:DataObject"
   },
@@ -416,6 +457,7 @@
     "file_size_bytes": 4108386,
     "md5_checksum": "2c4ea28d6717e2c4fa152312ad76861b",
     "data_object_type": "Kraken2 Krona Plot",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfrbt-11-7r0srx57.1/nmdc_wfrbt-11-7r0srx57.1_kraken2_krona.html",
     "type": "nmdc:DataObject"
   },
@@ -426,6 +468,7 @@
     "file_size_bytes": 2390366,
     "md5_checksum": "28a1721df9dfa57f82d765e321f00011",
     "data_object_type": "Centrifuge Krona Plot",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfrbt-11-7r0srx57.1/nmdc_wfrbt-11-7r0srx57.1_centrifuge_krona.html",
     "type": "nmdc:DataObject"
   },
@@ -436,6 +479,7 @@
     "file_size_bytes": 277515,
     "md5_checksum": "0aa24ef0e81a035a57a529897acac307",
     "data_object_type": "GOTTCHA2 Krona Plot",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfrbt-11-7r0srx57.1/nmdc_wfrbt-11-7r0srx57.1_gottcha2_krona.html",
     "type": "nmdc:DataObject"
   },
@@ -446,6 +490,7 @@
     "file_size_bytes": 299,
     "md5_checksum": "278a0b41e1a566f445b60268b5569829",
     "data_object_type": "Read Based Analysis Info File",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfrbt-11-7r0srx57.1/nmdc_wfrbt-11-7r0srx57.1_profiler.info",
     "type": "nmdc:DataObject"
   },
@@ -456,6 +501,7 @@
     "file_size_bytes": 15479,
     "md5_checksum": "bcd2610da6e090efa6ca4308623ff45e",
     "data_object_type": "GOTTCHA2 Classification Report",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfrbt-11-7r0srx57.1/nmdc_wfrbt-11-7r0srx57.1_gottcha2_report.tsv",
     "type": "nmdc:DataObject"
   },
@@ -466,6 +512,7 @@
     "file_size_bytes": 1746294812,
     "md5_checksum": "0f8e90c3a8b13a8e369f5a2762e0d74d",
     "data_object_type": "Functional Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.1/nmdc_wfmgan-11-6x59p192.1_functional_annotation.gff",
     "type": "nmdc:DataObject"
   },
@@ -476,6 +523,7 @@
     "file_size_bytes": 554693882,
     "md5_checksum": "f2ef2add9be4c317155f270566e5a7cc",
     "data_object_type": "Scaffold Lineage tsv",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.1/nmdc_wfmgan-11-6x59p192.1_scaffold_lineage.tsv",
     "type": "nmdc:DataObject"
   },
@@ -486,6 +534,7 @@
     "file_size_bytes": 4259025,
     "md5_checksum": "c03622a39743b4102faa914cd5660124",
     "data_object_type": "RFAM Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.1/nmdc_wfmgan-11-6x59p192.1_rfam.gff",
     "type": "nmdc:DataObject"
   },
@@ -496,6 +545,7 @@
     "file_size_bytes": 538047136,
     "md5_checksum": "f96bb33f707d1853868c232c0f68ddfa",
     "data_object_type": "Product Names",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.1/nmdc_wfmgan-11-6x59p192.1_product_names.tsv",
     "type": "nmdc:DataObject"
   },
@@ -506,6 +556,7 @@
     "file_size_bytes": 104667821,
     "md5_checksum": "d51a0a28872db5de8ae938087dd5a5ce",
     "data_object_type": "TIGRFam Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.1/nmdc_wfmgan-11-6x59p192.1_tigrfam.gff",
     "type": "nmdc:DataObject"
   },
@@ -516,6 +567,7 @@
     "file_size_bytes": 4479584,
     "md5_checksum": "7ecb5bb44604792cce3f2162b2ac096a",
     "data_object_type": "TRNA Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.1/nmdc_wfmgan-11-6x59p192.1_trna.gff",
     "type": "nmdc:DataObject"
   },
@@ -526,6 +578,7 @@
     "file_size_bytes": 1568923013,
     "md5_checksum": "a86132980f260a7f10cc6a6ca0200da7",
     "data_object_type": "Annotation Amino Acid FASTA",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.1/nmdc_wfmgan-11-6x59p192.1_proteins.faa",
     "type": "nmdc:DataObject"
   },
@@ -536,6 +589,7 @@
     "file_size_bytes": 145259101,
     "md5_checksum": "ce9c9cf852f51c1ca64f3caecbad1a95",
     "data_object_type": "Annotation Enzyme Commission",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.1/nmdc_wfmgan-11-6x59p192.1_ec.tsv",
     "type": "nmdc:DataObject"
   },
@@ -546,6 +600,7 @@
     "file_size_bytes": 948904732,
     "md5_checksum": "77b99513692eeccaea99e4bbd68e9f3f",
     "data_object_type": "Genemark Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.1/nmdc_wfmgan-11-6x59p192.1_genemark.gff",
     "type": "nmdc:DataObject"
   },
@@ -556,6 +611,7 @@
     "file_size_bytes": 4980,
     "md5_checksum": "4decac922a749e4b644fe603d0d2e48e",
     "data_object_type": "Annotation Statistics",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.1/nmdc_wfmgan-11-6x59p192.1_stats.tsv",
     "type": "nmdc:DataObject"
   },
@@ -566,6 +622,7 @@
     "file_size_bytes": 1052130379,
     "md5_checksum": "c04a910590cd7547024a611f49bec060",
     "data_object_type": "SUPERFam Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.1/nmdc_wfmgan-11-6x59p192.1_supfam.gff",
     "type": "nmdc:DataObject"
   },
@@ -576,6 +633,7 @@
     "file_size_bytes": 464124,
     "md5_checksum": "9b0344d27ffcba7db05d31f4ff589cc3",
     "data_object_type": "Crispr Terms",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.1/nmdc_wfmgan-11-6x59p192.1_crt.crisprs",
     "type": "nmdc:DataObject"
   },
@@ -586,6 +644,7 @@
     "file_size_bytes": 217090712,
     "md5_checksum": "09e81f0dc07ca591106812751674139c",
     "data_object_type": "Annotation KEGG Orthology",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.1/nmdc_wfmgan-11-6x59p192.1_ko.tsv",
     "type": "nmdc:DataObject"
   },
@@ -596,6 +655,7 @@
     "file_size_bytes": 902621715,
     "md5_checksum": "e00b5e9dc77643bb151a1fea422463fc",
     "data_object_type": "Clusters of Orthologous Groups (COG) Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.1/nmdc_wfmgan-11-6x59p192.1_cog.gff",
     "type": "nmdc:DataObject"
   },
@@ -606,6 +666,7 @@
     "file_size_bytes": 425,
     "md5_checksum": "21a3dd34fc0d5c23b3f37245f42691cb",
     "data_object_type": "Annotation Info File",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.1/nmdc_wfmgan-11-6x59p192.1_imgap.info",
     "type": "nmdc:DataObject"
   },
@@ -616,6 +677,7 @@
     "file_size_bytes": 1901710376,
     "md5_checksum": "57a582fc88f111d1302cfe404839d851",
     "data_object_type": "Prodigal Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.1/nmdc_wfmgan-11-6x59p192.1_prodigal.gff",
     "type": "nmdc:DataObject"
   },
@@ -626,6 +688,7 @@
     "file_size_bytes": 1068160187,
     "md5_checksum": "694b0aeb6423c5395f0b4b565fd0c838",
     "data_object_type": "Structural Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.1/nmdc_wfmgan-11-6x59p192.1_structural_annotation.gff",
     "type": "nmdc:DataObject"
   },
@@ -636,6 +699,7 @@
     "file_size_bytes": 975843,
     "md5_checksum": "c25d7311dd00f37450b215b2727aba6b",
     "data_object_type": "CRT Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.1/nmdc_wfmgan-11-6x59p192.1_crt.gff",
     "type": "nmdc:DataObject"
   },
@@ -646,6 +710,7 @@
     "file_size_bytes": 206966368,
     "md5_checksum": "3482697448d6033038cc4739674530f0",
     "data_object_type": "SMART Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.1/nmdc_wfmgan-11-6x59p192.1_smart.gff",
     "type": "nmdc:DataObject"
   },
@@ -656,6 +721,7 @@
     "file_size_bytes": 968555416,
     "md5_checksum": "367e5c6b49164afef3009432c4c11653",
     "data_object_type": "Gene Phylogeny tsv",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.1/nmdc_wfmgan-11-6x59p192.1_gene_phylogeny.tsv",
     "type": "nmdc:DataObject"
   },
@@ -666,6 +732,7 @@
     "file_size_bytes": 889430957,
     "md5_checksum": "397c8b521d94d101526a11b6d14e0d67",
     "data_object_type": "CATH FunFams (Functional Families) Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.1/nmdc_wfmgan-11-6x59p192.1_cath_funfam.gff",
     "type": "nmdc:DataObject"
   },
@@ -676,6 +743,7 @@
     "file_size_bytes": 673578761,
     "md5_checksum": "7f547a31e6de52224d52a59748b92da7",
     "data_object_type": "KO_EC Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.1/nmdc_wfmgan-11-6x59p192.1_ko_ec.gff",
     "type": "nmdc:DataObject"
   },
@@ -686,6 +754,7 @@
     "file_size_bytes": 852026969,
     "md5_checksum": "366244e495fd7287cbc40ca2289622c3",
     "data_object_type": "Pfam Annotation GFF",
+    "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.1/nmdc_wfmgan-11-6x59p192.1_pfam.gff",
     "type": "nmdc:DataObject"
   }

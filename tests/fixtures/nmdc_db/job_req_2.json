@@ -1,0 +1,255 @@
+[
+  {
+  "claims": [],
+  "config": {
+    "activity": {
+      "binned_contig_num": "{outputs.final_stats_json.binned_contig_num}",
+      "input_contig_num": "{outputs.final_stats_json.input_contig_num}",
+      "low_depth_contig_num": "{outputs.final_stats_json.low_depth_contig_num}",
+      "mags_list": "{outputs.final_stats_json.mags_list}",
+      "name": "Metagenome Assembled Genomes Analysis for {id}",
+      "too_short_contig_num": "{outputs.final_stats_json.too_short_contig_num}",
+      "type": "nmdc:MagsAnalysis",
+      "unbinned_contig_num": "{outputs.final_stats_json.unbinned_contig_num}"
+    },
+    "activity_id": "nmdc:wfmag-11-3nm9fq82.3",
+    "activity_set": "workflow_execution_set",
+    "git_repo": "https://github.com/microbiomedata/metaMAGs",
+    "input_data_objects": [
+      {
+        "data_object_type": "Assembly Contigs",
+        "description": "Assembly contigs (remapped) for nmdc:wfmgan-11-6x59p192.2",
+        "file_size_bytes": 3269697792,
+        "id": "nmdc:dobj-11-tr910y56",
+        "md5_checksum": "e03ba0e32d10d1a0fccb284e77f28743",
+        "name": "nmdc_wfmgan-11-6x59p192.2_contigs.fna",
+        "type": "nmdc:DataObject",
+        "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_contigs.fna"
+      },
+      {
+        "data_object_type": "Assembly Coverage BAM",
+        "description": "Sorted Bam for nmdc:omprc-11-cegmwy02",
+        "file_size_bytes": 27595203745,
+        "id": "nmdc:dobj-11-t4b20t83",
+        "md5_checksum": "b259993b912a0ef0c80fec91b0f90d94",
+        "name": "nmdc_wfmgas-11-jchk0x71.1_pairedMapped_sorted.sam.gz",
+        "type": "nmdc:DataObject",
+        "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgas-11-jchk0x71.1/nmdc_wfmgas-11-jchk0x71.1_pairedMapped_sorted.sam.gz"
+      },
+      {
+        "data_object_type": "Functional Annotation GFF",
+        "description": "Functional Annotation for nmdc:wfmgan-11-6x59p192.2",
+        "file_size_bytes": 1718656456,
+        "id": "nmdc:dobj-11-xcgb3s36",
+        "md5_checksum": "0602d29d19a44b25f77f34c6e27e2e61",
+        "name": "nmdc_wfmgan-11-6x59p192.2_functional_annotation.gff",
+        "type": "nmdc:DataObject",
+        "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_functional_annotation.gff"
+      },
+      {
+        "data_object_type": "Annotation Amino Acid FASTA",
+        "description": "FASTA Amino Acid File for nmdc:wfmgan-11-6x59p192.2",
+        "file_size_bytes": 1554283442,
+        "id": "nmdc:dobj-11-b4cqa613",
+        "md5_checksum": "739fb530a23c8d60e92acf5fe5476c04",
+        "name": "nmdc_wfmgan-11-6x59p192.2_proteins.faa",
+        "type": "nmdc:DataObject",
+        "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_proteins.faa"
+      },
+      {
+        "data_object_type": "Clusters of Orthologous Groups (COG) Annotation GFF",
+        "description": "COGs for nmdc:wfmgan-11-6x59p192.2",
+        "file_size_bytes": 888181611,
+        "id": "nmdc:dobj-11-m6dfya31",
+        "md5_checksum": "aab17532f8a5a24c5f7e404dcad9280c",
+        "name": "nmdc_wfmgan-11-6x59p192.2_cog.gff",
+        "type": "nmdc:DataObject",
+        "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_cog.gff"
+      },
+      {
+        "data_object_type": "Annotation Enzyme Commission",
+        "description": "EC Annotations for nmdc:wfmgan-11-6x59p192.2",
+        "file_size_bytes": 141826750,
+        "id": "nmdc:dobj-11-jtp5vv62",
+        "md5_checksum": "ade2c28496c61c83e84f7b679c41333f",
+        "name": "nmdc_wfmgan-11-6x59p192.2_ec.tsv",
+        "type": "nmdc:DataObject",
+        "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_ec.tsv"
+      },
+      {
+        "data_object_type": "Annotation KEGG Orthology",
+        "description": "KEGG Orthology for nmdc:wfmgan-11-6x59p192.2",
+        "file_size_bytes": 211913679,
+        "id": "nmdc:dobj-11-5ge8cb55",
+        "md5_checksum": "643105f7f4fd8c8b676bf2526a964cf9",
+        "name": "nmdc_wfmgan-11-6x59p192.2_ko.tsv",
+        "type": "nmdc:DataObject",
+        "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_ko.tsv"
+      },
+      {
+        "data_object_type": "Pfam Annotation GFF",
+        "description": "Pfam Annotation for nmdc:wfmgan-11-6x59p192.2",
+        "file_size_bytes": 837405131,
+        "id": "nmdc:dobj-11-gv1jq555",
+        "md5_checksum": "e4cc21248a62bd331aec0be8146065bc",
+        "name": "nmdc_wfmgan-11-6x59p192.2_pfam.gff",
+        "type": "nmdc:DataObject",
+        "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_pfam.gff"
+      },
+      {
+        "data_object_type": "TIGRFam Annotation GFF",
+        "description": "TIGRFam for nmdc:wfmgan-11-6x59p192.2",
+        "file_size_bytes": 102760331,
+        "id": "nmdc:dobj-11-cpbx8z47",
+        "md5_checksum": "3763049accb2dbf4f90c5dee1ee0a4a1",
+        "name": "nmdc_wfmgan-11-6x59p192.2_tigrfam.gff",
+        "type": "nmdc:DataObject",
+        "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_tigrfam.gff"
+      },
+      {
+        "data_object_type": "Crispr Terms",
+        "description": "Crispr Terms for nmdc:wfmgan-11-6x59p192.2",
+        "file_size_bytes": 453711,
+        "id": "nmdc:dobj-11-a6tdwf10",
+        "md5_checksum": "8679579f51b92aee605b103e28bd3a6c",
+        "name": "nmdc_wfmgan-11-6x59p192.2_crt.crisprs",
+        "type": "nmdc:DataObject",
+        "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_crt.crisprs"
+      },
+      {
+        "data_object_type": "Product Names",
+        "description": "Product names for nmdc:wfmgan-11-6x59p192.2",
+        "file_size_bytes": 525174204,
+        "id": "nmdc:dobj-11-4bxp0a30",
+        "md5_checksum": "ef27a5eff0449f525cd6413daa481a93",
+        "name": "nmdc_wfmgan-11-6x59p192.2_product_names.tsv",
+        "type": "nmdc:DataObject",
+        "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_product_names.tsv"
+      },
+      {
+        "data_object_type": "Gene Phylogeny tsv",
+        "description": "Gene Phylogeny for nmdc:wfmgan-11-6x59p192.2",
+        "file_size_bytes": 957972553,
+        "id": "nmdc:dobj-11-74z1n534",
+        "md5_checksum": "30f1bdf12f691df79d922a82ae5d444f",
+        "name": "nmdc_wfmgan-11-6x59p192.2_gene_phylogeny.tsv",
+        "type": "nmdc:DataObject",
+        "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_gene_phylogeny.tsv"
+      },
+      {
+        "data_object_type": "Scaffold Lineage tsv",
+        "description": "Scaffold Lineage tsv for nmdc:wfmgan-11-6x59p192.2",
+        "file_size_bytes": 546083812,
+        "id": "nmdc:dobj-11-tjwrkw11",
+        "md5_checksum": "acaaa810b9f458c15756afc20c14f9d0",
+        "name": "nmdc_wfmgan-11-6x59p192.2_scaffold_lineage.tsv",
+        "type": "nmdc:DataObject",
+        "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_scaffold_lineage.tsv"
+      },
+      {
+        "data_object_type": "Contig Mapping File",
+        "description": "Contig mappings file for nmdc:wfmgan-11-6x59p192.2",
+        "file_size_bytes": 215400483,
+        "id": "nmdc:dobj-11-x2eb3v05",
+        "md5_checksum": "ce169b9943cb55e154e593ff45bf54ec",
+        "name": "nmdc_wfmgan-11-6x59p192.2_contig_names_mapping.tsv",
+        "type": "nmdc:DataObject",
+        "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_contig_names_mapping.tsv"
+      }
+    ],
+    "input_prefix": "nmdc_mags",
+    "inputs": {
+      "cog_file": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_cog.gff",
+      "contig_file": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_contigs.fna",
+      "crispr_file": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_crt.crisprs",
+      "ec_file": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_ec.tsv",
+      "gene_phylogeny_file": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_gene_phylogeny.tsv",
+      "gff_file": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_functional_annotation.gff",
+      "ko_file": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_ko.tsv",
+      "lineage_file": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_scaffold_lineage.tsv",
+      "map_file": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_contig_names_mapping.tsv",
+      "pfam_file": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_pfam.gff",
+      "product_names_file": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_product_names.tsv",
+      "proj": "nmdc:wfmag-11-3nm9fq82.3",
+      "proteins_file": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_proteins.faa",
+      "sam_file": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgas-11-jchk0x71.1/nmdc_wfmgas-11-jchk0x71.1_pairedMapped_sorted.sam.gz",
+      "tigrfam_file": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmgan-11-6x59p192.2/nmdc_wfmgan-11-6x59p192.2_tigrfam.gff"
+    },
+    "iteration": 3,
+    "outputs": [
+      {
+        "data_object_type": "CheckM Statistics",
+        "description": "CheckM for {id}",
+        "id": "nmdc:dobj-01-abcd4321",
+        "name": "CheckM statistics report",
+        "output": "final_checkm"
+      },
+      {
+        "data_object_type": "Metagenome HQMQ Bins Compression File",
+        "description": "Metagenome HQMQ Bins for {id}",
+        "id": "nmdc:dobj-01-abcd4321",
+        "name": "Metagenome hqmq bin zip archive",
+        "output": "final_hqmq_bins_zip"
+      },
+      {
+        "data_object_type": "GTDBTK Bacterial Summary",
+        "description": "Bacterial Summary for {id}",
+        "id": "nmdc:dobj-01-abcd4321",
+        "name": "GTDBTK bacterial summary",
+        "output": "final_gtdbtk_bac_summary"
+      },
+      {
+        "data_object_type": "GTDBTK Archaeal Summary",
+        "description": "Archaeal Summary for {id}",
+        "id": "nmdc:dobj-01-abcd4321",
+        "name": "GTDBTK archaeal summary",
+        "output": "final_gtdbtk_ar_summary",
+        "suffix": "_gtdbtk.ar122.summary.tsv"
+      },
+      {
+        "data_object_type": "Metagenome Bins Info File",
+        "description": "Metagenome Bins Info File for {id}",
+        "id": "nmdc:dobj-01-abcd4321",
+        "name": "Metagenome Bins Info File",
+        "output": "mags_version"
+      },
+      {
+        "data_object_type": "Metagenome LQ Bins Compression File",
+        "description": "Metagenome LQ Bins for {id}",
+        "id": "nmdc:dobj-01-abcd4321",
+        "name": "Metagenome lq bin zip archive",
+        "output": "final_lq_bins_zip"
+      },
+      {
+        "data_object_type": "Metagenome Bins Heatmap",
+        "description": "Metagenome heatmap for {id}",
+        "id": "nmdc:dobj-01-abcd4321",
+        "name": "Metagenome Heatmap File",
+        "output": "heatmap"
+      },
+      {
+        "data_object_type": "Metagenome Bins Barplot",
+        "description": "Metagenome barplot for {id}",
+        "id": "nmdc:dobj-01-abcd4321",
+        "name": "Metagenome Barplot File",
+        "output": "barplot"
+      },
+      {
+        "data_object_type": "Metagenome Bins Krona Plot",
+        "description": "Metagenome Bins Krona Plot for {id}",
+        "id": "nmdc:dobj-01-abcd4321",
+        "name": "Metagenome Krona Bins Plot File",
+        "output": "kronaplot"
+      }
+    ],
+    "release": "v1.3.16",
+    "trigger_activity": "nmdc:wfmgan-11-6x59p192.2",
+    "was_informed_by": "nmdc:omprc-11-cegmwy02",
+    "wdl": "mbin_nmdc.wdl"
+  },
+  "id": "nmdc:9f55ca6a-5075-11f0-8adc-d61879508756",
+  "workflow": {
+    "id": "MAGs: v1.3.16"
+  }
+}
+]
