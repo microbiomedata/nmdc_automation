@@ -149,10 +149,7 @@ Workflows:
       name: "Metagenome Assembled Genomes Analysis for {id}"
       type: nmdc:MagsAnalysis
     Outputs:
-      - CheckM Statistics
-      - Metagenome Bins
-      - GTDBTK Bacterial Summary
-      - GTDBTK Archaeal Summary
+      - Metagenome HQMQ Bins Compression File
 
 Data Objects:
   Unique:
@@ -166,36 +163,6 @@ Data Objects:
       output_of: nmdc:NucleotideSequencing
       multiple: false
       action: none
-    - data_object_type: CheckM Statistics
-      description: CheckM for {id}
-      name: CheckM statistics report
-      data_category: processed_data
-      import_suffix: _checkm_qa\.out$
-      nmdc_suffix: _checkm_qa.out
-      input_to: []
-      output_of:  nmdc:MagsAnalysis
-      multiple: false
-      action: rename
-    - data_object_type: GTDBTK Bacterial Summary
-      description: Bacterial Summary for {id}
-      name: GTDBTK bacterial summary
-      data_category: processed_data
-      import_suffix: _gtdbtk\.bac122\.summary\.tsv$
-      nmdc_suffix: _gtdbtk.bac122.summary.tsv
-      input_to: []
-      output_of:  nmdc:MagsAnalysis
-      multiple: false
-      action: rename
-    - data_object_type: GTDBTK Archaeal Summary
-      description: Archaeal Summary for {id}
-      name: GTDBTK archaeal summary
-      data_category: processed_data
-      import_suffix: _gtdbtk\.ar122\.summary\.tsv$
-      nmdc_suffix: _gtdbtk.ar122.summary.tsv
-      input_to: []
-      output_of:  nmdc:MagsAnalysis
-      multiple: false
-      action: rename
     - data_object_type: Annotation Amino Acid FASTA
       description: FASTA Amino Acid File for {id}
       name: FASTA amino acid file for annotated proteins
