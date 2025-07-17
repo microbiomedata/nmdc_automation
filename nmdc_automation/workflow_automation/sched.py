@@ -5,10 +5,9 @@ import uuid
 import os
 from time import sleep as _sleep
 from nmdc_automation.api.nmdcapi import NmdcRuntimeApi
+from nmdc_automation.db.nmdc_mongo import get_db
 from nmdc_automation.workflow_automation.workflows import load_workflow_configs
 from functools import lru_cache
-from pymongo import MongoClient
-from pymongo.database import Database as MongoDatabase
 from nmdc_automation.workflow_automation.workflow_process import load_workflow_process_nodes
 from nmdc_automation.models.workflow import WorkflowConfig, WorkflowProcessNode
 from semver.version import Version
@@ -22,17 +21,6 @@ _WF_YAML_ENV = "NMDC_WORKFLOW_YAML_FILE"
 # configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-@lru_cache
-def get_mongo_db() -> MongoDatabase:
-    _client = MongoClient(
-        host=os.getenv("MONGO_HOST", "localhost"),
-        port=int(os.getenv("MONGO_PORT", "27018")),
-        username=os.getenv("MONGO_USERNAME", None),
-        password=os.getenv("MONGO_PASSWORD", None),
-        directConnection=True,
-    )[os.getenv("MONGO_DBNAME", "nmdc")]
-    return _client
-
 
 
 def within_range(wf1: WorkflowConfig, wf2: WorkflowConfig, force=False) -> bool:
@@ -237,19 +225,13 @@ class Scheduler:
     @lru_cache(maxsize=128)
     def get_existing_jobs(self, wf: WorkflowConfig):
         """
-        Get the existing jobs for a workflow. Ignore cancelled jobs.
+        Get the existing jobs for a workflow, including cancelled jobs
         """
         existing_jobs = set()
         # Filter by git_repo and version
         # Find all existing jobs for this workflow
         q = {"config.git_repo": wf.git_repo, "config.release": wf.version}
         for j in self.db.jobs.find(q):
-            # If all claims are 'cancelled' then we can ignore this job for scheduling purposes
-            claims = j.get("claims", [])
-            if claims:
-                all_cancelled = all([c.get('cancelled', False) for c in claims])
-                if all_cancelled:
-                    continue
             # the assumption is that a job in any state has been triggered by an activity
             # that was the result of an existing (completed) job
             act = j["config"]["trigger_activity"]
@@ -276,7 +258,7 @@ class Scheduler:
                 continue
             # See if we already have a job for this
             if wfp_node.id in self.get_existing_jobs(wf):
-                msg = f"Skipping existing job for{wfp_node.id} {wf.name}:{wf.version}"
+                msg = f"Skipping existing job for {wfp_node.id} {wf.name}:{wf.version}"
                 if msg not in self._messages:
                     logger.info(msg)
                     self._messages.append(msg)
@@ -359,7 +341,7 @@ def main(site_conf, wf_file):  # pragma: no cover
     Main function
     """
     # site_conf = os.environ.get("NMDC_SITE_CONF", "site_configuration.toml")
-    db = get_mongo_db()
+    db = get_db()
     logger.info("Initializing Scheduler")
     sched = Scheduler(db, wf_file, site_conf=site_conf)
 

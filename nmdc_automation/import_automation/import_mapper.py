@@ -8,8 +8,6 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Dict, List, Optional, Union, Set, Tuple
 
-from nmdc_schema.nmdc import DataCategoryEnum 
-
 import yaml
 
 logging.basicConfig(level=logging.INFO)
@@ -277,7 +275,7 @@ class ImportMapper:
                     nmdc_process_id=data_generation['id'],
                     data_object_in_db=True,
                     process_id_in_db=True,
-                    data_category=DataCategoryEnum.processed_data
+                    data_category=import_spec['data_category'] # "processed_data"
                 )
             )
         else:
@@ -301,7 +299,7 @@ class ImportMapper:
                     nmdc_process_id=self.data_generation_id,
                     data_object_in_db=False,
                     process_id_in_db=True,
-                    data_category=DataCategoryEnum.instrument_data
+                    data_category=import_spec['data_category'] # "instrument_data"
                 )
             )
 
@@ -334,7 +332,7 @@ class ImportMapper:
                         nmdc_process_id=workflow_execution['id'],
                         data_object_in_db=True,
                         process_id_in_db=True,
-                        data_category=DataCategoryEnum.processed_data
+                        data_category=import_spec['data_category'] # "processed_data"
                     )
                 )
 
@@ -362,6 +360,7 @@ class ImportMapper:
                         input_to=import_spec['input_to'],
                         is_multiple=import_spec['multiple'],
                         import_file=file,
+                        data_category=import_spec['data_category']
                     )
                 )
 
@@ -394,7 +393,7 @@ class DataObjectMapping:
     def __init__(self, data_object_type: str, output_of: str, input_to: list, is_multiple: bool,
                  data_object_id: Optional[str] = None, import_file: Union[str, Path] = None,
                  nmdc_process_id: str = None, data_object_in_db: bool = False, process_id_in_db: bool = False, 
-                 data_category: Optional[DataCategoryEnum] = None) -> None:
+                 data_category: str = None) -> None:
         self.data_object_type = data_object_type
         self.import_file = import_file
         self.output_of = output_of
@@ -439,7 +438,7 @@ class DataObjectMapping:
 
     def __hash__(self):
         return hash((self.data_object_type, self.import_file, self.output_of, self.data_object_id,
-                     self.nmdc_process_id, str(self.data_category)))
+                     self.nmdc_process_id, self.data_category))
         
 
 @lru_cache
