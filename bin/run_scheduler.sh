@@ -5,6 +5,9 @@ YAML="/path/to/workflows.yaml"
 LIST="/path/to/allow.lst"
 TOML="/path/to/site_configuration.toml"
 PORT="27017"
+PID_FILE="/conf/sched.pid"
+LOG_FILE="/conf/sched.log"
+SLACK_WEBHOOK_URL="https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXX"
 
 # Help message
 show_help() {
@@ -16,6 +19,13 @@ show_help() {
   echo "  -t, --toml PATH        Path to site config TOML   (default: $TOML)"
   echo "  -p, --port PORT        MongoDB port number        (default: $PORT)"
   echo "  -h, --help             Show this help message"
+}
+
+send_slack_notification() {
+    local message="$1"
+    curl -s -X POST -H 'Content-type: application/json' \
+         --data "{\"text\": \"$message\"}" \
+         "$SLACK_WEBHOOK_URL" > /dev/null
 }
 
 # Parse args
@@ -55,14 +65,15 @@ export NMDC_WORKFLOW_YAML_FILE="$YAML"
 export NMDC_SITE_CONF="$TOML"
 
 # Kill existing scheduler process if PID exists
-kill $(cat /conf/sched.pid 2>/dev/null) 2>/dev/null
+kill $(cat "$PID_FILE" 2>/dev/null) 2>/dev/null
 
 cd /src
 
 # Run the Python script
 ALLOWLISTFILE="$LIST" python -m nmdc_automation.workflow_automation.sched \
     "$NMDC_SITE_CONF" \
-    "$NMDC_WORKFLOW_YAML_FILE" > /conf/sched.log 2>&1 &
+    "$NMDC_WORKFLOW_YAML_FILE" > "$LOG_FILE" 2>&1 &
 
 # Save the PID
-jobs -p > /conf/sched.pid
+# jobs -p > "$PID_FILE"
+JOB_PIDS=$(jobs -p)
