@@ -69,7 +69,7 @@ Workflows:
     Import: false
     Type: nmdc:MetatranscriptomeAnnotation
     Git_repo: https://github.com/microbiomedata/mg_annotation
-    Version: v1.1.4
+    Version: v1.2.0
     Collection: workflow_execution_set
     WorkflowExecutionRange: MetatranscriptomeAnnotation
     Inputs:
@@ -103,6 +103,9 @@ Workflows:
       - Contig Mapping File
       - Annotation Info File
       - Assembly Contigs
+      - Virus Summary
+      - Plasmid Summary
+      - GeNomad Aggregated Classification
 
 
   - Name: Expression Analysis Generic
@@ -382,6 +385,36 @@ Data Objects:
       input_to: []
       output_of: nmdc:MetatranscriptomeAnnotation
       multiple: false 
+    - data_object_type: Virus Summary
+      description: Virus Summary for {id}
+      name: TSV summary of virus annotation 
+      import_suffix: _virus_summary\.tsv$
+      data_category: processed_data
+      nmdc_suffix: _virus_summary.tsv
+      input_to: []
+      output_of: nmdc:MetatranscriptomeAnnotation
+      multiple: false
+      action: rename    
+    - data_object_type: Plasmid Summary
+      description: Plasmid Summary for {id}
+      name: TSV summary of plasmid annotation 
+      data_category: processed_data
+      import_suffix: _plasmid_summary\.tsv$
+      nmdc_suffix: _plasmid_summary.tsv
+      input_to: []
+      output_of: nmdc:MetatranscriptomeAnnotation
+      multiple: false
+      action: rename  
+    - data_object_type: GeNomad Aggregated Classification
+      description: GeNomad aggregated classification for {id}
+      name: TSV of chromosome, plasmid, and virus scores
+      data_category: processed_data
+      import_suffix: _aggregated_classification\.tsv$
+      nmdc_suffix: _aggregated_classification.tsv
+      input_to: []
+      output_of: nmdc:MetatranscriptomeAnnotation
+      multiple: false
+      action: rename  
     - data_object_type: Filtered Sequencing Reads
       description: Reads QC for {id}
       name: Reads QC result fastq (clean data)
