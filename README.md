@@ -20,7 +20,11 @@ available as metadata in the NMDC database, and data objects on the NMDC data po
     - [Installation](#installation-1)
   - [Overview](#overview)
     - [System Components](#system-components)
+      - [Scheduler](#scheduler)
+      - [Watcher](#watcher)
+      - [WorkflowJob](#workflowjob)
     - [System Configuration](#system-configuration)
+      - [Site Config](#site-config)
   - [Instructions (for NERSC / Perlmutter environment)](#instructions-for-nersc--perlmutter-environment)
     - [Running the Scheduler on NERSC Rancher2](#running-the-scheduler-on-nersc-rancher2)
     - [Running the Watcher on NERSC Perlmutter](#running-the-watcher-on-nersc-perlmutter)
@@ -66,30 +70,30 @@ brew services start mongodb-community
 ### Installation
 
 1. Clone the repository
-```bash
-git clone https://github.com/microbiomedata/nmdc_automation.git
-```
+    ```bash
+    git clone https://github.com/microbiomedata/nmdc_automation.git
+    ```
 
 2. Install the required packages
-```bash
-cd nmdc_automation  
-poetry install
-```
+    ```bash
+    cd nmdc_automation  
+    poetry install
+    ```
 
 3. Activate the poetry environment
-```bash  
-poetry env activate
-```
-OR
-```bash
-poetry shell
-```
+    ```bash  
+    poetry env activate
+    ```
+    OR
+    ```bash
+    poetry shell
+    ```
 Depending on Poetry version
 
 4. Run the tests
-```bash
-make test
-```
+    ```bash
+    make test
+    ```
 
 
 
@@ -98,17 +102,16 @@ make test
 ### System Components
 
 
-Scheduler
-: The Scheduler polls the NMDC database based upon an `Allowlist` of DataGeneration IDs. Based on an allowed 
-data-generation ID, the scheduler examines WorkflowExecutions and DataObjects that `was_informed_by` by the 
-data generation, and builds a graph of `Workflow Process Nodes`. 
+#### Scheduler
+The Scheduler polls the NMDC database based upon an `Allowlist` of DataGeneration IDs. Based on an allowed data-generation ID, the scheduler examines WorkflowExecutions and DataObjects that `was_informed_by` by the data generation, and builds a graph of `Workflow Process Nodes`. 
 
 A `Workflow Process Node` is a representation of:
 - `workflow` - the workflow configuration, from workflows.yaml. The "recipe" for the given type of analysis
-- - `workflow.children` - the child workflow recipes that can be run after this workflow
+  - `workflow.children` - the child workflow recipes that can be run after this workflow
 - `process` - the planned process, from the NMDC database. The "instance" of a workflow execution or data generation from the NMDC database
 - `parent` - the parent workflow process node, if any
 - `children` - the child workflow process nodes, if any
+
 
 <details><summary>Workflow Process Node Mermaid Diagram:</summary>
 
@@ -122,8 +125,10 @@ erDiagram
     WorkflowProcessNode |o--o{ WorkflowProcessNode: "children"
 ```
 </details>
+<br>
 
-When the scheduler finds a node where:
+
+When the Scheduler finds a node where:
 
 1. The node has a workflow configuration in node.workflow.children
 2. The node DOES NOT have a child node in node.children
@@ -145,25 +150,23 @@ erDiagram
     WConfig_ReadsQC ||--o{ WConfig_Assembly: "children workflows"
 ```
 </details>
+<br>
 
-In this case the Scheduler will "schedule" a new job by creating a Job configuration from:
-- the workflow configuration from node.workflow.children
-- input data from node.data_objects
-and writing this
-to the `jobs` collection in the NMDC database
+In this case the Scheduler will "schedule" a new job by creating a Job configuration from:  
 
-Watcher
-: The Watcher "watches" the `jobs` table in the NMDC database looking for unclaimed jobs. If found, the 
-Watcher will create a `WorkflowJob` to manage the analysis job.  The watcher will then periodically poll
-each workflow job for its status and process successful or failed jobs when they are complete
+- the workflow configuration from `node.workflow.children`
+- input data from `node.data_objects`
+ 
+and writing this to the `jobs` collection in the NMDC database
 
-WorkflowJob
-: A `WorkflowJob` consists of a `WorkflowStateManager` and a `JobRunner` and is responsible for preparing the 
+#### Watcher
+The Watcher "watches" the `jobs` table in the NMDC database looking for unclaimed jobs. If found, the Watcher will create a `WorkflowJob` to manage the analysis job.  The watcher will then periodically poll each workflow job for its status and process successful or failed jobs when they are complete
+
+#### WorkflowJob
+A `WorkflowJob` consists of a `WorkflowStateManager` and a `JobRunner` and is responsible for preparing the 
 required inputs for an analysis job, submitting it to the job running service.
 
-The default job running service is JAWS:
-https://ipo.lbl.gov/joint-genome-institute-analysis-workflow-service-jaws-for-complex-computational-pipelines-on-multiple-compute-resources/
-
+The default job running service is [JAWS](https://ipo.lbl.gov/joint-genome-institute-analysis-workflow-service-jaws-for-complex-computational-pipelines-on-multiple-compute-resources/).
 The legacy job running service is a self-managed SLURM/Condor/Cromwell stack running on Permutter. 
 
 Details can be found in [README_Slurm.md](docs/README_Slurm.md)
@@ -173,8 +176,8 @@ The watcher maintains a record of it's current activity in a `State File`
 
 ### System Configuration
 
-Site Config
-: Site-specific configuration is provided by a .toml file and defines some parameters that are used
+#### Site Config
+Site-specific configuration is provided by a .toml file and defines some parameters that are used
 across the workflow process including
 
 1. URL and credentials for NMDC API
@@ -232,29 +235,31 @@ Watcher code and config files can be found
 #### Check the Watcher Status
 
 1. Check the last node the watcher was running on
-```shell
-(base) nmdcda@perlmutter:login07:~> cd nmdc_automation/dev
-(base) nmdcda@perlmutter:login07:~/nmdc_automation/dev> cat host-dev.last
-login24
-```
+    ```shell
+    (base) nmdcda@perlmutter:login07:~> cd nmdc_automation/dev
+    (base) nmdcda@perlmutter:login07:~/nmdc_automation/dev> cat host-dev.last
+    login24
+    ```
 2. ssh to that node
-```shell
-(base) nmdcda@perlmutter:login07:~/nmdc_automation/dev> ssh login24
-```
+    ```shell
+    (base) nmdcda@perlmutter:login07:~/nmdc_automation/dev> ssh login24
+    ```
 
 3. Check for the watcher process
-```shell
-(base) nmdcda@perlmutter:login24:~> ps aux | grep watcher
-nmdcda    115825  0.0  0.0   8236   848 pts/94   S+   09:33   0:00 grep watcher
-nmdcda   2044781  0.4  0.0 146420 113668 ?       S    Mar06   5:42 python -m nmdc_automation.run_process.run_workflows watcher --config /global/homes/n/nmdcda/nmdc_automation/prod/site_configuration_nersc_prod.toml --jaws daemon
-nmdcda   2044782  0.0  0.0   5504   744 ?        S    Mar06   0:00 tee -a watcher-prod.log
-````
+    ```shell
+    (base) nmdcda@perlmutter:login24:~> ps aux | grep watcher
+    nmdcda    115825  0.0  0.0   8236   848 pts/94   S+   09:33   0:00 grep watcher
+    nmdcda   2044781  0.4  0.0 146420 113668 ?       S    Mar06   5:42 python -m nmdc_automation.run_process.run_workflows watcher --config /global/homes/n/nmdcda/nmdc_automation/prod/site_configuration_nersc_prod.toml --jaws daemon
+    nmdcda   2044782  0.0  0.0   5504   744 ?        S    Mar06   0:00 tee -a watcher-prod.log
+    ````
 
-4. **IF** we are going to restart the watcher, we need to kill the existing process
-```shell
-(base) nmdcda@perlmutter:login24:~> kill -9 2044781
-```
-note: This will also terminate the `tee` process that is writing to the log file
+4. **IF** we are going to shut down the Watcher (without restarting), we need to kill the existing process
+    ```shell
+    (base) nmdcda@perlmutter:login24:~> kill -9 2044781
+    ```
+> [!NOTE]
+> This will also terminate the `tee` process that is writing to the log file.
+> To restart the Watcher with older versions of the `./run.sh script`, manual termination of the existing process was necessary with `kill -9 2044781`. However, the new `run_watcher.sh` script now handles killing and restarting the Watcher. 
 
 
 #### Set-Up and Configuration
@@ -300,17 +305,18 @@ Environment `(nmdc-automation-py3.11)` will be displayed in the prompt.
 
 #### Running the Watcher
 
-We run the watcher using `nohup` (No Hangup) - this prevents the watcher process from being terminated
+We run the Watcher using `nohup` (No Hangup) - this prevents the Watcher process from being terminated
 when the user's terminal session ends.  This will cause stdout and stderr to be written to a file
-names `nohup.out` in addition to being written to the `watcher.log` file.  
+names `nohup.out` in addition to being written to the `watcher-[dev/prod].log` file.  
 
 1. change to the working `prod` or `dev` directory
 - `/global/homes/n/nmdcda/nmdc_automation/prod`
 - `/global/homes/n/nmdcda/nmdc_automation/dev`
-3. `rm nohup.out` (logging is also captured in the watcher log file)
-4. `nohup ./run_dev.sh &` (for dev) OR `nohup ./run_prod.sh &` (for prod)
+1. `rm nohup.out` (Long term logging is captured in the `watcher-[dev/prod].log` file, which is retained)
+2. `nohup ./run_watcher_dev.sh &` (for dev) OR `nohup ./run_watcher_prod.sh &` (for prod)
     
-  Note: These scripts use the JAWS service to run jobs.  If you want to use SLURM/Condor, use `run_dev_slurm.sh` or `run_prod_slurm.sh`
+> [!NOTE]
+> These scripts use the JAWS service to run jobs.  If you want to use SLURM/Condor, use `run_dev_slurm.sh` or `run_prod_slurm.sh`
 
 
 
@@ -355,53 +361,54 @@ With the `jaws_jobid` from the `agent.state` files, you can check the status of 
 ##### NMDC Database
 
 1. Query the `jobs` table in the NMDC database based on `was_informed_by` a specific DataGeneration ID
-```shell 
-db.getCollection("jobs").find({
-    "config.was_informed_by": "nmdc:omprc-11-sdyccb57"
-})
-```
+    ```shell 
+    db.getCollection("jobs").find({
+        "config.was_informed_by": "nmdc:omprc-11-sdyccb57"
+    })
+    ```
 
-Similarly, you can query `workflow_executions` to find results based on `was_informed_by` a specific DataGeneration ID
+    Similarly, you can query `workflow_executions` to find results based on `was_informed_by` a specific DataGeneration ID
 
-```shell 
-db.getCollection("workflow_execution_set").find({
-    "was_informed_by": "nmdc:omprc-11-sdyccb57"
-})
-``` 
+    ```shell 
+    db.getCollection("workflow_execution_set").find({
+        "was_informed_by": "nmdc:omprc-11-sdyccb57"
+    })
+    ``` 
 
 2. Job document example
-<details>
+    
+    <details><summary>Example database entry</summary>
 
-```json
-{
-    "workflow" : {
-        "id" : "Metagenome Assembly: v1.0.9"
-    },
-    "id" : "nmdc:9380c834-fab7-11ef-b4bd-0a13321f5970",
-    "created_at" : "2025-03-06T18:19:43.000+0000",
-    "config" : {
-        "git_repo" : "https://github.com/microbiomedata/metaAssembly",
-        "release" : "v1.0.9",
-        "wdl" : "jgi_assembly.wdl",
-        "activity_id" : "nmdc:wfmgas-12-k8dxr170.1",
-        "activity_set" : "workflow_execution_set",
-        "was_informed_by" : "nmdc:omprc-11-sdyccb57",
-        "trigger_activity" : "nmdc:wfrqc-12-dvn15085.1",
-        "iteration" : 1,
-        "input_prefix" : "jgi_metaAssembly",
-        "inputs" : {
-            "input_files" : "https://data.microbiomedata.org/data/nmdc:omprc-11-sdyccb57/nmdc:wfrqc-12-dvn15085.1/nmdc_wfrqc-12-dvn15085.1_filtered.fastq.gz",
-            "proj" : "nmdc:wfmgas-12-k8dxr170.1",
-            "shortRead" : false
+    ```json
+    {
+        "workflow" : {
+            "id" : "Metagenome Assembly: v1.0.9"
         },
-        "input_data_objects" : [],
-        "activity" : {},
-        "outputs" : []
-    },
-    "claims" : [ ]
-}
-```
-</details>
+        "id" : "nmdc:9380c834-fab7-11ef-b4bd-0a13321f5970",
+        "created_at" : "2025-03-06T18:19:43.000+0000",
+        "config" : {
+            "git_repo" : "https://github.com/microbiomedata/metaAssembly",
+            "release" : "v1.0.9",
+            "wdl" : "jgi_assembly.wdl",
+            "activity_id" : "nmdc:wfmgas-12-k8dxr170.1",
+            "activity_set" : "workflow_execution_set",
+            "was_informed_by" : "nmdc:omprc-11-sdyccb57",
+            "trigger_activity" : "nmdc:wfrqc-12-dvn15085.1",
+            "iteration" : 1,
+            "input_prefix" : "jgi_metaAssembly",
+            "inputs" : {
+                "input_files" : "https://data.microbiomedata.org/data/nmdc:omprc-11-sdyccb57/nmdc:wfrqc-12-dvn15085.1/nmdc_wfrqc-12-dvn15085.1_filtered.fastq.gz",
+                "proj" : "nmdc:wfmgas-12-k8dxr170.1",
+                "shortRead" : false
+            },
+            "input_data_objects" : [],
+            "activity" : {},
+            "outputs" : []
+        },
+        "claims" : [ ]
+    }
+    ```
+    </details>
 
 Things to note:
 - `config.was_informed_by` is the DataGeneration ID that is the root of this job
@@ -409,12 +416,12 @@ Things to note:
 - `config.inputs` are the inputs to the job
 - `claims` a list of workers that have claimed the job. If this list is empty, the job is available to be claimed. 
 If the list is not empty, the job is being processed by a worker - example:
-```json
-{
-            "op_id" : "nmdc:sys0z232qf64",
-            "site_id" : "NERSC"
-        }
-```
+  ```json
+  {
+      "op_id" : "nmdc:sys0z232qf64",
+      "site_id" : "NERSC"
+  }
+  ```
 This refers to the `operation` and `site` that is processing the job.
 
 
@@ -424,9 +431,8 @@ The watcher maintains a state file with job configuration, metadata and status i
 state file is defined in the site configuration file. For dev this location is:
 `/global/cfs/cdirs/m3408/var/dev/agent.state`
 
-Example State File Entry:
-<details
-><summary>Example State File Entry</summary>
+
+<details><summary>Example State File Entry</summary>
 
 ```json
 {
