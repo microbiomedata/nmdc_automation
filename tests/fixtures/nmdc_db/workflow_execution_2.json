@@ -4,7 +4,7 @@
     "name": "Metagenome Annotation Analysis Activity for nmdc:wfmgan-11-6x59p192.1",
     "started_at_time": "2023-09-14T17:28:03.743782+00:00",
     "ended_at_time": "2023-09-24T19:29:28.700600+00:00",
-    "was_informed_by": "nmdc:omprc-11-cegmwy02",
+    "was_informed_by": ["nmdc:omprc-11-cegmwy02"],
     "execution_resource": "NERSC-Perlmutter",
     "git_url": "https://github.com/microbiomedata/mg_annotation",
     "has_input": [
@@ -45,7 +45,7 @@
     "name": "Metagenome Annotation Analysis Activity for nmdc:wfmgan-11-6x59p192.2",
     "started_at_time": "2024-07-25T05:19:13.375549+00:00",
     "ended_at_time": "2024-07-28T05:40:07.211785+00:00",
-    "was_informed_by": "nmdc:omprc-11-cegmwy02",
+    "was_informed_by": ["nmdc:omprc-11-cegmwy02"],
     "execution_resource": "NERSC-Perlmutter",
     "git_url": "https://github.com/microbiomedata/mg_annotation",
     "has_input": [
@@ -86,7 +86,7 @@
     "name": "Metagenome Assembly Activity for nmdc:wfmgas-11-jchk0x71.1",
     "started_at_time": "2023-09-13T19:57:49.595912+00:00",
     "ended_at_time": "2023-09-13T19:57:49.595916+00:00",
-    "was_informed_by": "nmdc:omprc-11-cegmwy02",
+    "was_informed_by": ["nmdc:omprc-11-cegmwy02"],
     "execution_resource": "JGI",
     "git_url": "https://github.com/microbiomedata/metaAssembly",
     "has_input": [
@@ -106,7 +106,7 @@
     "name": "Metagenome Assembled Genomes Analysis Activity for nmdc:wfmag-11-nvfqkd03.1",
     "started_at_time": "2023-10-09T19:39:12.836037+00:00",
     "ended_at_time": "2023-10-09T20:29:50.259877+00:00",
-    "was_informed_by": "nmdc:omprc-11-cegmwy02",
+    "was_informed_by": ["nmdc:omprc-11-cegmwy02"],
     "execution_resource": "NERSC-Perlmutter",
     "git_url": "https://github.com/microbiomedata/metaMAGs",
     "has_input": [
@@ -143,7 +143,7 @@
     "name": "Metagenome Assembled Genomes Analysis Activity for nmdc:wfmag-11-3nm9fq82.1",
     "started_at_time": "2023-10-09T19:39:14.967495+00:00",
     "ended_at_time": "2023-10-09T20:29:53.654705+00:00",
-    "was_informed_by": "nmdc:omprc-11-cegmwy02",
+    "was_informed_by": ["nmdc:omprc-11-cegmwy02"],
     "execution_resource": "NERSC-Perlmutter",
     "git_url": "https://github.com/microbiomedata/metaMAGs",
     "has_input": [
@@ -180,7 +180,7 @@
     "name": "Metagenome Sequencing Activity for nmdc:wfmsa-11-jc5cmf37.1",
     "started_at_time": "2023-09-13T19:57:49.595727+00:00",
     "ended_at_time": "2023-09-13T19:57:49.595743+00:00",
-    "was_informed_by": "nmdc:omprc-11-cegmwy02",
+    "was_informed_by": ["nmdc:omprc-11-cegmwy02"],
     "execution_resource": "JGI",
     "git_url": "https://github.com/microbiomedata/RawSequencingData",
     "has_input": [
@@ -197,7 +197,7 @@
     "name": "Read QC Activity for nmdc:wfrqc-11-4ynn6x46.1",
     "started_at_time": "2023-09-13T19:57:49.595840+00:00",
     "ended_at_time": "2023-09-13T19:57:49.595845+00:00",
-    "was_informed_by": "nmdc:omprc-11-cegmwy02",
+    "was_informed_by": ["nmdc:omprc-11-cegmwy02"],
     "execution_resource": "JGI",
     "git_url": "https://github.com/microbiomedata/ReadsQC",
     "has_input": [
@@ -214,7 +214,7 @@
     "name": "Readbased Taxonomy Analysis Activity for nmdc:wfrbt-11-7r0srx57.1",
     "started_at_time": "2023-09-14T17:26:56.817403+00:00",
     "ended_at_time": "2023-09-15T14:42:27.502792+00:00",
-    "was_informed_by": "nmdc:omprc-11-cegmwy02",
+    "was_informed_by": ["nmdc:omprc-11-cegmwy02"],
     "execution_resource": "NERSC-Perlmutter",
     "git_url": "https://github.com/microbiomedata/ReadbasedAnalysis",
     "has_input": [

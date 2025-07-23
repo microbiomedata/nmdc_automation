@@ -108,13 +108,15 @@ def test_file_handler_write_state(site_config, initial_state_file_1_failure, fix
 
 def test_file_handler_get_output_path(site_config, initial_state_file_1_failure, fixtures_dir):
     # Arrange
-    was_informed_by = "nmdc:1234"
+    was_informed_by = ["nmdc:1234"]
     workflow_execution_id = "nmdc:56789"
     mock_job = Mock()
     mock_job.was_informed_by = was_informed_by
     mock_job.workflow_execution_id = workflow_execution_id
 
-    expected_output_path = site_config.data_dir / Path(was_informed_by) / Path(workflow_execution_id)
+    expected_output_path = None
+    if len(was_informed_by) == 1:
+        expected_output_path = site_config.data_dir / Path(was_informed_by[0]) / Path(workflow_execution_id)
 
     fh = FileHandler(site_config, initial_state_file_1_failure)
 
@@ -129,7 +131,7 @@ def test_file_handler_get_output_path(site_config, initial_state_file_1_failure,
 
 def test_file_handler_write_metadata_if_not_exists(site_config, initial_state_file_1_failure, fixtures_dir, tmp_path):
     # Arrange
-    was_informed_by = "nmdc:1234"
+    was_informed_by = ["nmdc:1234"]
     workflow_execution_id = "nmdc:56789"
     job_metadata = {"id": "xyz-123-456", "status": "Succeeded"}
     mock_job = Mock()

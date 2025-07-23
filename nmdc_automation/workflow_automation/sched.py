@@ -130,7 +130,8 @@ class Scheduler:
                     
             # TODO: Make this smarter
             elif v == "{was_informed_by}":
-                v = job.informed_by
+                if len(v) == 1:  #handle multi-value todo -jlp 20250722
+                    v = job.informed_by
             elif v == "{workflow_execution_id}":
                 v = workflow_execution_id
             elif v == "{predecessor_activity_id}":
@@ -158,6 +159,8 @@ class Scheduler:
             outputs = []
             for output in wf.outputs:
                 # Mint an ID
+                # Note - the minter uses the informed_by to generate a metadata record so no need
+                # to check for the length of the array.
                 output["id"] = self.api.minter("nmdc:DataObject", job.informed_by)
                 outputs.append(output)
             job_config["outputs"] = outputs
@@ -198,7 +201,7 @@ class Scheduler:
         }
         return f"nmdc:wf{mapping[id_type]}-11-xxxxxx"
 
-    def get_activity_id(self, wf: WorkflowConfig, informed_by: str):
+    def get_activity_id(self, wf: WorkflowConfig, informed_by: list[str]):
         """
         See if anything exist for this and if not
         mint a new id.
@@ -206,10 +209,13 @@ class Scheduler:
         # We need to see if any version exist and
         # if so get its ID
         ct = 0
-        q = {"was_informed_by": informed_by, "type": wf.type}
-        for doc in self.db[wf.collection].find(q):
-            ct += 1
-            last_id = doc["id"]
+        # Only look for ID for informed_by len=1, and handle multi later -jlp 20250722
+        if len(informed_by) == 1:
+            q = {"was_informed_by": informed_by[0], "type": wf.type}
+            for doc in self.db[wf.collection].find(q):
+                ct += 1
+                last_id = doc["id"]
+
 
         if ct == 0:
             # Get an ID

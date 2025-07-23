@@ -1257,14 +1257,14 @@ files = [
 
 [[package]]
 name = "nmdc-schema"
-version = "11.8.0"
+version = "11.9.1"
 description = "Schema resources for the National Microbiome Data Collaborative (NMDC)"
 optional = false
 python-versions = "<4.0,>=3.9"
 groups = ["main"]
 files = [
-    {file = "nmdc_schema-11.8.0-py3-none-any.whl", hash = "sha256:5649b25cb1d390830199ffcff2b1ec0f5d7a6b1ee35f01f0de039c5d7f5c8f9e"},
-    {file = "nmdc_schema-11.8.0.tar.gz", hash = "sha256:537b16b7d83526bd4fbf715d2775c615d44c5d25e0fa3b8f2ea3960d8fa156cd"},
+    {file = "nmdc_schema-11.9.1-py3-none-any.whl", hash = "sha256:389ad4063d2ee89fe4c5486d16edc87d623acabd9d261098b07dc0228d3acda4"},
+    {file = "nmdc_schema-11.9.1.tar.gz", hash = "sha256:61cfe880b271546cf4c9acd97303c9c478726c00480cc5b4ec5e67bed224cfd6"},
 ]
 
 [package.dependencies]
@@ -3651,4 +3651,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.12"
-content-hash = "2f5e35c137bc48f4695eef836e8210c76b200a11acac04f555056a7c76b22bfa"
+content-hash = "7c0f200cfc22dd6c90dd1e9809c3e6fdf9ce4cea2ed7c680238efe2945bc776c"

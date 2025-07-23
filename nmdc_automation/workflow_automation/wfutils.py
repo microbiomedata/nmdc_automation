@@ -163,6 +163,7 @@ class JawsRunner(JobRunnerABC):
             else:
                 logger.info(f"Validation Succeeded: {validation_resp}")
 
+            # its ok if the tag value prints the array 
             tag_value = self.workflow.was_informed_by + "/" + self.workflow.workflow_execution_id
             # Submit to J.A.W.S
             logger.info(f"Submitting job to JAWS with tag: {tag_value}")
@@ -532,7 +533,7 @@ class WorkflowStateManager:
         return self.config.get("activity_id", self.config.get("workflow_execution_id", None))
 
     @property
-    def was_informed_by(self) -> Optional[str]:
+    def was_informed_by(self) -> Optional[list[str]]:
         return self.config.get("was_informed_by", None)
 
     @property
@@ -724,7 +725,7 @@ class WorkflowJob:
         return self.site_config.url_root
 
     @property
-    def was_informed_by(self) -> str:
+    def was_informed_by(self) -> list[str]:
         """ get the was_informed_by ID value """
         return self.workflow.was_informed_by
 
@@ -774,7 +775,8 @@ class WorkflowJob:
 
             md5_sum = _md5(output_file)
             file_size_bytes = output_file.stat().st_size
-            file_url = f"{self.url_root}/{self.was_informed_by}/{self.workflow_execution_id}/{output_file.name}"
+            if len(self.was_informed_by) == 1:
+                file_url = f"{self.url_root}/{self.was_informed_by[0]}/{self.workflow_execution_id}/{output_file.name}"
 
             if output_dir:
                 new_output_file_path = Path(output_dir) / output_file.name

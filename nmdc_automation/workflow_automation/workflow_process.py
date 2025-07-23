@@ -129,7 +129,7 @@ def get_current_workflow_process_nodes(
         if wf.git_repo:
             q = {"git_url": wf.git_repo}
         # override query with allowlist
-        if allowlist:
+        if allowlist:  # TODO test this -jlp 20250718
             q = {"was_informed_by": {"$in": list(allowlist)}}
 
         records = db[wf.collection].find(q)
@@ -143,7 +143,13 @@ def get_current_workflow_process_nodes(
                 continue
             if _is_missing_required_input_output(wf, rec, data_objects_by_id):
                 continue
-            if rec["was_informed_by"] in data_generation_ids:
+            #Iterate through was_informed_by list and only if all are valid do we add the wpn
+            wib_set_valid = True
+            for wib_id in rec["was_informed_by"]:
+                if wib_id not in data_generation_ids:
+                    wib_set_valid = False
+            
+            if wib_set_valid == True:
                 wfp_node = WorkflowProcessNode(rec, wf)
                 workflow_process_nodes.add(wfp_node)
 

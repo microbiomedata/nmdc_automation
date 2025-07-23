@@ -261,7 +261,7 @@ def test_scheduler_find_new_jobs(test_db, mock_api, workflows_config_dir, site_c
     job_req = scheduler.create_job_rec(new_job)
     assert job_req
     assert job_req["config"]["activity"]["type"] == "nmdc:MagsAnalysis"
-    assert job_req["config"]["was_informed_by"] == "nmdc:omprc-11-cegmwy02"
+    assert job_req["config"]["was_informed_by"] == ["nmdc:omprc-11-cegmwy02"]
     assert job_req["config"]["input_data_objects"]
 
 
@@ -353,8 +353,3 @@ def test_scheduler_find_new_jobs_with_existing_job(job_fixture, test_db, workflo
     for node in workflow_process_nodes:
         new_jobs.extend(scheduler.find_new_jobs(node))
     assert not new_jobs
-
-
-
-
-
