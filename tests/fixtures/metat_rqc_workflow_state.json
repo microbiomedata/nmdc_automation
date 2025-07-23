@@ -9,7 +9,7 @@
       "wdl": "rqcfilter.wdl",
       "activity_id": "nmdc:wfrqc-12-ctc9vt05.1",
       "activity_set": "workflow_execution_set",
-      "was_informed_by": "nmdc:dgns-11-6tsbsj80",
+      "was_informed_by": ["nmdc:dgns-11-6tsbsj80"],
       "trigger_activity": "nmdc:dgns-11-6tsbsj80",
       "iteration": 1,
       "input_prefix": "metaTReadsQC",

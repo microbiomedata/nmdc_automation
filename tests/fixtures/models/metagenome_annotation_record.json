@@ -3,7 +3,7 @@
       "name": "Metagenome Annotation Analysis Activity for nmdc:wfmgan-11-009f3582.1",
       "started_at_time": "2024-09-03T19:24:35.443721+00:00",
       "ended_at_time": "2024-09-04T20:05:09.774239+00:00",
-      "was_informed_by": "nmdc:omprc-11-24aket55",
+      "was_informed_by": ["nmdc:omprc-11-24aket55"],
       "execution_resource": "NERSC-Perlmutter",
       "git_url": "https://github.com/microbiomedata/mg_annotation",
       "has_input": [
