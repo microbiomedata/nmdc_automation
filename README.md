@@ -24,6 +24,7 @@ available as metadata in the NMDC database, and data objects on the NMDC data po
       - [Watcher](#watcher)
       - [WorkflowJob](#workflowjob)
     - [System Configuration](#system-configuration)
+      - [Poetry Environment](#poetry-environment)
       - [Site Config](#site-config)
   - [Instructions (for NERSC / Perlmutter environment)](#instructions-for-nersc--perlmutter-environment)
     - [Running the Scheduler on NERSC Rancher2](#running-the-scheduler-on-nersc-rancher2)
@@ -175,6 +176,19 @@ The `JobRunner` is also responsible for processing the resulting data and metada
 The watcher maintains a record of it's current activity in a `State File`
 
 ### System Configuration
+
+#### Poetry Environment
+The poetry environment is activated by running `poetry install` and `poetry shell` from the base level of this repository. The install command uses the `poetry.lock` file to prepare the environment for shell activation. 
+
+The `poetry.lock` file is updated everytime the `pyproject.toml` file is updated. Typically, this is for JAWS or NMDC Schema updates. It is good practice to update this file right before merging a branch into `main`. Often times, the CI/CD tests may fail due to incorrect environments if there have been changes to the Schema that are not captured in the test fixtures or updated lock file. To update the lock file, run `poetry update`. 
+
+<detail><summary>Poetry update example</summary>
+
+```
+
+```
+
+</detail>
 
 #### Site Config
 Site-specific configuration is provided by a .toml file and defines some parameters that are used
@@ -427,7 +441,7 @@ This refers to the `operation` and `site` that is processing the job.
 
 ##### Watcher State File
 
-The watcher maintains a state file with job configuration, metadata and status information. The location of the 
+The Watcher maintains a state file with job configuration, metadata and status information. The location of the 
 state file is defined in the site configuration file. For dev this location is:
 `/global/cfs/cdirs/m3408/var/dev/agent.state`
 
@@ -482,9 +496,11 @@ Similar to a `jobs` record, with these additional things to note:
 
 #### Handling Failed Jobs
 
-By default, the watcher will retry a failed job 1 additional time via `jaws resubmit`. 
-If the job fails again, the watcher will mark the job as `done` and update the status to `Failed`.
+By default, the Watcher will retry a failed job 1 additional time via `jaws resubmit`. 
+If the job fails again, the Watcher will mark the job as `done` and update the status to `Failed`.
 
 Some things to note:
 
 For jobs that have failed for with a transient incomplete data download, these may be resolved by invoking the `jaws download $jaws_jobid` command
+
+For jobs that may have failed due to Cromwell or other system errors and need to be resubmitted, use the [API release endpoint](https://api.microbiomedata.org/docs#/jobs/release_job_jobs__job_id__release_post) to mark a claimed job as failed and have JAWS resubmit the job if the JAWS job itself cannot be resubmitted. This will increase the `claims` array in the `jobs` record by 1. 
