@@ -166,19 +166,19 @@ Checks if two workflows are version-compatible (same major.minor version, or exa
 To run the Scheduler:
 
 ```bash
-python scheduler.py site_configuration.toml workflows.yaml
+python sched.py site_configuration.toml workflows.yaml
 ```
 
 To dry-run the scheduler for testing:
 
 ```bash
-DRYRUN=1 python scheduler.py site_configuration.toml workflows.yaml
+DRYRUN=1 python sched.py site_configuration.toml workflows.yaml
 ```
 
 To use specific allowlisted nodes:
 
 ```bash
-ALLOWLISTFILE=my_allowlist.txt python scheduler.py site_configuration.toml workflows.yaml
+ALLOWLISTFILE=my_allowlist.txt python sched.py site_configuration.toml workflows.yaml
 ```
 
 ### Dependencies
