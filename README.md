@@ -24,7 +24,6 @@ available as metadata in the NMDC database, and data objects on the NMDC data po
       - [Watcher](#watcher)
       - [WorkflowJob](#workflowjob)
     - [System Configuration](#system-configuration)
-      - [Poetry Environment](#poetry-environment)
       - [Site Config](#site-config)
   - [Instructions (for NERSC / Perlmutter environment)](#instructions-for-nersc--perlmutter-environment)
     - [Running the Scheduler on NERSC Rancher2](#running-the-scheduler-on-nersc-rancher2)
@@ -176,19 +175,6 @@ The `JobRunner` is also responsible for processing the resulting data and metada
 The watcher maintains a record of it's current activity in a `State File`
 
 ### System Configuration
-
-#### Poetry Environment
-The poetry environment is activated by running `poetry install` and `poetry shell` from the base level of this repository. The install command uses the `poetry.lock` file to prepare the environment for shell activation. 
-
-The `poetry.lock` file is updated everytime the `pyproject.toml` file is updated. Typically, this is for JAWS or NMDC Schema updates. It is good practice to update this file right before merging a branch into `main`. Often times, the CI/CD tests may fail due to incorrect environments if there have been changes to the Schema that are not captured in the test fixtures or updated lock file. To update the lock file, run `poetry update`. 
-
-<detail><summary>Poetry update example</summary>
-
-```
-
-```
-
-</detail>
 
 #### Site Config
 Site-specific configuration is provided by a .toml file and defines some parameters that are used

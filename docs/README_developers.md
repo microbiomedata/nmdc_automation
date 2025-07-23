@@ -15,6 +15,80 @@ The core component is the `Scheduler` class, which:
 
 This system enables robust and automatic chaining of workflows by examining upstream activities and creating jobs that meet version compatibility and data availability requirements.
 
+### Poetry Environment
+
+**To activate the poetry environment of your branch:**
+
+```bash
+poetry install
+poetry shell
+```
+
+The `poetry install` command uses the `poetry.lock` file to create a virtual environment with the correct dependencies, ensuring consistency across development setups. [(Documentation)](https://python-poetry.org/docs/basic-usage/#installing-with-poetrylock)
+
+**To update the lock file after modifying dependencies:**
+
+```bash
+poetry update
+```
+
+Whenever you update the `pyproject.toml` file—such as when upgrading JAWS or NMDC Schema dependencies—you should also update the `poetry.lock` file. This ensures that all dependency changes are properly recorded. Before merging any branch into `main`, it is best practice to run `poetry update` to refresh the lock file. Failing to do so can cause CI/CD tests to fail due to mismatched environments, especially if schema changes are not reflected in the test fixtures or lock file. [(Documentation)](https://python-poetry.org/docs/basic-usage/#updating-dependencies-to-their-latest-versions)
+
+
+
+<details><summary>Poetry update example</summary>
+
+```
+>> poetry update
+The currently activated Python version 3.13.5 is not supported by the project (>=3.10,<3.12).
+Trying to find and use a compatible version. 
+Using python3.11 (3.11.13)
+The lock file might not be compatible with the current version of Poetry.
+Upgrade Poetry to ensure the lock file is read properly or, alternatively, regenerate the lock file with the `poetry lock` command.
+Updating dependencies
+Resolving dependencies... (5.9s)
+
+Package operations: 0 installs, 6 updates, 1 removal
+
+  • Removing roman-numerals-py (3.1.0)
+  • Updating certifi (2025.7.9 -> 2025.7.14)
+  • Updating jsonschema (4.24.0 -> 4.25.0)
+  • Updating orderly-set (5.4.1 -> 5.5.0)
+  • Updating linkml-runtime (1.9.3 -> 1.9.4)
+  • Updating slack-sdk (3.35.0 -> 3.36.0)
+  • Updating nmdc-schema (11.8.0 -> 11.9.1)
+
+Writing lock file
+
+>> poetry install
+The currently activated Python version 3.13.5 is not supported by the project (>=3.10,<3.12).
+Trying to find and use a compatible version. 
+Using python3.11 (3.11.13)
+Installing dependencies from lock file
+
+Package operations: 0 installs, 3 updates, 0 removals
+
+  • Updating isodate (0.6.1 -> 0.7.2)
+  • Downgrading rdflib (6.3.2 -> 6.2.0)
+  • Downgrading sphinx (8.2.3 -> 8.1.3)
+
+Installing the current project: nmdc-automation (0.1.0)
+
+>> poetry shell
+The currently activated Python version 3.13.5 is not supported by the project (>=3.10,<3.12).
+Trying to find and use a compatible version. 
+Using python3.11 (3.11.13)
+Spawning shell within /path/to/Library/Caches/pypoetry/virtualenvs/nmdc-automation-FtOYRXpA-py3.11
+. /path/to/Library/Caches/pypoetry/virtualenvs/nmdc-automation-FtOYRXpA-py3.11/bin/activate
+
+(nmdc-automation-py3.11) >> exit
+exit
+
+>> ▌
+```
+
+</details>
+
 ### Workflow Configuration
 
 The Scheduler loads a set of workflow definitions using:
@@ -203,13 +277,15 @@ Each node knows:
 
 ### Diagrams
 
-![Scheduler and Related Classes](docs/Workflow-Automation-Scheduler-Classes.png)
+For more information about connections to the Schema, refer to [this documentation](https://microbiomedata.github.io/nmdc-schema/typecode-to-class-map/). 
 
-![Workflow Process Node and Related Classes](docs/Workflow-Automation-Scheduler-Classes.png)
+![Scheduler and Related Classes](Workflow-Automation-Scheduler-Classes.png)
 
-![Workflow Process Node Graph](docs/wpn_graph.drawio.png)
+![Workflow Process Node and Related Classes](Workflow-Automation-WorkflowProcessNode_and_Related_Classes.png)
 
-![Watcher and Related Classes](docs/Workflow-Automation-Refactored-Watcher.png)
+![Workflow Process Node Graph](Workflow-Automation-WorkflowProcessNode.png)
 
-![Workflow Automation System Interactions](docs/Workflow-Automation-Interactions.png)
+![Watcher and Related Classes](Workflow-Automation-Refactored-Watcher.png)
+
+![Workflow Automation System Interactions](Workflow-Automation-Interactions.png)
 
