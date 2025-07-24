@@ -216,7 +216,8 @@ def import_projects(ctx,  import_file, import_yaml, site_configuration, update_d
                     "data_object_type": mapping.data_object_type,
                     "was_generated_by": mapping.nmdc_process_id,
                     "url": f"{import_mapper.data_source_url}/{import_mapper.data_generation_id}/{nmdc_process_id}/{nmdc_data_file_name}",
-                    "description": description
+                    "description": description,
+                    "data_category":mapping.data_category,
                 }
                 # Add to the import_db if it doesn't already exist
                 existing_do_ids = {do['id'] for do in import_db['data_object_set']}

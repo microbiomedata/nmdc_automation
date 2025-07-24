@@ -128,7 +128,7 @@ class ImportMapper:
         """Return the import specifications by data object type (unique and multiple)."""
         import_specs = {do['data_object_type']: do for do in self.import_specifications["Data Objects"]["Unique"]}
         import_specs.update(
-            {do['data_object_type']: do for do in self.import_specifications["Data Objects"]["Multiples"]}
+            {do['data_object_type']: do for do in self.import_specifications["Data Objects"].get("Multiples", [])}
             )
         return import_specs
 
@@ -211,41 +211,60 @@ class ImportMapper:
                 - The second list contains IDs of data objects that serve as outputs
                   of the specified workflow type.
         """
-        has_input = []
-        has_output = []
+        has_input = set()
+        has_output = set()
         for fm in self.mappings:
             if fm.output_of == workflow_type:
-                has_output.append(fm.data_object_id)
+                has_output.add(fm.data_object_id)
             else:
                 for wf_type in fm.input_to:
                     if wf_type == workflow_type:
-                        has_input.append(fm.data_object_id)
-        return has_input, has_output
-
+                        has_input.add(fm.data_object_id)
+        return list(has_input), list(has_output)
 
     def add_do_mappings_from_data_generation(self) -> None:
         """
-        Create the initial list of Data Object Mapping based on the data generation
-        record in the DB.
+        Create a DataObjectMapping instance based on the output of a DataGeneration record.
 
-        If the DG has_output is empty we create a mapping for Metagenome Raw Reads with
-        the data generation ID as the process_id, but no data object.
+        This function queries the runtime API to retrieve a DataGeneration record by its ID
+        (`self.data_generation_id`). If the record contains one or more outputs (i.e.,
+        associated DataObjects), the function uses the first output DataObject to construct
+        a mapping, including its type and process associations.
+
+        If the DataGeneration record has no outputs, a placeholder mapping is created using
+        the `analyte_category` field to determine the appropriate data object type:
+          - "metagenome" → "Metagenome Raw Reads"
+          - "metatranscriptome" → "Metatranscriptome Raw Reads"
+
+        The mapping is stored in `self.data_object_mappings`.
+
+        Raises:
+            ValueError: If the number of matching DataGeneration records is not exactly 1.
         """
-        # Find the data generation and it's output data object
+        # Look up the data generation record using its ID
         id_filter = {'id': self.data_generation_id}
         data_generation_recs = self.runtime_api.find_planned_processes(id_filter)
+
+        # Ensure exactly one matching record was found
         if len(data_generation_recs) != 1:
             raise ValueError(f"Found {len(data_generation_recs)} data generation records but expected 1")
+
         data_generation = data_generation_recs[0]
 
+        # Check if the data generation record has an output DataObject
         if 'has_output' in data_generation and len(data_generation['has_output']) > 0:
+            # Retrieve the first output DataObject
             data_object_id = data_generation['has_output'][0]
             data_object = self.runtime_api.find_data_objects(data_object_id)
         else:
+            # No output object found; use None
             data_object = None
 
         if data_object:
+            # Retrieve import specification for the DataObject type
             import_spec = self.import_specs_by_data_object_type[data_object["data_object_type"]]
+
+            # Add a DataObjectMapping using the actual DataObject
             self.data_object_mappings.add(
                 DataObjectMapping(
                     data_object_type=data_object["data_object_type"],
@@ -255,12 +274,22 @@ class ImportMapper:
                     data_object_id=data_object['id'],
                     nmdc_process_id=data_generation['id'],
                     data_object_in_db=True,
-                    process_id_in_db=True
+                    process_id_in_db=True,
+                    data_category=import_spec['data_category'] # "processed_data"
                 )
             )
         else:
-            data_object_type = "Metagenome Raw Reads"
+            # Determine data_object_type based on analyte_category
+            analyte_category = data_generation.get("analyte_category")
+            if analyte_category == "metatranscriptome":
+                data_object_type = "Metatranscriptome Raw Reads"
+            else:
+                # Default to metagenome if analyte_category is missing or "metagenome"
+                data_object_type = "Metagenome Raw Reads"
+
             import_spec = self.import_specs_by_data_object_type[data_object_type]
+
+            # Add a placeholder DataObjectMapping based on inferred type
             self.data_object_mappings.add(
                 DataObjectMapping(
                     data_object_type=data_object_type,
@@ -269,10 +298,10 @@ class ImportMapper:
                     is_multiple=import_spec['multiple'],
                     nmdc_process_id=self.data_generation_id,
                     data_object_in_db=False,
-                    process_id_in_db=True
+                    process_id_in_db=True,
+                    data_category=import_spec['data_category'] # "instrument_data"
                 )
             )
-
 
     def add_do_mappings_from_workflow_executions(self) -> None:
         """
@@ -302,7 +331,8 @@ class ImportMapper:
                         data_object_id=data_object_id,
                         nmdc_process_id=workflow_execution['id'],
                         data_object_in_db=True,
-                        process_id_in_db=True
+                        process_id_in_db=True,
+                        data_category=import_spec['data_category'] # "processed_data"
                     )
                 )
 
@@ -330,6 +360,7 @@ class ImportMapper:
                         input_to=import_spec['input_to'],
                         is_multiple=import_spec['multiple'],
                         import_file=file,
+                        data_category=import_spec['data_category']
                     )
                 )
 
@@ -356,11 +387,13 @@ class DataObjectMapping:
     - nmdc_process_id: The workflow execution or data generation ID that produced this data object.
     - data_object_in_db: Whether this data object exists in the database or not.
     - nmdc_process_in_db: Whether this process (workflow execution or data generation) exists in the database or not.
+    - data_category: The category of data (instrument_data, processed_data, or workflow_parameter_data) as defined in DataCategoryEnum.
     """
 
     def __init__(self, data_object_type: str, output_of: str, input_to: list, is_multiple: bool,
                  data_object_id: Optional[str] = None, import_file: Union[str, Path] = None,
-                 nmdc_process_id: str = None, data_object_in_db: bool = False, process_id_in_db: bool = False) -> None:
+                 nmdc_process_id: str = None, data_object_in_db: bool = False, process_id_in_db: bool = False, 
+                 data_category: str = None) -> None:
         self.data_object_type = data_object_type
         self.import_file = import_file
         self.output_of = output_of
@@ -370,6 +403,7 @@ class DataObjectMapping:
         self.nmdc_process_id = nmdc_process_id
         self.data_object_in_db = data_object_in_db
         self.process_id_in_db = process_id_in_db
+        self.data_category = data_category
 
     def __str__(self):
         return (
@@ -383,6 +417,7 @@ class DataObjectMapping:
             f"nmdc_process_id={self.nmdc_process_id}, "
             f"data_object_in_db={self.data_object_in_db}, "
             f"process_id_in_db={self.process_id_in_db}, "
+            f"data_category={self.data_category} "
             f")"
         )
 
@@ -397,11 +432,13 @@ class DataObjectMapping:
                     self.data_object_id == other.data_object_id and
                     self.nmdc_process_id == other.nmdc_process_id and
                     self.data_object_in_db == other.data_object_in_db and
-                    self.process_id_in_db == other.process_id_in_db
+                    self.process_id_in_db == other.process_id_in_db and
+                    self.data_category == other.data_category
             )
 
     def __hash__(self):
-        return hash((self.data_object_type, self.import_file, self.output_of, self.data_object_id, self.nmdc_process_id))
+        return hash((self.data_object_type, self.import_file, self.output_of, self.data_object_id,
+                     self.nmdc_process_id, self.data_category))
         
 
 @lru_cache

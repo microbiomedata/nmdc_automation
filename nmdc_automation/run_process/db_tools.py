@@ -4,6 +4,7 @@ DB Tools.
 import logging
 import json
 import os
+import requests
 
 import click
 import requests
@@ -196,6 +197,32 @@ def report_study_progress(site_config_file, study_id):
     username = site_config.username
     password = site_config.password
 
+@cli.command()
+@click.argument("config_file", type=click.Path(exists=True))
+@click.argument("id_list_file", type=click.Path(exists=True))
+def release_jobs(config_file, id_list_file):
+    """
+    Release jobs from a list of IDs.
+    """
+    logger.info(f"Releasing jobs from {id_list_file} using config {config_file}")
+
+    site_config = SiteConfig(config_file)
+
+    nmdc_api = NmdcRuntimeApi(site_config)
+    # Set up the API URL
+    api_url = site_config.api_url
+
+    # Read the job IDs from the file
+    with open(id_list_file, 'r') as f:
+        job_ids = [line.strip() for line in f if line.strip()]
+    logger.info(f"Found {len(job_ids)} job IDs to release")
+    for job_id in job_ids:
+        logger.info(f"Releasing job {job_id}")
+        resp = nmdc_api.release_job(job_id)
+        if resp is None:
+            logger.warning(f"Failed to release job {job_id}: No response returned (job not found or already released).")
+        else:
+            logger.info(resp)
 
     headers = {'accept': 'application/json', 'Authorization': f'Basic {username}:{password}'}
     # Get the study from the studies/{study_id} endpoint, e.g. https://api.microbiomedata.org/studies/nmdc%3Asty-11-33fbta56

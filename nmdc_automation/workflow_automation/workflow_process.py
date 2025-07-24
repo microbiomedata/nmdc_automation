@@ -32,21 +32,61 @@ def get_required_data_objects_map(db, workflows: List[WorkflowConfig]) -> Dict[s
     }
     return required_data_object_map
 
+def _get_latest_version(new_wfp_node, current_wfp_node):
+
+    new_ver = new_wfp_node.version
+    curr_ver = current_wfp_node.version
+
+    def get_version(version):
+        v_string = version.lstrip("b").lstrip("v").rstrip("-beta")
+        return Version.parse(v_string)
+
+    new_ver = get_version(new_wfp_node.version)
+    curr_ver = get_version(current_wfp_node.version)
+    
+    # If version has different major, return latest
+    if new_ver.major > curr_ver.major:
+        return new_wfp_node
+    if curr_ver.major > new_ver.major:
+        return current_wfp_node
+    
+    # If they are equal compare minor versions
+    if new_ver.major == curr_ver.major:
+        if new_ver.minor > curr_ver.minor:
+            return new_wfp_node
+        if curr_ver.minor > new_ver.minor:
+            return current_wfp_node
+    
+    # Last resort, check patch
+    if new_ver.major == curr_ver.major and new_ver.minor == curr_ver.minor:
+        if new_ver.patch > curr_ver.patch:
+            return new_wfp_node
+        if curr_ver.patch > new_ver.patch:
+            return current_wfp_node
+    
+    # Else, choke?
+
+    # Note: Is it possible to have two wf types with same version? i.e., wf_id.1 and wf_id.2 both have same version
+    # Assuming no above.
+
 
 @lru_cache
 def _within_range(ver1: str, ver2: str) -> bool:
     """
-    Determine if two workflows are within a major and minor
-    version of each other.
-    """
+    Determine if the version of the workflow is within the range of the
+    version of the workflow execution record. This is used to determine if the
+    workflow execution record satisfies the version of the workflow. If the execution
+    record is not within the range, that workflow will be re-processed.
 
+    The current rule is that if the major version is the same, then it is within the range.
+    """
     def get_version(version):
         v_string = version.lstrip("b").lstrip("v").rstrip("-beta")
         return Version.parse(v_string)
 
     v1 = get_version(ver1)
     v2 = get_version(ver2)
-    if v1.major == v2.major and v1.minor == v2.minor:
+    if v1.major == v2.major:
         return True
     return False
 
@@ -102,6 +142,9 @@ def get_current_workflow_process_nodes(
 
     workflow_execution_workflows = [wf for wf in workflows if wf.collection == "workflow_execution_set"]
 
+    # Dict to keep track of found workflows (currently unique set for each dgs to be processed)
+    found_wfs = {}
+
     # default query for data_generation_set records filtered by analyte category
     q = {"analyte_category": analyte_category}
     # override query with allowlist
@@ -140,9 +183,32 @@ def get_current_workflow_process_nodes(
                 continue
             if _is_missing_required_input_output(wf, rec, data_objects_by_id):
                 continue
+
             if rec["was_informed_by"] in data_generation_ids:
                 wfp_node = WorkflowProcessNode(rec, wf)
+
+                # if there is already a wfp_node added for this workflow type, check if version is more recent
+                # then add it and replace previous one.
+                if rec["was_informed_by"] in found_wfs:
+                    if wf.name in found_wfs[rec["was_informed_by"]]:
+                        # Reset latest for each check
+                        latest = None
+                        latest  = _get_latest_version(wfp_node, found_wfs[rec["was_informed_by"]][wf.name])
+
+                        if latest is None:
+                            raise ValueError("Duplicate workflow process node with same version found")
+                        
+                        # If current wfp_node is the latest, remove the old one
+                        if latest == wfp_node:
+                            workflow_process_nodes.remove(found_wfs[rec["was_informed_by"]][wf.name])
+                
+                # Else initialize it
+                else:
+                    found_wfs[rec["was_informed_by"]] = {}
+                
+                # Things must be ok so add the node and update the dict of workflows found
                 workflow_process_nodes.add(wfp_node)
+                found_wfs[rec["was_informed_by"]][wf.name] = wfp_node 
 
     return list(workflow_process_nodes)
 
