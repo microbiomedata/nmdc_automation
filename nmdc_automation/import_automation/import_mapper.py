@@ -275,7 +275,7 @@ class ImportMapper:
                     nmdc_process_id=data_generation['id'],
                     data_object_in_db=True,
                     process_id_in_db=True,
-                    data_category="processed_data"
+                    data_category=import_spec['data_category'] # "processed_data"
                 )
             )
         else:
@@ -299,7 +299,7 @@ class ImportMapper:
                     nmdc_process_id=self.data_generation_id,
                     data_object_in_db=False,
                     process_id_in_db=True,
-                    data_category="instrument_data"
+                    data_category=import_spec['data_category'] # "instrument_data"
                 )
             )
 
@@ -332,7 +332,7 @@ class ImportMapper:
                         nmdc_process_id=workflow_execution['id'],
                         data_object_in_db=True,
                         process_id_in_db=True,
-                        data_category="processed_data"
+                        data_category=import_spec['data_category'] # "processed_data"
                     )
                 )
 
@@ -360,6 +360,7 @@ class ImportMapper:
                         input_to=import_spec['input_to'],
                         is_multiple=import_spec['multiple'],
                         import_file=file,
+                        data_category=import_spec['data_category']
                     )
                 )
 
@@ -437,7 +438,7 @@ class DataObjectMapping:
 
     def __hash__(self):
         return hash((self.data_object_type, self.import_file, self.output_of, self.data_object_id,
-                     self.nmdc_process_id, str(self.data_category)))
+                     self.nmdc_process_id, self.data_category))
         
 
 @lru_cache

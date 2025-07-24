@@ -12,21 +12,26 @@ An automation framework for running sequential metagenome analysis jobs and maki
 available as metadata in the NMDC database, and data objects on the NMDC data portal.
 
 ## Table of Contents
-- [Installation](#installation)
-- [Overview](#overview)
-  - [System Components](#system-components)
-  - [System Configuration](#system-configuration)
-- [Instructions (for NERSC / Perlmutter environment)](#instructions-for-nersc--perlmutter-environment)
-  - [Running the Scheduler on NERSC Rancher2](#running-the-scheduler-on-nersc-rancher2)
-  - [Running the Watcher on NERSC Perlmutter](#running-the-watcher-on-nersc-perlmutter)
-    - [Check the Watcher Status](#check-the-watcher-status)
-    - [Set-Up and Configuration](#set-up-and-configuration)
-    - [Running the Watcher](#running-the-watcher)
-    - [Monitoring the Watcher](#monitoring-the-watcher)
-      - [JAWS](#jaws)
-      - [NMDC Database](#nmdc-database)
-      - [Watcher State File](#watcher-state-file)
-    - [Handling Failed Jobs](#handling-failed-jobs)
+- [nmdc\_automation](#nmdc_automation)
+  - [Table of Contents](#table-of-contents)
+  - [Installation](#installation)
+    - [Requirements](#requirements)
+    - [MongoDB Installation](#mongodb-installation)
+    - [Installation](#installation-1)
+  - [Overview](#overview)
+    - [System Components](#system-components)
+    - [System Configuration](#system-configuration)
+  - [Instructions (for NERSC / Perlmutter environment)](#instructions-for-nersc--perlmutter-environment)
+    - [Running the Scheduler on NERSC Rancher2](#running-the-scheduler-on-nersc-rancher2)
+    - [Running the Watcher on NERSC Perlmutter](#running-the-watcher-on-nersc-perlmutter)
+      - [Check the Watcher Status](#check-the-watcher-status)
+      - [Set-Up and Configuration](#set-up-and-configuration)
+      - [Running the Watcher](#running-the-watcher)
+      - [Monitoring the Watcher](#monitoring-the-watcher)
+        - [JAWS](#jaws)
+        - [NMDC Database](#nmdc-database)
+        - [Watcher State File](#watcher-state-file)
+      - [Handling Failed Jobs](#handling-failed-jobs)
 
 
 ## Installation
@@ -105,6 +110,8 @@ A `Workflow Process Node` is a representation of:
 - `parent` - the parent workflow process node, if any
 - `children` - the child workflow process nodes, if any
 
+<details><summary>Workflow Process Node Mermaid Diagram:</summary>
+
 ```mermaid
 erDiagram
     WorkflowProcessNode ||--|| PlannedProcess: "process"
@@ -114,12 +121,15 @@ erDiagram
     WorkflowProcessNode |o--o| WorkflowProcessNode: "parent"
     WorkflowProcessNode |o--o{ WorkflowProcessNode: "children"
 ```
+</details>
 
 When the scheduler finds a node where:
 
 1. The node has a workflow configuration in node.workflow.children
 2. The node DOES NOT have a child node in node.children
 3. The required inputs for the child workflow are available in node's process outputs
+
+<details><summary>Scheduler Process Mermaid Diagram:</summary>
 
 ```mermaid
 erDiagram
@@ -134,6 +144,7 @@ erDiagram
     WPNode_ReadsQC ||--|| WConfig_ReadsQC: "workflow"
     WConfig_ReadsQC ||--o{ WConfig_Assembly: "children workflows"
 ```
+</details>
 
 In this case the Scheduler will "schedule" a new job by creating a Job configuration from:
 - the workflow configuration from node.workflow.children
@@ -155,7 +166,7 @@ https://ipo.lbl.gov/joint-genome-institute-analysis-workflow-service-jaws-for-co
 
 The legacy job running service is a self-managed SLURM/Condor/Cromwell stack running on Permutter. 
 
-Details can be found in [README_Slurm.md](README_Slurm.md)
+Details can be found in [README_Slurm.md](docs/README_Slurm.md)
 
 The `JobRunner` is also responsible for processing the resulting data and metadata when the job completes.  
 The watcher maintains a record of it's current activity in a `State File`
@@ -198,10 +209,11 @@ To initialize the Scheduler for new DataGeneration IDs, the following steps:
       1. `cat >allow.lst`
       2. Paste your IDs `command-v`
       3. Ensure a blank line at the end with a `return` 
-      4. Terminate the cat command using `control-d`
+      4. Terminate the `cat` command using `control-d`
 5. The default log level is `INFO` if you want to change it to `DEBUG` for more verbose logging, run the following command:
    1. `export NMDC_LOG_LEVEL=DEBUG`
-6. Restart the scheduler.  In the shell, in /conf:  `./run.sh`
+6. Restart the scheduler. In the shell, in `/conf`:  `./run_scheduler.sh`
+   1. If running tests on `dev`, make sure to check `./run_scheduler.sh -h` for options. 
 7. Ensure the scheduler is running by checking `sched.log`
 
 
@@ -257,8 +269,8 @@ note: This will also terminate the `tee` process that is writing to the log file
    3. in the `nmdc_automation` directory, install the nmdc_automation project with `poetry install`
    4. `poetry shell` to use the environment
 
-Example setup:
-<details><summary>Example Setup</summary>
+
+<details><summary>Example Setup:</summary>
 
 ```bash
 (nersc-python) nmdcda@perlmutter:login38:~> pwd
@@ -282,7 +294,7 @@ Spawning shell within /global/cfs/cdirs/m3408/nmdc_automation/dev/nmdc_automatio
 
 
 The `poetry shell` command will activate the environment for the current shell session. 
-Environment (nmdc-automation-py3.11) will be displayed in the prompt.
+Environment `(nmdc-automation-py3.11)` will be displayed in the prompt.
 
 
 
@@ -298,7 +310,7 @@ names `nohup.out` in addition to being written to the `watcher.log` file.
 3. `rm nohup.out` (logging is also captured in the watcher log file)
 4. `nohup ./run_dev.sh &` (for dev) OR `nohup ./run_prod.sh &` (for prod)
     
-   5. Note: These scripts use the JAWS service to run jobs.  If you want to use SLURM/Condor, use `run_dev_slurm.sh` or `run_prod_slurm.sh`
+  Note: These scripts use the JAWS service to run jobs.  If you want to use SLURM/Condor, use `run_dev_slurm.sh` or `run_prod_slurm.sh`
 
 
 
@@ -309,9 +321,11 @@ Same process as as [Checking the Watcher Status](#check-the-watcher-status)
 ##### JAWS
 
 JAWS is the default job running service.  It is a Cromwell-based service that runs jobs on NERSC and other compute resources.
-Documentation can be found [here](https://jaws-docs.readthedocs.io/en/latest/)'
+Documentation can be found [here](https://jaws-docs.readthedocs.io/en/latest/).
 
-With the jaws_jobid, you can check the status of the job in the JAWS service
+With the `jaws_jobid` from the `agent.state` files, you can check the status of the job in the JAWS service
+
+<details><summary>JAWS Status call:</summary>
 
 ```shell
 > jaws status 109288
@@ -335,8 +349,8 @@ With the jaws_jobid, you can check the status of the job in the JAWS service
   "workflow_name": "nmdc_rqcfilter",
   "workflow_root": "/pscratch/sd/n/nmjaws/nmdc-prod/cromwell-executions/nmdc_rqcfilter/0fddc559-833e-4e14-9fa5-1e3d485b232d"
 }
-````
-
+```
+</details>
 
 ##### NMDC Database
 
@@ -356,6 +370,8 @@ db.getCollection("workflow_execution_set").find({
 ``` 
 
 2. Job document example
+<details>
+
 ```json
 {
     "workflow" : {
@@ -385,6 +401,8 @@ db.getCollection("workflow_execution_set").find({
     "claims" : [ ]
 }
 ```
+</details>
+
 Things to note:
 - `config.was_informed_by` is the DataGeneration ID that is the root of this job
 - `config.trigger_activity` is the WorkflowExecution ID that triggered this job
@@ -458,7 +476,7 @@ Similar to a `jobs` record, with these additional things to note:
 
 #### Handling Failed Jobs
 
-Be default, the watcher will retry a failed job 1 additional time via `jaws resubmit`. 
+By default, the watcher will retry a failed job 1 additional time via `jaws resubmit`. 
 If the job fails again, the watcher will mark the job as `done` and update the status to `Failed`.
 
 Some things to note:

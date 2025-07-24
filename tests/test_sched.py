@@ -322,7 +322,93 @@ def test_scheduler_find_new_jobs_with_existing_job(job_fixture, test_db, workflo
         new_jobs.extend(scheduler.find_new_jobs(node))
     assert not new_jobs
 
+def test_scheduler_find_new_jobs3(test_db, mock_api, workflows_config_dir, site_config_file):
+    """
+    Test finding new jobs where two annotations with versions within range exist. A new MAGsAnalysis
+     should be scheduled only for the latest version (a current bug schedules for both 20250714).
+    nmdc:omprc-11-bm72c549The scheduler should find one new job for this.
+    """
+    reset_db(test_db)
+    load_fixture(test_db, "data_objects_3.json", "data_object_set")
+    load_fixture(test_db, "data_generation_3.json", "data_generation_set")
+    load_fixture(test_db, "workflow_execution_3.json", "workflow_execution_set")
+
+    workflow_config = load_workflow_configs(workflows_config_dir / "workflows.yaml")
+
+    workflow_process_nodes = load_workflow_process_nodes(test_db, workflow_config)
+    # sanity check
+    assert workflow_process_nodes
+
+    scheduler = Scheduler(test_db, workflow_yaml=workflows_config_dir / "workflows.yaml", site_conf=site_config_file)
+    assert scheduler
+
+    new_jobs = []
+    for node in workflow_process_nodes:
+        new_jobs.extend(scheduler.find_new_jobs(node))
+    assert new_jobs
+    assert len(new_jobs) == 1
+    new_job = new_jobs[0]
+    assert isinstance(new_job, SchedulerJob)
+    assert new_job.workflow.type == "nmdc:MagsAnalysis"
+    assert new_job.trigger_act.type == "nmdc:MetagenomeAnnotation"
+    assert new_job.trigger_act.data_objects_by_type
+
+    job_req = scheduler.create_job_rec(new_job)
+    assert job_req
+    
+    #new_job = new_jobs[1]
+    #job_req = scheduler.create_job_rec(new_job)
+    #assert job_req
+
+    assert job_req["config"]["activity"]["type"] == "nmdc:MagsAnalysis"
+    assert job_req["config"]["was_informed_by"] == "nmdc:omprc-11-bm72c549"
+    assert job_req["config"]["input_data_objects"]
 
 
+def test_scheduler_find_new_jobs_for_multi_dgns(test_db, mock_api, workflows_config_dir, site_config_file):
+    """
+    Testing where db is loaded with two data generation sets with two annotations records with versions within range exist.
+    This is to ensure that the loop over each dg_execution_record is keeping track of their own set of wf execution types
+    correctly. Should schedule one new MAG job for nmdc:omprc-11-bm72c549 and nmdc:omprc-11-tvg68444.
+    """
+    reset_db(test_db)
+    load_fixture(test_db, "data_objects_multi.json", "data_object_set")
+    load_fixture(test_db, "data_generation_multi.json", "data_generation_set")
+    load_fixture(test_db, "workflow_execution_multi.json", "workflow_execution_set")
 
+    workflow_config = load_workflow_configs(workflows_config_dir / "workflows.yaml")
+
+    workflow_process_nodes = load_workflow_process_nodes(test_db, workflow_config)
+    # sanity check
+    assert workflow_process_nodes
+
+    scheduler = Scheduler(test_db, workflow_yaml=workflows_config_dir / "workflows.yaml", site_conf=site_config_file)
+    assert scheduler
+
+    new_jobs = []
+    for node in workflow_process_nodes:
+        new_jobs.extend(scheduler.find_new_jobs(node))
+    assert new_jobs
+    assert len(new_jobs) == 2
+    
+    new_job = new_jobs[0]
+    assert isinstance(new_job, SchedulerJob)
+    assert new_job.workflow.type == "nmdc:MagsAnalysis"
+    assert new_job.trigger_act.type == "nmdc:MetagenomeAnnotation"
+    assert new_job.trigger_act.data_objects_by_type
+
+    job_req = scheduler.create_job_rec(new_job)
+    assert job_req
+    
+    new_job = new_jobs[1]
+    assert isinstance(new_job, SchedulerJob)
+    assert new_job.workflow.type == "nmdc:MagsAnalysis"
+    assert new_job.trigger_act.type == "nmdc:MetagenomeAnnotation"
+    assert new_job.trigger_act.data_objects_by_type
+
+    job_req = scheduler.create_job_rec(new_job)
+    assert job_req
+
+    assert job_req["config"]["activity"]["type"] == "nmdc:MagsAnalysis"
+    assert job_req["config"]["input_data_objects"]
 
