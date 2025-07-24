@@ -24,7 +24,7 @@ cleanup() {
     if [[ $CLEANED_UP -eq 1 ]]; then return; fi
     CLEANED_UP=1
     if [[ $RESTARTING -eq 0 ]]; then
-        END_TIME=$(date)
+        END_TIME=$(TZ="America/Los_Angeles" date "+%a %b %d %T %Z %Y")
         send_slack_notification ":x: *Watcher-$WORKSPACE script terminated* on \`$HOST\` at \`$END_TIME\`"
         echo "[$END_TIME] Watcher script terminated" | tee -a "$LOG_FILE"
     fi
@@ -56,7 +56,7 @@ if [[ -n "$OLD_PID" ]] && ps -p "$OLD_PID" > /dev/null 2>&1; then
         if [[ "$PROC_CMD" == *"run_workflows watcher"* ]] && [[ "$OLD_HOST" == "$HOST" ]]; then
             # This is the correct watcher process on the right host
             RESTARTING=1
-            TIMESTAMP=$(date)
+            TIMESTAMP=$(TZ="America/Los_Angeles" date "+%a %b %d %T %Z %Y")
             MSG=":arrows_counterclockwise: *Watcher-$WORKSPACE script refresh* on \`$HOST\` at \`$TIMESTAMP\` (replacing PID \`$OLD_PID\`)"
             echo "$MSG" | tee -a "$LOG_FILE"
             send_slack_notification "$MSG"
@@ -76,7 +76,7 @@ else
 fi
 
 
-START_TIME=$(date)
+START_TIME=$(TZ="America/Los_Angeles" date "+%a %b %d %T %Z %Y")
 send_slack_notification ":rocket: *Watcher-$WORKSPACE started* on \`$HOST\` at \`$START_TIME\`"
 echo "[$START_TIME] Watcher script started on $HOST" | tee -a "$LOG_FILE"
 
@@ -85,7 +85,7 @@ echo "[$START_TIME] Watcher script started on $HOST" | tee -a "$LOG_FILE"
 rm -f "$ERROR_ALERTED_FILE"
 tail -F "$LOG_FILE" | grep --line-buffered 'ERROR' | while read -r line; do
     if [[ ! -f "$ERROR_ALERTED_FILE" ]]; then
-        TIMESTAMP=$(date)
+        TIMESTAMP=$(TZ="America/Los_Angeles" date "+%a %b %d %T %Z %Y")
         send_slack_notification ":warning: *Watcher-$WORKSPACE ERROR* on \`$HOST\` at \`$TIMESTAMP\`:\n\`\`\`$line\`\`\`"
         touch "$ERROR_ALERTED_FILE"
     fi
