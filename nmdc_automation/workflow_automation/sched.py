@@ -271,6 +271,10 @@ class Scheduler:
                 continue
             # Look at previously generated derived
             # activities to see if this is already done.
+            # Note: this looks to be comparing the latest workflow for this analysis type set under
+            # the workflow process node (instead of the actual version set) vs the expected workflow type
+            # but this isn't currently impacting what should be the right answer so maybe this is leftover from 
+            # the refactor but making a note of it. -jlp 20250714
             for child_act in wfp_node.children:
                 if within_range(child_act.workflow, wf, force=self.force):
                     msg = f"Skipping existing job for {child_act.id} {wf.name}:{wf.version}"
