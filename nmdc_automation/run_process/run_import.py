@@ -1,6 +1,7 @@
 import click
 import csv
 import datetime
+import requests
 import pytz
 import json
 import logging
@@ -9,8 +10,15 @@ from zipfile import ZipFile
 
 
 from nmdc_automation.api import NmdcRuntimeApi
+from nmdc_automation.config import SiteConfig
 from nmdc_automation.import_automation.import_mapper import ImportMapper
 from nmdc_automation.import_automation.utils import get_or_create_md5
+
+logging_level = os.getenv("NMDC_LOG_LEVEL", logging.INFO)
+logging.basicConfig(
+    level=logging_level, format="%(asctime)s %(levelname)s: %(message)s"
+)
+logger = logging.getLogger(__name__)
 
 
 @click.group()
@@ -312,6 +320,13 @@ def import_projects(ctx,  import_file, import_yaml, site_configuration, update_d
         import_mapper.write_minted_id_file()
         for fm in import_mapper.mappings:
             logger.debug(f"Mapped: {fm}")
+
+
+
+
+
+
+
 
 
 def _database_workflow_execution_ids_by_type(import_mapper, runtime_api) -> dict:
