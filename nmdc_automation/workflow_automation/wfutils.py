@@ -164,7 +164,11 @@ class JawsRunner(JobRunnerABC):
                 logger.info(f"Validation Succeeded: {validation_resp}")
 
             # its ok if the tag value prints the array 
-            tag_value = self.workflow.was_informed_by + "/" + self.workflow.workflow_execution_id
+            if len(self.workflow.was_informed_by) == 1:
+                tag_value = self.workflow.was_informed_by[0] + "/" + self.workflow.workflow_execution_id
+            else:
+                tag_value = str(self.workflow.was_informed_by) + "/" + self.workflow.workflow_execution_id
+                
             # Submit to J.A.W.S
             logger.info(f"Submitting job to JAWS with tag: {tag_value}")
             logger.info(f"Site: {self.job_site}")
