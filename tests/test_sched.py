@@ -261,7 +261,7 @@ def test_scheduler_find_new_jobs(test_db, mock_api, workflows_config_dir, site_c
     job_req = scheduler.create_job_rec(new_job)
     assert job_req
     assert job_req["config"]["activity"]["type"] == "nmdc:MagsAnalysis"
-    assert job_req["config"]["was_informed_by"] == "nmdc:omprc-11-cegmwy02"
+    assert job_req["config"]["was_informed_by"] == ["nmdc:omprc-11-cegmwy02"]
     assert job_req["config"]["input_data_objects"]
 
 
@@ -393,7 +393,7 @@ def test_scheduler_find_new_jobs3(test_db, mock_api, workflows_config_dir, site_
     #assert job_req
 
     assert job_req["config"]["activity"]["type"] == "nmdc:MagsAnalysis"
-    assert job_req["config"]["was_informed_by"] == "nmdc:omprc-11-bm72c549"
+    assert job_req["config"]["was_informed_by"] == ["nmdc:omprc-11-bm72c549"]
     assert job_req["config"]["input_data_objects"]
 
 

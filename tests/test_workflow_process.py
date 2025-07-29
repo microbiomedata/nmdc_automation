@@ -180,7 +180,7 @@ def test_load_workflow_process_nodes_does_not_load_metagenome_sequencing(test_db
     wf = wf_execs[0]
     assert wf.type == "nmdc:NucleotideSequencing"
     assert wf.id == exp_omprc
-    assert wf.was_informed_by == exp_omprc
+    assert wf.was_informed_by == [exp_omprc]
 
 
 @mark.parametrize(

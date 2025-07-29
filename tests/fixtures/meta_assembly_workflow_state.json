@@ -9,7 +9,7 @@
         "wdl": "jgi_assembly.wdl",
         "activity_id": "nmdc:wfmgas-12-ypcg9r09.1",
         "activity_set": "workflow_execution_set",
-        "was_informed_by": "nmdc:omprc-11-n8myhm40",
+        "was_informed_by": ["nmdc:omprc-11-n8myhm40"],
         "trigger_activity": "nmdc:wfrqc-12-88myg603.1",
         "iteration": 1,
         "input_prefix": "jgi_metaAssembly",

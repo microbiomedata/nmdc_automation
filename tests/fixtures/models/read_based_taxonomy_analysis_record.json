@@ -3,7 +3,7 @@
       "name": "Readbased Taxonomy Analysis Activity for nmdc:wfrbt-11-00qkc311.1",
       "started_at_time": "2023-03-16T19:32:00.300673+00:00",
       "ended_at_time": "2023-03-17T15:24:11.217325+00:00",
-      "was_informed_by": "nmdc:omprc-11-rcy9x023",
+      "was_informed_by": ["nmdc:omprc-11-rcy9x023"],
       "execution_resource": "NERSC-Cori",
       "git_url": "https://github.com/microbiomedata/ReadbasedAnalysis",
       "has_input": [

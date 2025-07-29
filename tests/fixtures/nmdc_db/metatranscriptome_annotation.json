@@ -31,7 +31,7 @@
         "nmdc:dobj-11-contigmapping",
         "nmdc:dobj-11-annotationinfo"
     ],
-    "was_informed_by": "nmdc:omprc-11-metat1",
+    "was_informed_by": ["nmdc:omprc-11-metat1"],
     "id": "nmdc:wfmtan-11-metat.1",
     "execution_resource": "NERSC-Cori",
     "name": "Annotation Activity for nmdc:omprc-11-metat1",

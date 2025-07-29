@@ -9,7 +9,7 @@
         "wdl": "annotation_full.wdl",
         "activity_id": "nmdc:wfmgan-12-txbzp952.1",
         "activity_set": "workflow_execution_set",
-        "was_informed_by": "nmdc:omprc-11-n8myhm40",
+        "was_informed_by": ["nmdc:omprc-11-n8myhm40"],
         "trigger_activity": "nmdc:wfmgas-12-ypcg9r09.1",
         "iteration": 1,
         "input_prefix": "annotation",
