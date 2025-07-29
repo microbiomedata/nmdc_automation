@@ -169,7 +169,7 @@ def get_current_workflow_process_nodes(
         if wf.git_repo:
             q = {"git_url": wf.git_repo}
         # override query with allowlist
-        if allowlist:
+        if allowlist:  # TODO test this -jlp 20250718
             q = {"was_informed_by": {"$in": list(allowlist)}}
 
         records = db[wf.collection].find(q)
@@ -183,32 +183,41 @@ def get_current_workflow_process_nodes(
                 continue
             if _is_missing_required_input_output(wf, rec, data_objects_by_id):
                 continue
-
-            if rec["was_informed_by"] in data_generation_ids:
+            #Iterate through was_informed_by list and only if all are valid do we add the wpn
+            wib_set_valid = True
+            for wib_id in rec["was_informed_by"]:
+                if wib_id not in data_generation_ids:
+                    wib_set_valid = False
+            
+            if wib_set_valid == True:
                 wfp_node = WorkflowProcessNode(rec, wf)
 
-                # if there is already a wfp_node added for this workflow type, check if version is more recent
-                # then add it and replace previous one.
-                if rec["was_informed_by"] in found_wfs:
-                    if wf.name in found_wfs[rec["was_informed_by"]]:
-                        # Reset latest for each check
-                        latest = None
-                        latest  = _get_latest_version(wfp_node, found_wfs[rec["was_informed_by"]][wf.name])
+                # For now, only add wfp if was_informed_by list only has one value 
+                # TODO to handle multi in future sprint -jlp 20250724
+                if len(rec["was_informed_by"]) == 1:
 
-                        if latest is None:
-                            raise ValueError("Duplicate workflow process node with same version found")
-                        
-                        # If current wfp_node is the latest, remove the old one
-                        if latest == wfp_node:
-                            workflow_process_nodes.remove(found_wfs[rec["was_informed_by"]][wf.name])
+                    # if there is already a wfp_node added for this workflow type, check if version is more recent
+                    # then add it and replace previous one.
+                    if rec["was_informed_by"][0] in found_wfs:
+                        if wf.name in found_wfs[rec["was_informed_by"][0]]:
+                            # Reset latest for each check
+                            latest = None
+                            latest  = _get_latest_version(wfp_node, found_wfs[ rec["was_informed_by"][0] ][wf.name])
+
+                            if latest is None:
+                                raise ValueError("Duplicate workflow process node with same version found")
+                            
+                            # If current wfp_node is the latest, remove the old one
+                            if latest == wfp_node:
+                                workflow_process_nodes.remove(found_wfs[ rec["was_informed_by"][0] ][wf.name])
+                    
+                    # Else initialize it
+                    else:
+                        found_wfs[ rec["was_informed_by"][0] ] = {}
                 
-                # Else initialize it
-                else:
-                    found_wfs[rec["was_informed_by"]] = {}
-                
-                # Things must be ok so add the node and update the dict of workflows found
-                workflow_process_nodes.add(wfp_node)
-                found_wfs[rec["was_informed_by"]][wf.name] = wfp_node 
+                    # Things must be ok so add the node and update the dict of workflows found
+                    workflow_process_nodes.add(wfp_node)
+                    found_wfs[ rec["was_informed_by"][0] ][wf.name] = wfp_node 
 
     return list(workflow_process_nodes)
 

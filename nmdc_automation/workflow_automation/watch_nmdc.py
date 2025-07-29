@@ -89,8 +89,19 @@ class FileHandler:
 
     def get_output_path(self, job: WorkflowJob) -> Path:
         """ Get the output path for a job """
+        
+        output_path = None
+        
         # construct path from string components
-        output_path = Path(self.config.data_dir) / job.was_informed_by / job.workflow_execution_id
+        if len(job.was_informed_by) == 1:
+            output_path = Path(self.config.data_dir) / job.was_informed_by[0] / job.workflow_execution_id
+        #
+        # Note: This needs to be updated to handle manifest_set_records - jlp 20250722 TODO
+        # It shouldn't get to here because the sched logic creates one-valued was_informed_by currently;
+        # else something is very wrong.
+        else:
+            logger.debug(f"WARN: Multi-valued was_informed_by found. Skipping output creation.")
+
         return output_path
 
     def write_metadata_if_not_exists(self, job: WorkflowJob)->Path:

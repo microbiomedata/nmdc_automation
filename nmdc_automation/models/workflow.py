@@ -94,9 +94,9 @@ class WorkflowProcessNode(object):
         return getattr(self.process, "analyte_category", None)
 
     @property
-    def was_informed_by(self):
+    def was_informed_by(self) -> list[str]:
         """ workflow executions have a was_informed_by field, data generations get set to their own id"""
-        return getattr(self.process, "was_informed_by", self.id)
+        return getattr(self.process, "was_informed_by", [self.id])
 
 
 @dataclass
