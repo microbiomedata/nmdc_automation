@@ -779,6 +779,8 @@ class WorkflowJob:
 
             md5_sum = _md5(output_file)
             file_size_bytes = output_file.stat().st_size
+            logger.info(f"File size: {file_size_bytes}")
+            
             if len(self.was_informed_by) == 1:
                 file_url = f"{self.url_root}/{self.was_informed_by[0]}/{self.workflow_execution_id}/{output_file.name}"
 
@@ -877,9 +879,29 @@ def _json_tmp(data):
     return fname
 
 
-def _md5(file):
-    return hashlib.md5(open(file, "rb").read()).hexdigest()
+# Default chunk size set at 4MiB; needed to balance speed
+# with being a good citizen as this is currently being run on
+# the NERSC login nodes
+def _md5(file, chunk_size=4194304):
 
+    # Previous implementation reads entire file to memory, which was problematic for large files
+    #return hashlib.md5(open(file, "rb").read()).hexdigest()
+
+    # Instead, read file in chunks
+    hasher = hashlib.md5()
+    try:
+        with open(file, 'rb') as f:
+            while True:
+                chunk = f.read(chunk_size)
+                if not chunk:  # If chunk is empty, we've reached the end of the file
+                    break
+                hasher.update(chunk) # Update the hash with the current chunk
+        return hasher.hexdigest()
+    
+    except Exception as e:
+        logger.error(f"Failed to get md5 checksum: {e}")
+        raise Exception(f"Failed to get md5 checksum: {e}")
+    
 
 def _cleanup_files(files: List[Union[tempfile.NamedTemporaryFile, tempfile.SpooledTemporaryFile]]):
     """Safely closes and removes files."""
