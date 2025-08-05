@@ -250,7 +250,7 @@ class JobManager:
         database = Database()
 
         # Update the job metadata
-        logger.info(f"Getting job metadata: for {job.was_informed_by} job{job.opid} : {job.workflow.job_runner_id}")
+        logger.info(f"Getting job metadata: for {job.was_informed_by} job {job.opid} : {job.workflow.job_runner_id}")
         job.job.job_id = job.workflow.job_runner_id
         metadata = job.job.get_job_metadata()
         job.job.metadata = metadata
