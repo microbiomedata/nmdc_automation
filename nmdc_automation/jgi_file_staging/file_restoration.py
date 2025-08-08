@@ -60,7 +60,7 @@ def restore_files(project: str, config_file: str, mdb, restore_csv=None) -> str:
             mdb.samples.find(
                 {
                     'project_name': project,
-                    'file_status': {'$nin': ['in transit', 'transferred', 'RESTORED']}
+                    'file_status': {'$nin': ['in transit', 'transferred']}
                 }
             )
         )
