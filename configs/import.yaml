@@ -596,6 +596,6 @@ Data Objects:
       action: zip
 
 Workflow Metadata:
-  Execution Resource: JGI
+  Processing Institution: JGI
   Source URL: https://data.microbiomedata.org/data
   Root Directory: /global/cfs/cdirs/m3408/ficus/pipeline_products

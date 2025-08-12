@@ -744,6 +744,7 @@ class WorkflowJob:
             "name": self.workflow.workflow_execution_name,
             "git_url": self.workflow.config["git_repo"],
             "execution_resource": self.execution_resource,
+            "processing_institution": "NMDC",
             "was_informed_by": self.was_informed_by,
             "has_input": [dobj["id"] for dobj in self.workflow.config["input_data_objects"]],
             "started_at_time": self.job.started_at_time,
@@ -757,7 +758,8 @@ class WorkflowJob:
         """
 
         data_objects = []
-
+        current_cwd = Path.cwd()
+        logging.info(f"Current Working Directory (CWD) is: {current_cwd}")
         logger.info(f"Creating data objects for job {self.workflow_execution_id}")
         for output_spec in self.workflow.data_outputs:  # specs are defined in the workflow.yaml file under Outputs
             output_key = f"{self.workflow.input_prefix}.{output_spec['output']}"

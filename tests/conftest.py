@@ -150,6 +150,25 @@ def initial_state_file_1_failure(fixtures_dir, tmp_path):
     shutil.copy(state_file, copied_state_file)
     return copied_state_file
 
+@fixture
+def modified_job_metadata(fixtures_dir: Path, base_test_dir: Path) -> dict:
+    """
+    Loads mags_job_metadata.json, substitutes the relative paths defined for the outputs, 
+    and modifies them to the full path so that tests can work from any repo loc
+    """
+    json_path = fixtures_dir / "mags_job_metadata.json"
+    
+    # Read the JSON file content as a single string
+    with open(json_path, "r") as f:
+        file_content = f.read()
+
+    # Substitute "test_pscratch" with "test_base_dir/test_pscratch"
+    # This happens on the raw string content of the file.
+    modified_content = file_content.replace("test_pscratch", f"{base_test_dir}/test_pscratch")
+
+    # Load the modified string back into a Python dictionary
+    return json.loads(modified_content)
+
 
 # Sample Cromwell API responses
 CROMWELL_SUCCESS_RESPONSE = {

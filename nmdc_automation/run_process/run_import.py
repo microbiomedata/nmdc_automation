@@ -255,7 +255,7 @@ def import_projects(ctx,  import_file, import_yaml, site_configuration, update_d
                 "has_output": has_output,
                 "git_url": import_spec["Git_repo"],
                 "version": import_spec["Version"],
-                "execution_resource": import_mapper.import_specifications["Workflow Metadata"]["Execution Resource"],
+                "processing_institution": import_mapper.import_specifications["Workflow Metadata"]["Processing Institution"],
                 "started_at_time": datetime.datetime.now(pytz.utc).isoformat(),
                 "ended_at_time": datetime.datetime.now(pytz.utc).isoformat(),
                 "was_informed_by": [nucleotide_sequencing_id],
