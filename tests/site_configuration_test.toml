@@ -31,3 +31,6 @@ client_secret = "O8Q!64t,^xy:"
 [jaws]
 jaws_config = "jaws-test.conf"
 jaws_token = "jaws-test-token.conf"
+
+[environment]
+env = "dev"

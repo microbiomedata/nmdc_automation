@@ -120,7 +120,7 @@ class JawsRunner(JobRunnerABC):
 
     def __init__(self,
                  site_config: SiteConfig, workflow: "WorkflowStateManager", jaws_api: jaws_api.JawsApi,
-                 job_metadata: Dict[str, Any] = None, job_site: str = None) -> None:
+                 job_metadata: Dict[str, Any] = None, job_site: str = None, dry_run: bool = False) -> None:
         super().__init__(site_config, workflow)
         self.jaws_api = jaws_api
         self._metadata = {}
@@ -128,6 +128,7 @@ class JawsRunner(JobRunnerABC):
             self._metadata = job_metadata
         self.job_site = job_site or self.DEFAULT_JOB_SITE
         self.no_submit_states = self.JAWS_NO_SUBMIT_STATES + self.NO_SUBMIT_STATES
+        self.dry_run = dry_run
 
 
     @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(2))
@@ -145,29 +146,39 @@ class JawsRunner(JobRunnerABC):
         try:
             files = self.workflow.generate_submission_files(for_jaws=True)
 
-            # Temporary fix to handle the fact that the JAWS API does not handle the sub argument and the zip file
-            if 'sub' in files:
-                extract_dir = os.path.dirname(files["sub"])
-                with zipfile.ZipFile(files["sub"], 'r') as zip_ref:
-                    zip_ref.extractall(extract_dir)
-                cleanup_zip_dirs.append(extract_dir)
+            if not self.dry_run:
+                # Temporary fix to handle the fact that the JAWS API does not handle the sub argument and the zip file
+                if 'sub' in files:
+                    extract_dir = os.path.dirname(files["sub"])
+                    with zipfile.ZipFile(files["sub"], 'r') as zip_ref:
+                        zip_ref.extractall(extract_dir)
+                    cleanup_zip_dirs.append(extract_dir)
 
-            # Validate
-            validation_resp = self.jaws_api.validate(
-                shell_check=False, wdl_file=files["wdl_file"],
-                inputs_file=files["inputs"]
-            )
-            if validation_resp["result"] != "succeeded":
-                logger.error(f"Failed to Validate Job: {validation_resp}")
-                raise Exception(f"Failed to Validate Job: {validation_resp}")
+                # Validate
+                validation_resp = self.jaws_api.validate(
+                    shell_check=False, wdl_file=files["wdl_file"],
+                    inputs_file=files["inputs"]
+                )
+                if validation_resp["result"] != "succeeded":
+                    logger.error(f"Failed to Validate Job: {validation_resp}")
+                    raise Exception(f"Failed to Validate Job: {validation_resp}")
+                else:
+                    logger.info(f"Validation Succeeded: {validation_resp}")
+            
             else:
-                logger.info(f"Validation Succeeded: {validation_resp}")
+                logger.info(f"Dry run: skipping file validation for jaws submission")
+        
 
             # its ok if the tag value prints the array 
             if len(self.workflow.was_informed_by) == 1:
                 tag_value = self.workflow.was_informed_by[0] + "/" + self.workflow.workflow_execution_id
             else:
                 tag_value = str(self.workflow.was_informed_by) + "/" + self.workflow.workflow_execution_id
+            
+            # Prepend a dev tag if env=dev exists
+            if self.config.env is not None:
+                if self.config.env == "dev":
+                    tag_value = "dev/" + tag_value
                 
             # Submit to J.A.W.S
             logger.info(f"Submitting job to JAWS with tag: {tag_value}")
@@ -176,15 +187,19 @@ class JawsRunner(JobRunnerABC):
             logger.info(f"WDL: {files['wdl_file']}")
             logger.info(f"Sub: {files['sub']}")
 
-            response = self.jaws_api.submit(
-                wdl_file=files["wdl_file"],
-                sub=files["sub"],
-                inputs=files["inputs"],
-                tag = tag_value,
-                site = self.job_site
-            )
-            self.job_id = response['run_id']
-            logger.info(f"Submitted job {response['run_id']}")
+            if not self.dry_run:
+                response = self.jaws_api.submit(
+                    wdl_file=files["wdl_file"],
+                    sub=files["sub"],
+                    inputs=files["inputs"],
+                    tag = tag_value,
+                    site = self.job_site
+                )
+                self.job_id = response['run_id']
+                logger.info(f"Submitted job {response['run_id']}")
+            else:
+                logger.info(f"Dry run: skipping jaws job submission")
+                self.job_id = "dry_run"                
 
             # update workflow state
             self.workflow.done = False

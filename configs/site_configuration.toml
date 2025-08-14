@@ -32,3 +32,5 @@ client_secret = "xxxxxxxx"
 jaws_config = "path/to/jaws/config"
 jaws_token = "path/to/jaws/token"
 
+[environment]
+env = "dev"
