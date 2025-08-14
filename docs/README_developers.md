@@ -1,21 +1,230 @@
+# Developer Documentation for NMDC Workflow Automation
 
-## NMDC Workflow Scheduler
+This document provides an overview of the NMDC Workflow Automation system, including the Scheduler and Workflow Process Node Loader components. It is intended for developers working on the NMDC project, particularly those involved in workflow automation and job scheduling.
 
-This module implements a job scheduling system for the NMDC workflow automation framework. It identifies candidate workflow jobs from upstream process nodes and generates executable job records for compatible and enabled workflows.
+## Table of Contents
 
-### Overview
+- [Developer Documentation for NMDC Workflow Automation](#developer-documentation-for-nmdc-workflow-automation)
+  - [Table of Contents](#table-of-contents)
+  - [Architecture Overview](#architecture-overview)
+  - [Developer Quickstart](#developer-quickstart)
+  - [Configuration \& Environment](#configuration--environment)
+    - [TOML Site Config](#toml-site-config)
+    - [YAML Workflow Definitions](#yaml-workflow-definitions)
+    - [Environment Variables](#environment-variables)
+  - [Core Modules \& References](#core-modules--references)
+  - [Development Workflow \& Debugging](#development-workflow--debugging)
+  - [Testing](#testing)
+  - [Algorithm Internals](#algorithm-internals)
+  - [External Service Integrations](#external-service-integrations)
+  - [Safety Notes for Production](#safety-notes-for-production)
+  - [Poetry Environment](#poetry-environment)
+  - [NMDC Workflow Scheduler](#nmdc-workflow-scheduler)
+    - [Key Classes \& Functions](#key-classes--functions)
+      - [Scheduler](#scheduler)
+      - [SchedulerJob](#schedulerjob)
+    - [Environment Variables](#environment-variables-1)
+    - [Example](#example)
+      - [Running Scheduler](#running-scheduler)
+    - [Dependencies](#dependencies)
+  - [NMDC Workflow Process Node Loader](#nmdc-workflow-process-node-loader)
+    - [Algorithm Overview](#algorithm-overview)
+    - [Diagrams](#diagrams)
 
-The core component is the `Scheduler` class, which:
+---
 
-- Loads and parses workflow configurations from a YAML file
-- Periodically queries the database for candidate activities (`WorkflowProcessNodes`) that could trigger downstream workflows
-- Determines whether a new job should be created (i.e., not already completed or canceled)
-- Constructs and stores job definitions in a MongoDB jobs collection
-- Supports dry runs, skiplists, allowlists, and forced version scheduling
+## Architecture Overview
 
-This system enables robust and automatic chaining of workflows by examining upstream activities and creating jobs that meet version compatibility and data availability requirements.
+The NMDC Workflow Automation system automates metagenome workflow executions by discovering upstream activities and scheduling downstream jobs.
 
-### Poetry Environment
+**Main components:**
+
+- **Scheduler:** Scans database for upstream workflows, constructs workflow graphs, creates job records. Run on SPIN / Rancher.  
+- **Workflow Process Node Loader:** Builds a DAG of workflow activities from provenance data.  
+- **Watcher:** Claims and runs jobs via JAWS/SLURM, updates job status. Run on NERSC / Perlmutter.
+
+**Interactions:**
+
+- MongoDB (metadata, jobs)  
+- NMDC Runtime API (mint IDs, metadata updates)  
+- JAWS / Cromwell (workflow execution)  
+- YAML workflow definitions  
+- TOML site configuration files  
+
+**Data flow:**
+
+1. Scheduler queries MongoDB and builds WorkflowProcessNode graph  
+2. Creates job records for runnable workflows  
+3. Watcher claims and runs jobs  
+4. Updates job status and outputs  
+
+---
+
+## Developer Quickstart
+
+Clone, install dependencies, and test:
+
+```bash
+git clone https://github.com/microbiomedata/nmdc_automation.git
+cd nmdc_automation
+poetry install
+poetry shell
+
+# Start MongoDB (mac example)
+brew services start mongodb-community
+
+# Run tests
+make test
+
+# Dry-run scheduler with allowlist
+DRYRUN=1 ALLOWLISTFILE=allow.lst python -m nmdc_automation.workflow_automation.sched path/to/site_configuration.toml path/to/workflows.yaml
+```
+
+## Configuration & Environment
+### TOML Site Config
+
+Defines site-specific settings such as API credentials, runner URLs, and filesystem paths.
+
+Example:
+```toml
+[nmdc_api]
+url = "https://api.microbiomedata.org"
+username = "user"
+password = "pass"
+
+[runner]
+type = "jaws"
+url = "https://jaws.api"
+```
+### YAML Workflow Definitions
+Describes workflows with inputs, outputs, children, versions, and WDL references.
+
+Example:
+```yaml
+- name: ReadsQC
+  type: reads_qc
+  version: 1.2.0
+  inputs:
+    - SequencingData
+  outputs:
+    - ReadsQCData
+  children:
+    - Assembly
+```
+
+### Environment Variables
+
+| Variable        | Effect                         |
+| --------------- | ------------------------------ |
+| `DRYRUN=1`      | Jobs not inserted into MongoDB |
+| `FORCE=1`       | Ignore version compatibility   |
+| `ALLOWLISTFILE` | Only schedule listed IDs       |
+| `SKIPLISTFILE`  | Skip listed IDs                |
+| `MOCK_MINT=1`   | Use fake IDs for testing       |
+
+## Core Modules & References
+
+`nmdc_automation.scheduler`
+- Orchestrates discovery and job creation
+- Key functions: cycle(), find_new_jobs(), create_job_rec()
+- Key classes:
+  - Scheduler: main scheduling loop
+  - SchedulerJob: holds workflow config & trigger node
+
+`nmdc_automation.workflow_automation.workflow_process`
+- Builds DAG of workflow activities from DB
+- Key function: load_workflow_process_nodes(db, workflows, allowlist)
+- Key classes:
+  - WorkflowProcessNode: represents a node in the workflow graph
+  - WorkflowProcessNodeLoader: loads nodes from MongoDB
+
+`nmdc_automation.api`
+- Wraps NMDC Runtime API calls for job updates and ID minting
+- Key functions: mint_id(), update_job_status()
+- Key classes: 
+  - NmdcRuntimeApi: handles API interactions
+  - NmdcRuntimeApiError: custom error for API issues
+
+## Development Workflow & Debugging
+
+**Workflow**
+1. Branching:
+   - main is protected; feature branches required
+   - Use descriptive branch names: `feature/new-workflow` or `ticket-#-title`
+2. Pull Requests:
+   - Use a pre-release to test image and environment on `dev` (see )
+   - CI/CD and test workflow run must pass before merge
+   - Include schema updates if applicable
+3. Locally update dependencies with `poetry update` and commit `poetry.lock`
+
+**Debugging Tips**
+- Scheduler Not Creating Jobs
+    - Check allowlist matches `was_informed_by`
+    - Verify outputs exist for child workflow inputs
+    - Check workflow version compatibility
+    - Check for existing jobs on MongoDB
+
+- Watcher Not Picking Up Jobs
+    - Ensure job claims array is empty
+    - Verify JAWS/runner connectivity
+    - Check watcher logs (`watcher-dev.log`, `dev/nohup.out`)
+
+- Job Failures
+    - Inspect `agent.state` file
+    - Use `jaws status <id>`
+    - Retry with `jaws resubmit <id>`
+    - Check system with `jaws health --site nmdc`
+
+- MongoDB Query Examples:
+    ```js
+    db.jobs.find({"config.was_informed_by": "nmdc:example-id"})
+    db.workflow_execution_set.find({"was_informed_by": "nmdc:example-id"})
+    ```
+
+**Common Developer Recipes**
+- Bump workflow version: update `workflows.yaml`, test fixtures, dry-run scheduler, submit sample run on dev with new pre-release image. 
+- Force reschedule:
+  ```bash
+  FORCE=1 ALLOWLISTFILE=allow.lst python -m nmdc_automation.workflow_automation.sched path/to/site_configuration.toml path/to/workflows.yaml
+  ```
+- Local testing with fake IDs:
+  ```bash
+  MOCK_MINT=1 ALLOWLISTFILE=allow.lst DRYRUN=1 python -m nmdc_automation.workflow_automation.sched path/to/site_configuration.toml path/to/workflows.yaml
+  ```
+- Start up watcher:
+    ```bash
+    python -m nmdc_automation.run_process.run_workflows watcher --config path/to/site_configuration.toml daemon
+    ``` 
+
+## Testing
+- Unit tests in `tests/`
+- Run via `make test` or `pytest -v`
+- Integration tests require MongoDB and seeded data (documentation TBD)
+
+## Algorithm Internals
+Workflow Process Node Loader (`load_workflow_process_nodes`)
+- Loads data objects matching workflow inputs/outputs
+- Retrieves DataGeneration and WorkflowExecution records from DB
+- Filters by analyte category and version compatibility
+- Maps data objects to producing nodes
+- Resolves parent-child relationships
+
+Version compatibility check (`within_range()`)
+- Returns True if major.minor versions match (or forced)
+
+## External Service Integrations
+- JAWS: Cromwell-based runner, configured via TOML, job IDs tracked in Watcher state
+- SLURM/Condor: Legacy runners with separate scripts
+
+## Safety Notes for Production
+- Always dry-run first
+- Review YAML workflow changes carefully, check for typos.
+- Backup site configs and lists before edits
+- Check poetry environment when switching branches
+
+## Poetry Environment
+
+The poetry environment is used to manage dependencies and virtual environments for the NMDC automation project, particularly for the Watcher. It ensures that all developers work with the same package versions, which is crucial for consistency across different development setups.
 
 **To activate the poetry environment of your branch:**
 
@@ -33,7 +242,6 @@ poetry update
 ```
 
 Whenever you update the `pyproject.toml` file—such as when upgrading JAWS or NMDC Schema dependencies—you should also update the `poetry.lock` file. This ensures that all dependency changes are properly recorded. Before merging any branch into `main`, it is best practice to run `poetry update` to refresh the lock file. Failing to do so can cause CI/CD tests to fail due to mismatched environments, especially if schema changes are not reflected in the test fixtures or lock file. [(Documentation)](https://python-poetry.org/docs/basic-usage/#updating-dependencies-to-their-latest-versions)
-
 
 
 <details><summary>Poetry update example</summary>
@@ -89,40 +297,37 @@ exit
 
 </details>
 
-### Workflow Configuration
 
-The Scheduler loads a set of workflow definitions using:
+## NMDC Workflow Scheduler
 
-```python
-self.workflows = load_workflow_configs(workflow_yaml)
-```
+This module implements a job scheduling system for the NMDC workflow automation framework. It identifies candidate workflow jobs from upstream process nodes and generates executable job records for compatible and enabled workflows.
 
-#### Process Node Discovery
+**Overview**
 
-Candidate trigger activities are identified using:
+The core component is the `Scheduler` class, which:
 
-```python
-load_workflow_process_nodes(self.db, self.workflows, allowlist)
-```
+- Loads and parses workflow configurations from a YAML file
+  ```python
+  self.workflows = load_workflow_configs(workflow_yaml)
+  ```
+- Periodically queries the database for candidate activities (`WorkflowProcessNodes`) that could trigger downstream workflows
+  ```python
+  load_workflow_process_nodes(self.db, self.workflows, allowlist)
+  ```
+  - This function scans the database for completed upstream `PlannedProcess` records (like DataGeneration or WorkflowExecution), and matches them to downstream workflows defined in the YAML configuration.
+- Determines whether a new job should be created (i.e., not already completed or canceled). Checks if
+  - The workflow is enabled
+  - No previous job already exists for this process node
+  - No equivalent workflow execution already exists (matching major/minor version)
+- Constructs and stores job definitions in a MongoDB jobs collection using:
+  - Workflow WDL path, repository, and version
+  - Input data object URLs
+  - Execution metadata (e.g., `was_informed_by`, iteration, input prefix)
+  - Output IDs, optionally pre-minted via `NmdcRuntimeApi`
+  - The resulting job record is inserted into MongoDB.
+- Supports dry runs, skiplists, allowlists, and forced version scheduling
 
-This function scans the database for completed upstream `PlannedProcess` records (like DataGeneration or WorkflowExecution), and matches them to downstream workflows defined in the YAML configuration.
-
-#### Job Creation Logic
-
-Each matching process node is checked to see if:
-
-- The workflow is enabled
-- No previous job already exists for this process node
-- No equivalent workflow execution already exists (matching major/minor version)
-
-If these checks pass, the Scheduler prepares a job config including:
-
-- Workflow WDL path, repository, and version
-- Input data object URLs
-- Execution metadata (e.g., `was_informed_by`, iteration, input prefix)
-- Output IDs, optionally pre-minted via `NmdcRuntimeApi`
-
-The resulting job record is inserted into MongoDB.
+This system enables robust and automatic chaining of workflows by examining upstream activities and creating jobs that meet version compatibility and data availability requirements.
 
 ### Key Classes & Functions
 
@@ -166,19 +371,23 @@ Checks if two workflows are version-compatible (same major.minor version, or exa
 To run the Scheduler:
 
 ```bash
-python sched.py site_configuration.toml workflows.yaml
+python -m nmdc_automation.workflow_automation.sched path/to/site_configuration.toml path/to/workflows.yaml
 ```
-
-To dry-run the scheduler for testing:
-
+Optional inputs:
 ```bash
-DRYRUN=1 python sched.py site_configuration.toml workflows.yaml
-```
+# dry-run without inserting jobs
+DRYRUN=1 \
+# use fake IDs for testing 
+MOCK_MINT=1 \
+# force reschedule
+FORCE=1 \
+#  use specific allowlisted nodes
+ALLOWLISTFILE=allow.lst \
+# run the Scheduler
+python -m nmdc_automation.workflow_automation.sched \
+    path/to/site_configuration.toml \
+    path/to/workflows.yaml
 
-To use specific allowlisted nodes:
-
-```bash
-ALLOWLISTFILE=my_allowlist.txt python sched.py site_configuration.toml workflows.yaml
 ```
 
 ### Dependencies
@@ -190,9 +399,10 @@ ALLOWLISTFILE=my_allowlist.txt python sched.py site_configuration.toml workflows
 
 ---
 
+
 ## NMDC Workflow Process Node Loader
 
-📚 **load_workflow_process_nodes: Workflow Activity Graph Builder**
+**load_workflow_process_nodes: Workflow Activity Graph Builder**
 
 This module constructs a directed acyclic graph (DAG) of `WorkflowProcessNode` objects from the database by:
 
@@ -269,7 +479,7 @@ Each node knows:
 - The data it consumed and produced
 - Its immediate parent and children nodes (if applicable)
 
-**Developer Notes**
+**Notes**
 
 - The `_within_range()` version check assumes compatibility if major versions match.
 - The system warns about missing data or mismatches in `was_informed_by` lineage.
