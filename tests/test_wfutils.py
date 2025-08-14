@@ -364,10 +364,11 @@ def test_cromwell_job_runner_submit_job_new_job(mock_generate_submission_files, 
     assert jobid
 
 
-def test_workflow_job_data_objects_and_execution_record_mags(site_config, fixtures_dir, tmp_path):
-    job_metadata = json.load(open(fixtures_dir / "mags_job_metadata.json"))
+def test_workflow_job_data_objects_and_execution_record_mags(site_config, fixtures_dir, modified_job_metadata, tmp_path):
+    #job_metadata = json.load(open(fixtures_dir / "mags_job_metadata.json"))
+    
     workflow_state = json.load(open(fixtures_dir / "mags_workflow_state.json"))
-    job = WorkflowJob(site_config, workflow_state, job_metadata)
+    job = WorkflowJob(site_config, workflow_state, modified_job_metadata)
     data_objects = job.make_data_objects(output_dir=tmp_path)
     assert data_objects
     for data_object in data_objects:
@@ -396,12 +397,12 @@ def test_workflow_job_data_objects_and_execution_record_mags(site_config, fixtur
     assert isinstance(wfe.binned_contig_num, int)
 
 
-def test_workflow_execution_record_from_workflow_job(site_config, fixtures_dir, tmp_path):
-    job_metadata = json.load(open(fixtures_dir / "mags_job_metadata.json"))
+def test_workflow_execution_record_from_workflow_job(site_config, fixtures_dir, modified_job_metadata, tmp_path):
+    #job_metadata = json.load(open(fixtures_dir / "mags_job_metadata.json"))
     workflow_state = json.load(open(fixtures_dir / "mags_workflow_state.json"))
     # remove 'end' from the workflow state to simulate a job that is still running
     workflow_state.pop('end')
-    job = WorkflowJob(site_config, workflow_state, job_metadata)
+    job = WorkflowJob(site_config, workflow_state, modified_job_metadata)
     data_objects = job.make_data_objects(output_dir=tmp_path)
 
     wfe = job.make_workflow_execution(data_objects)
@@ -409,10 +410,10 @@ def test_workflow_execution_record_from_workflow_job(site_config, fixtures_dir, 
     assert wfe.ended_at_time
 
 
-def test_make_data_objects_includes_workflow_execution_id_and_file_size(site_config, fixtures_dir, tmp_path):
-    job_metadata = json.load(open(fixtures_dir / "mags_job_metadata.json"))
+def test_make_data_objects_includes_workflow_execution_id_and_file_size(site_config, fixtures_dir, modified_job_metadata, tmp_path):
+    #job_metadata = json.load(open(fixtures_dir / "mags_job_metadata.json"))
     workflow_state = json.load(open(fixtures_dir / "mags_workflow_state.json"))
-    job = WorkflowJob(site_config, workflow_state, job_metadata)
+    job = WorkflowJob(site_config, workflow_state, modified_job_metadata)
     data_objects = job.make_data_objects(output_dir=tmp_path)
     assert data_objects
     for data_object in data_objects:

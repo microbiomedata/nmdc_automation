@@ -84,10 +84,10 @@ def test_load_workflow_process_nodes_with_obsolete_versions(test_db, workflows_c
     workflow_config = load_workflow_configs(workflows_config_dir / "workflows.yaml")
     data_objs_by_id = get_required_data_objects_map(test_db, workflow_config)
 
-    # There are 8 workflow executions in the fixture, but only 4 are current:
+    # There are 7 workflow executions in the fixture, but only 4 are current:
     # 2 are obsolete  MAGs workflows,
-    # 1 is an obsolete Annotation workflow, and 1 is a legacy MetagenomeSequencing workflow
-    exp_num_db_workflow_execution_records = 8
+    # 1 is an obsolete Annotation workflow
+    exp_num_db_workflow_execution_records = 7
     exp_num_current_nodes = 5 # 4 current workflows and 1 data generation
     exp_current_node_types = [
         "nmdc:MetagenomeAssembly", "nmdc:MetagenomeAnnotation", "nmdc:ReadQcAnalysis",
@@ -160,27 +160,6 @@ def test_resolve_relationships(test_db, workflows_config_dir):
         else:
             assert node.parent
 
-
-def test_load_workflow_process_nodes_does_not_load_metagenome_sequencing(test_db, workflows_config_dir):
-    """
-    Test that legacy nmdc:MetagenomeSequencing instances are not loaded
-    """
-    exp_omprc = "nmdc:omprc-11-cegmwy02"
-    reset_db(test_db)
-    load_fixture(test_db, "legacy_data_obj.json", "data_object_set")
-    load_fixture(test_db, "legacy_data_generation.json", "data_generation_set")
-    load_fixture(test_db, "metagenome_sequencing.json", "workflow_execution_set")
-
-    workflow_config = load_workflow_configs(workflows_config_dir / "workflows.yaml")
-    data_objs_by_id = get_required_data_objects_map(test_db, workflow_config)
-    wf_execs = get_current_workflow_process_nodes(test_db, workflow_config, data_objs_by_id, allowlist=[exp_omprc,])
-    # We only expect the data generation to be loaded
-    assert wf_execs
-    assert len(wf_execs) == 1
-    wf = wf_execs[0]
-    assert wf.type == "nmdc:NucleotideSequencing"
-    assert wf.id == exp_omprc
-    assert wf.was_informed_by == [exp_omprc]
 
 
 @mark.parametrize(

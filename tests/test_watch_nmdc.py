@@ -312,11 +312,11 @@ def test_job_manager_get_finished_jobs(site_config, initial_state_file_1_failure
     jm.job_cache = []
 
 
-def test_job_manager_process_successful_job(site_config, initial_state_file_1_failure, fixtures_dir):
+def test_job_manager_process_successful_job(site_config, initial_state_file_1_failure, fixtures_dir, modified_job_metadata):
     # mock job.job.get_job_metadata - use fixture cromwell/succeded_metadata.json
-    job_metadata = json.load(open(fixtures_dir / "mags_job_metadata.json"))
+    #job_metadata = json.load(open(fixtures_dir / "mags_job_metadata.json"))
     with patch("nmdc_automation.workflow_automation.wfutils.CromwellRunner.get_job_metadata") as mock_get_metadata:
-        mock_get_metadata.return_value = job_metadata
+        mock_get_metadata.return_value = modified_job_metadata
 
         # Arrange
         fh = FileHandler(site_config, initial_state_file_1_failure)
