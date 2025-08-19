@@ -1,6 +1,5 @@
 #!/bin/bash
 set -euo pipefail
-SLACK_WEBHOOK_URL="https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXX"
 
 # Default values
 WORKSPACE="dev"
@@ -10,9 +9,8 @@ LOG_FILE=watcher-$WORKSPACE.log
 PID_FILE=watcher-$WORKSPACE.pid
 HOST_FILE=host-$WORKSPACE.last
 ERROR_ALERTED_FILE="watcher_error_alerted_$WORKSPACE"
-LAST_ALERT=""
+SLACK_WEBHOOK_URL=$(grep 'slack_webhook' "$CONF" | sed 's/.*= *"\(.*\)"/\1/')
 
-# Global state flags
 CLEANED_UP=0
 RESTARTING=0
 MISMATCH=0
@@ -20,8 +18,9 @@ KILL_PID=""
 WATCHER_PID=""
 OLD_PID=""
 OLD_HOST=""
-IGNORE_PATTERN='Error removing directory /tmp: \[Errno 13\] Permission denied: .*/tmp'
 TAIL_PID=""
+LAST_ALERT=""
+IGNORE_PATTERN='Error removing directory /tmp: \[Errno 13\] Permission denied: .*/tmp'
 LOG_START_SIZE=$(stat -c%s "$LOG_FILE") 
 
 send_slack_notification() {
@@ -61,8 +60,7 @@ cleanup() {
         NEW_LOG_LINES=$(tail -c +$((LOG_START_SIZE + 1)) "$LOG_FILE")
         LAST_ERROR=$(echo "$NEW_LOG_LINES" | grep -E 'ERROR|Exception' | grep -v "$IGNORE_PATTERN" | tail -n 1)
         if [[ -n "$LAST_ERROR" && "$LAST_ERROR" != "$LAST_ALERT" ]]; then
-            send_slack_notification ":x: *Watcher-$WORKSPACE script terminated* on \`$HOST\` at \`$TIMESTAMP\`.\n\`\`\`$LAST_ERROR\`\`\`"
-            # send_slack_notification "Latest error:\n\`\`\`$LAST_ERROR\`\`\`" 
+            send_slack_notification ":x: *Watcher-$WORKSPACE script terminated* on \`$HOST\` at \`$TIMESTAMP\`.\nLatest error:\n\`\`\`$LAST_ERROR\`\`\`"
         else
             send_slack_notification ":x: *Watcher-$WORKSPACE script terminated* on \`$HOST\` at \`$TIMESTAMP\`"
         fi
@@ -73,22 +71,19 @@ trap cleanup SIGINT SIGTERM EXIT
 
 # Kill existing process only if it's the correct watcher on this host
 
-[[ -f "$PID_FILE" ]] && OLD_PID=$(cat "$PID_FILE")
-[[ -f "$HOST_FILE" ]] && OLD_HOST=$(cat "$HOST_FILE")
-
-if [[ -n "$OLD_HOST" && "$OLD_HOST" != "$HOST" ]]; then
+if [[ -f "$HOST_FILE" ]] && read -r OLD_HOST < "$HOST_FILE" && [[ -n "$OLD_HOST" && "$OLD_HOST" != "$HOST" ]]; then
     echo "Host mismatch: existing watcher was on '$OLD_HOST', current host is '$HOST'. Aborting." | tee -a "$LOG_FILE"
     MISMATCH=1
     exit 1
 fi
 
 # Look for an existing watcher process
-if [[ -n "$OLD_PID" ]] && ps -p "$OLD_PID" > /dev/null 2>&1; then
-    # Check command name (comm) includes 'python'
+if [[ -f "$PID_FILE" ]] && read -r OLD_PID < "$PID_FILE" && ps -p "$OLD_PID" > /dev/null 2>&1; then
     CMD_NAME=$(ps -p "$OLD_PID" -o comm=)
+    # Check command name (comm) includes 'python'
     if [[ "$CMD_NAME" == *python* ]]; then
-        # Check full command line includes 'watcher'
         PROC_CMD=$(ps -p "$OLD_PID" -o args=)
+        # Check full command line includes 'watcher'
         if [[ "$PROC_CMD" == *"watcher"* ]] && [[ "$OLD_HOST" == "$HOST" ]]; then
             # This is the correct watcher process on the right host
             RESTARTING=1
@@ -114,7 +109,6 @@ echo "[$START_TIME] Watcher script started on $HOST" | tee -a "$LOG_FILE"
 
 
 # Start monitoring the log file for errors in background
-IGNORE_PATTERN='Error removing directory /tmp: \[Errno 13\] Permission denied: .*/tmp'
 
 rm -f "$ERROR_ALERTED_FILE"
 tail -F "$LOG_FILE" \
