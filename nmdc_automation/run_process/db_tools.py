@@ -7,6 +7,7 @@ import os
 import requests
 
 import click
+import requests
 
 from nmdc_automation.config import SiteConfig
 from nmdc_automation.api import NmdcRuntimeApi
@@ -179,6 +180,22 @@ def fix_data_object_urls(config_file, update_db):
         return
 
 
+@cli.command()
+@click.argument("site_config_file", type=click.Path(exists=True))
+@click.argument("study_id")
+def report_study_progress(site_config_file, study_id):
+    """
+    Generate a study progress report for the NMDC database.
+
+    Arguments:
+
+    - site_config_file: YAML file with site configuration
+
+    The report will be generated in the current directory.
+    """
+    site_config = SiteConfig(site_config_file)
+    username = site_config.username
+    password = site_config.password
 
 @cli.command()
 @click.argument("config_file", type=click.Path(exists=True))
@@ -207,6 +224,139 @@ def release_jobs(config_file, id_list_file):
         else:
             logger.info(resp)
 
+    headers = {'accept': 'application/json', 'Authorization': f'Basic {username}:{password}'}
+    # Get the study from the studies/{study_id} endpoint, e.g. https://api.microbiomedata.org/studies/nmdc%3Asty-11-33fbta56
+    # encode the study_id
+    study_id = study_id.replace(":", "%3A")
+    study_resp = requests.get(
+        f'https://api.microbiomedata.org/studies/{study_id}', headers=headers
+    )
+
+    if study_resp.status_code != 200:
+        logger.error(f"Error in response: {study_resp.status_code}")
+        return
+    study = study_resp.json()
+    # study_name is not always present
+    study_name = study.get("name", "Unnamed Study")
+    logger.info(f"Study: {study['id']}, Name: {study_name}")
+
+    # Get the data generations for the study
+    data_generation_params = {
+        'filter': f'{{"associated_studies": "{study["id"]}"}}',
+        'max_page_size': '5000'
+    }
+    data_generation_response = requests.get(
+        'https://api.microbiomedata.org/nmdcschema/data_generation_set', params=data_generation_params, headers=headers
+    )
+    if data_generation_response.status_code != 200:
+        logger.error(f"Error in response: {data_generation_response.status_code}")
+        return
+    data_generations = data_generation_response.json().get("resources", [])
+    logger.info(f"Found {len(data_generations)} data generations for study {study['id']}")
+    # Organized by type and analyte category
+    study_progress = {}
+    for dg in data_generations:
+        dg_type = dg['type']
+        analyte_category = dg.get('analyte_category', 'UnknownCategory')
+        if dg_type not in study_progress:
+            study_progress[dg_type] = {}
+        if analyte_category not in study_progress[dg_type]:
+            study_progress[dg_type][analyte_category] = {}
+
+        # Get workflow_execution(s) that was_informed_by the data generation and
+        # determine if annotation is complete, partially complete, or not started
+        workflow_execution_params = {
+            'filter': f'{{"was_informed_by": "{dg["id"]}"}}',
+            'max_page_size': '1000'
+        }
+        workflow_execution_response = requests.get(
+            'https://api.microbiomedata.org/nmdcschema/workflow_execution_set', params=workflow_execution_params, headers=headers
+        )
+        if workflow_execution_response.status_code != 200:
+            logger.error(f"Error in response: {workflow_execution_response.status_code}")
+            return
+        workflow_executions = workflow_execution_response.json().get("resources", [])
+        logger.info(f"Found {len(workflow_executions)} workflows for {dg_type} / {analyte_category} :  {dg['id']}")
+
+
+
+    #
+    #         # Get workflow_execution(s) that was_informed_by the data generation
+    #         data_gen_workflows= {dg['id']: []}
+    #         workflow_execution_params = {
+    #             'filter': f'{{"was_informed_by": "{dg["id"]}"}}',
+    #             'max_page_size': '1000'
+    #         }
+    #         workflow_execution_response = requests.get(
+    #             'https://api.microbiomedata.org/nmdcschema/workflow_execution_set', params=workflow_execution_params, headers=headers
+    #         )
+    #         if workflow_execution_response.status_code != 200:
+    #             logger.error(f"Error in response: {workflow_execution_response.status_code}")
+    #             return
+    #         workflow_executions = workflow_execution_response.json().get("resources", [])
+    #         logger.info(f"Found {len(workflow_executions)} workflow executions for data generation {dg['id']}")
+    #         # Count the number of workflow executions by type and version
+    #         for we in workflow_executions:
+    #             we_type = we.get('type', 'UnknownType')
+    #             # version may not be present
+    #             we_version = we.get('version', 'UnknownVersion')
+    #
+    #             data_gen_workflows[dg['id']].append((we_type, we_version))
+    #
+    #         report[study['id']]['data_generations'][dg_type][analyte_category].append(data_gen_workflows)
+    #
+    # # Summarize the report -
+    # # Study ID, Study Name, Data Generation Type, Analyte Category, Number of Data Generations, Min/Max/Average Workflow Executions
+    # # Report format:
+    # # Study ID, Study Name, Data Generation Type, Analyte Category, Number of Data Generations, Min/Max/Average Workflow Executions
+    # report_summary = []
+    # for study_id, study in report.items():
+    #      for sstudy_name, data_generations in study['data_generations'].items():
+    #         for dg_type, analyte_categories in data_generations.items():
+    #             for analyte_category, data_gen_workflows in analyte_categories.items():
+    #                 num_data_generations = len(data_gen_workflows)
+    #                 min_workflow_executions = min([len(workflows) for workflows in data_gen_workflows])
+    #                 max_workflow_executions = max([len(workflows) for workflows in data_gen_workflows])
+    #                 avg_workflow_executions = sum([len(workflows) for workflows in data_gen_workflows]) / num_data_generations
+    #                 report_summary.append((study_id, study['name'], dg_type, analyte_category, num_data_generations, min_workflow_executions, max_workflow_executions, avg_workflow_executions))
+    # # Write the report to a CSV file
+    # report_file = os.path.join(os.getcwd(), "study_progress_report.csv")
+    # with open(report_file, "w") as f:
+    #     f.write("Study ID, Study Name, Data Generation Type, Analyte Category, Number of Data Generations, Min Workflow Executions, Max Workflow Executions, Average Workflow Executions\n")
+    #     for row in report_summary:
+    #         f.write(",".join([str(x) for x in row]) + "\n")
+
+
+def _measure_annotation_completeness(dg_type, analyte_category, workflow_executions: list) -> str:
+    """
+    Measure the completeness of the annotation for a given workflow execution.
+
+    Args:
+        workflow_executions (list): List of workflow executions.
+
+    Returns:
+        str: Completeness status.
+    """
+    if not workflow_executions:
+        return "Not Started"
+
+    # Completeness status depends on the type and analyte category
+    # Metagenome sequencing
+    if dg_type == 'nmdc:NucleotideSequencing' and analyte_category == 'metagenome':
+        # Annotation is complete if there are 5 or more workflow executions and at least one MagsAnalysis workflow
+        mags_analysis_workflows = [we for we in workflow_executions if we['type'] == 'nmdc:MagsAnalysis']
+        if len(workflow_executions) >= 5 and mags_analysis_workflows:
+            return "Complete"
+        else:
+            return "Partially Complete"
+    # Metatranscriptome sequencing
+    elif dg_type == 'nmdc:NucleotideSequencing' and analyte_category == 'metatranscriptome':
+        pass
+
+    # Mass Spectrometry
+    elif dg_type == 'nmdc:MassSpectrometry':
+        # Annotation is complete if there are 3 or more workflow executions and at least one MagsAnalysis workflow
+        pass
 
 
 
