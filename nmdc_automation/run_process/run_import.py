@@ -281,7 +281,7 @@ def import_projects(ctx,  import_file, import_yaml, site_configuration, update_d
             logger.info(f"Validation passed")
             if update_db:
                 # check if there are any workflow executions or data objects to add
-                if import_db['data_object_set'] or import_db['workflow_execution_set']:
+                if 'data_object_set' in import_db or 'workflow_execution_set' in import_db:
                     logger.info(f"Updating Database")
                     resp = runtime_api.post_workflow_executions(import_db)
                     logger.info(f"workflows/workflow_executions response: {resp}")
