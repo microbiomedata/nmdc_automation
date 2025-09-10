@@ -70,7 +70,7 @@ Specifies import parameters for:
 
         ```text
         Workflow Metadata:
-        Execution Resource: JGI
+        Processing Institution: JGI
         Source URL: https://data.microbiomedata.org/data
         Root Directory: /global/cfs/cdirs/m3408/ficus/pipeline_products
         ```
@@ -493,7 +493,7 @@ Specifies import parameters for:
                 ],
                 "git_url": "https://github.com/microbiomedata/metaAssembly",
                 "version": "v1.0.7",
-                "execution_resource": "JGI",
+                "processing_institution": "JGI",
                 "started_at_time": "2025-02-06T20:25:29.644456+00:00",
                 "ended_at_time": "2025-02-06T20:25:29.644480+00:00",
                 "was_informed_by": "nmdc:omprc-12-hgksne68"
@@ -532,7 +532,7 @@ Specifies import parameters for:
                 ],
                 "git_url": "https://github.com/microbiomedata/mg_annotation",
                 "version": "v1.0.4",
-                "execution_resource": "JGI",
+                "processing_institution": "JGI",
                 "started_at_time": "2025-02-06T20:25:45.850734+00:00",
                 "ended_at_time": "2025-02-06T20:25:45.850759+00:00",
                 "was_informed_by": "nmdc:omprc-12-hgksne68"
@@ -550,7 +550,7 @@ Specifies import parameters for:
                 ],
                 "git_url": "https://github.com/microbiomedata/ReadsQC",
                 "version": "v1.0.14",
-                "execution_resource": "JGI",
+                "processing_institution": "JGI",
                 "started_at_time": "2025-02-06T20:25:45.872809+00:00",
                 "ended_at_time": "2025-02-06T20:25:45.872820+00:00",
                 "was_informed_by": "nmdc:omprc-12-hgksne68"

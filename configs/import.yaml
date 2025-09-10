@@ -46,7 +46,7 @@ Workflows:
     Import: true
     Type: nmdc:MetagenomeAssembly
     Git_repo: https://github.com/microbiomedata/metaAssembly
-    Version: v1.0.9
+    Version: v1.0.7-alpha.3
     Collection: workflow_execution_set
     WorkflowExecutionRange: MetagenomeAssembly
     Inputs:
@@ -596,6 +596,6 @@ Data Objects:
       action: zip
 
 Workflow Metadata:
-  Execution Resource: JGI
+  Processing Institution: JGI
   Source URL: https://data.microbiomedata.org/data
   Root Directory: /global/cfs/cdirs/m3408/ficus/pipeline_products

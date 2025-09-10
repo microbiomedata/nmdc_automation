@@ -18,6 +18,7 @@
     ],
     "started_at_time": "2021-08-05T14:48:51+00:00",
     "type": "nmdc:MetatranscriptomeAssembly",
-    "ended_at_time": "2021-09-15T10:13:20+00:00"
+    "ended_at_time": "2021-09-15T10:13:20+00:00",
+    "processing_institution":"NMDC"
   }
 ]

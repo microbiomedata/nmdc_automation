@@ -4,6 +4,7 @@
   "name": "Metagenome Assembled Genomes Analysis for nmdc:wfmag-11-g7msr323.1",
   "git_url": "https://github.com/microbiomedata/metaMAGs",
   "execution_resource": "NERSC-Perlmutter",
+  "processing_institution":"NMDC",
   "was_informed_by": ["nmdc:omprc-11-9cdxha98"],
   "has_input": [
     "nmdc:dobj-11-1x850k20",

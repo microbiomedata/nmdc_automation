@@ -364,10 +364,11 @@ def test_cromwell_job_runner_submit_job_new_job(mock_generate_submission_files, 
     assert jobid
 
 
-def test_workflow_job_data_objects_and_execution_record_mags(site_config, fixtures_dir, tmp_path):
-    job_metadata = json.load(open(fixtures_dir / "mags_job_metadata.json"))
+def test_workflow_job_data_objects_and_execution_record_mags(site_config, fixtures_dir, modified_job_metadata, tmp_path):
+    #job_metadata = json.load(open(fixtures_dir / "mags_job_metadata.json"))
+    
     workflow_state = json.load(open(fixtures_dir / "mags_workflow_state.json"))
-    job = WorkflowJob(site_config, workflow_state, job_metadata)
+    job = WorkflowJob(site_config, workflow_state, modified_job_metadata)
     data_objects = job.make_data_objects(output_dir=tmp_path)
     assert data_objects
     for data_object in data_objects:
@@ -396,12 +397,12 @@ def test_workflow_job_data_objects_and_execution_record_mags(site_config, fixtur
     assert isinstance(wfe.binned_contig_num, int)
 
 
-def test_workflow_execution_record_from_workflow_job(site_config, fixtures_dir, tmp_path):
-    job_metadata = json.load(open(fixtures_dir / "mags_job_metadata.json"))
+def test_workflow_execution_record_from_workflow_job(site_config, fixtures_dir, modified_job_metadata, tmp_path):
+    #job_metadata = json.load(open(fixtures_dir / "mags_job_metadata.json"))
     workflow_state = json.load(open(fixtures_dir / "mags_workflow_state.json"))
     # remove 'end' from the workflow state to simulate a job that is still running
     workflow_state.pop('end')
-    job = WorkflowJob(site_config, workflow_state, job_metadata)
+    job = WorkflowJob(site_config, workflow_state, modified_job_metadata)
     data_objects = job.make_data_objects(output_dir=tmp_path)
 
     wfe = job.make_workflow_execution(data_objects)
@@ -409,10 +410,10 @@ def test_workflow_execution_record_from_workflow_job(site_config, fixtures_dir, 
     assert wfe.ended_at_time
 
 
-def test_make_data_objects_includes_workflow_execution_id_and_file_size(site_config, fixtures_dir, tmp_path):
-    job_metadata = json.load(open(fixtures_dir / "mags_job_metadata.json"))
+def test_make_data_objects_includes_workflow_execution_id_and_file_size(site_config, fixtures_dir, modified_job_metadata, tmp_path):
+    #job_metadata = json.load(open(fixtures_dir / "mags_job_metadata.json"))
     workflow_state = json.load(open(fixtures_dir / "mags_workflow_state.json"))
-    job = WorkflowJob(site_config, workflow_state, job_metadata)
+    job = WorkflowJob(site_config, workflow_state, modified_job_metadata)
     data_objects = job.make_data_objects(output_dir=tmp_path)
     assert data_objects
     for data_object in data_objects:
@@ -445,3 +446,28 @@ def test_jaws_workflow_execution_record_has_ended_at_time(fixture_pair, site_con
     wfe = wfj.make_workflow_execution([])
     assert wfe.started_at_time
     assert wfe.ended_at_time
+
+
+@mock.patch("nmdc_automation.workflow_automation.wfutils.WorkflowStateManager.generate_submission_files")
+def test_jaws_job_runner_submit_job_new_job(mock_generate_submission_files, site_config, fixtures_dir, mock_jaws_api):
+    """
+        Test submitting a job through the JAWS job runner and set up of the jaws tag based on the config
+    """
+    mock_generate_submission_files.return_value = {
+        "wdl_file": "workflowSource",
+        "sub": "workflowDependencies",
+        "inputs": "workflowInputs"
+    }
+    # A new workflow job that has not been submitted - it has a workflow state
+    # but no job metadata
+    wf_state = json.load(open(fixtures_dir / "mags_workflow_state.json"))
+    #wfj = WorkflowJob(site_config, wf_state, job_metadata, jaws_api=mock_jaws_api)
+    wf_state['last_status'] = None # simulate a job that has not been submitted
+    wf_state['jaws_jobid'] = None # simulate a job that has not been submitted
+    wf_state['done'] = False # simulate a job that has not been submitted
+
+    wf_state_manager = WorkflowStateManager(wf_state)
+    job_runner = JawsRunner(site_config, wf_state_manager, mock_jaws_api, dry_run=True)
+    jobid = job_runner.submit_job()
+    assert site_config.env == "dev"
+    assert jobid

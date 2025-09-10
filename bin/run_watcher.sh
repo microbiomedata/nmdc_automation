@@ -10,6 +10,7 @@ PID_FILE=watcher-$WORKSPACE.pid
 HOST_FILE=host-$WORKSPACE.last
 ERROR_ALERTED_FILE="watcher_error_alerted_$WORKSPACE"
 SLACK_WEBHOOK_URL=$(grep 'slack_webhook' "$CONF" | sed 's/.*= *"\(.*\)"/\1/')
+PVENV=/global/cfs/cdirs/m3408/nmdc_automation/$WORKSPACE/nmdc_automation/.venv
 
 CLEANED_UP=0
 RESTARTING=0
@@ -76,6 +77,12 @@ if [[ -f "$HOST_FILE" ]] && read -r OLD_HOST < "$HOST_FILE" && [[ -n "$OLD_HOST"
     MISMATCH=1
     exit 1
 fi
+
+if [[ "$VIRTUAL_ENV" != "$PVENV" ]]; then
+    echo "Incorrect poetry environment. Aborting." | tee -a "$LOG_FILE"
+    MISMATCH=1
+    exit 1
+fi 
 
 # Look for an existing watcher process
 if [[ -f "$PID_FILE" ]] && read -r OLD_PID < "$PID_FILE" && ps -p "$OLD_PID" > /dev/null 2>&1; then

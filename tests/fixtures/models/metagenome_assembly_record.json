@@ -5,6 +5,7 @@
       "ended_at_time": "2023-09-05T19:46:42.649106+00:00",
       "was_informed_by": ["nmdc:omprc-11-c82tqn53"],
       "execution_resource": "NERSC-Perlmutter",
+      "processing_institution":"NMDC",
       "git_url": "https://github.com/microbiomedata/metaAssembly",
       "has_input": [
         "nmdc:dobj-11-sgpgmp62"
