@@ -10,6 +10,7 @@ import tempfile
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
+import time
 from tenacity import retry, wait_exponential, stop_after_attempt
 from typing import Any, Dict, List, Optional, Union
 import pytz
@@ -197,6 +198,7 @@ class JawsRunner(JobRunnerABC):
                 )
                 self.job_id = response['run_id']
                 logger.info(f"Submitted job {response['run_id']}")
+                time.sleep(60)  # wait for a minute to allow the job to be registered in jaws
             else:
                 logger.info(f"Dry run: skipping jaws job submission")
                 self.job_id = "dry_run"                
