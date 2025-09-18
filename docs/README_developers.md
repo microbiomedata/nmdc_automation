@@ -35,7 +35,7 @@ This document provides an overview of the NMDC Workflow Automation system, inclu
 
 ## Architecture Overview
 
-The NMDC Workflow Automation system automates metagenome workflow executions by discovering upstream activities and scheduling downstream jobs.
+The NMDC Workflow Automation system automates metagenome workflow executions by discovering upstream activities and scheduling downstream jobs. It utilizes a pipeline orchestration system (Cromwell, WDL), data processing frameworks (ETL, validation), api integration layer (external databases and services), configuration mangement (environments, credentials), monitoring, and reporting. 
 
 **Main components:**
 
@@ -69,6 +69,7 @@ git clone https://github.com/microbiomedata/nmdc_automation.git
 cd nmdc_automation
 poetry install
 poetry shell
+# if poetry shell doesn't work, try: poetry env activate
 
 # Start MongoDB (mac example)
 brew services start mongodb-community
