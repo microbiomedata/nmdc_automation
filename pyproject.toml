@@ -12,6 +12,13 @@ authors = [
         "Valerie Li <vli@lanl.gov>",
         "Mark Flynn <mflynn@lanl.gov>"
         ]
+maintainers = [
+        "Jasmyn Pangilinan <jlpangilinan@lbl.gov>",
+        "Alicia Clum <aclum@lbl.gov>",
+        "Kaitlyn Li <kli@lanl.gov>",
+        "Valerie Li <vli@lanl.gov>",
+        "Mark Flynn <mflynn@lanl.gov>"
+    ]
 
 license = "MIT"
 readme = "README.md"
