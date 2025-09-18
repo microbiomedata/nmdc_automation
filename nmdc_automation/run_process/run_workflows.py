@@ -79,6 +79,7 @@ def resubmit(ctx, operation_ids, all_failures, submit):
     If --all-failures is set, all failed jobs will be resubmitted.
     If --opid is set, the specified operation IDs will be resubmitted.
     If --submit is set, the jobs will be submitted. Otherwise, the jobs will be listed in the log output.
+    # add resubmit via JAWS instead of automation
     """
     watcher = ctx.obj
     watcher.restore_from_checkpoint()
