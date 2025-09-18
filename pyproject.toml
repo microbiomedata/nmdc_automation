@@ -4,6 +4,7 @@ version = "0.0.0"
 description = "Python Package to manage automation of submitting workflows end to end or importing existing products that are NMDC Schema compliant"
 authors = [
         "Shane Cannon <scannon@lbl.gov>",
+        "Michal Babinski",
         "Michael Thornton",
         "Jasmyn Pangilinan <jlpangilinan@lbl.gov>",
         "Alicia Clum <aclum@lbl.gov>",
