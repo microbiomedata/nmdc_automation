@@ -1,0 +1,14 @@
+inputReads=14543862
+inputBases=2097092383
+qtrimmedReads=4262
+qtrimmedBases=83309
+qfilteredReads=97004
+qfilteredBases=7225699
+ktrimmedReads=36181
+ktrimmedBases=640388
+kfilteredReads=2
+kfilteredBases=300
+outputReads=14393590
+outputBases=2063720471
+
+gcPolymerRatio=8.809524
