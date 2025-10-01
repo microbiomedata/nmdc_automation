@@ -1,3 +1,10 @@
+## Table of Contents
+- [nmdc\_automation: Running Jobs on SLURM and Condor](#nmdc_automation-running-jobs-on-slurm-and-condor)
+      - [Provision Workers](#provision-workers)
+      - [Monitoring Jobs](#monitoring-jobs)
+        - [Slurm and Condor](#slurm-and-condor)
+        - [Watcher State File](#watcher-state-file)
+        - [Cromwell Job Status and Metadata](#cromwell-job-status-and-metadata)
 
 # nmdc_automation: Running Jobs on SLURM and Condor
 This document provides instructions for running jobs on SLURM and Condor using the nmdc_automation package. It includes examples of how to submit jobs, check their status, and retrieve results.
@@ -121,3 +128,5 @@ This will include the inputs, outputs and logs for the job, as well as failure i
 }
 ```
 
+#### POC
+- Shane Canon <scanon@lbl.gov>
