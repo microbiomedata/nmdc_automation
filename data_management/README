@@ -1,0 +1,3 @@
+This dir contains pipeline to ingest workflow output data into JAMO for archival. 
+`jamo_ingest.py` generates metadata files corresponding to the workflow output files and their applicable JAT templates.
+`jamo_import.sh` executes the actual import for each file.
