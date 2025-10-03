@@ -1,4 +1,4 @@
-""" Data classed for NMDC workflow automation. """
+""" Data classes for NMDC workflow automation. """
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Set
@@ -27,6 +27,7 @@ class WorkflowProcessNode(object):
         self.workflow = workflow
         process = workflow_process_factory(record)
         self.process = process
+        self._manifest: List[str] = []
 
     def __hash__(self):
         return hash((self.id, self.type))
@@ -42,6 +43,27 @@ class WorkflowProcessNode(object):
         Add a data object to this workflow processing node.
         """
         self.data_objects_by_type[data_object.data_object_type.code.text] = data_object
+    
+    # Getter
+    @property
+    def manifest(self) -> list[str]:
+        # This return ensures a copy of the manifest list so that outside code doesn't modify it
+        return list(self._manifest)
+    
+    # Setter, basically
+    def add_to_manifest(self, manifest_id: str) -> None:
+        """
+        Adds a single manifest ID to the manifest list.
+        
+        This is the preferred and only way to modify the manifest from
+        outside the class.
+        """
+        if not isinstance(manifest_id, str):
+            raise TypeError("Only strings can be added to the manifest.")
+        
+        # Only add unique IDs
+        if manifest_id not in self._manifest:
+            self._manifest.append(manifest_id)
 
     @property
     def id(self):
@@ -95,9 +117,9 @@ class WorkflowProcessNode(object):
 
     @property
     def was_informed_by(self) -> list[str]:
-        """ workflow executions have a was_informed_by field, data generations get set to their own id"""
+        """ workflow executions have a was_informed_by field, data generations get set to their own id"""            
         return getattr(self.process, "was_informed_by", [self.id])
-
+        
 
 @dataclass
 class WorkflowConfig:
