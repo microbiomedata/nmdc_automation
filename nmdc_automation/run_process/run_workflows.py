@@ -62,6 +62,8 @@ def submit(ctx, job_ids):
         watcher.job_checkpoint()
 
 
+
+
 @watcher.command()
 @click.pass_context
 @click.option(
@@ -70,14 +72,15 @@ def submit(ctx, job_ids):
     )
 @click.option("--all-failures", is_flag=True, default=False, help="Resubmit all failed workflows")
 @click.option("--submit", is_flag=True, default=False, help="Submit the workflows")
-def resubmit(ctx, operation_ids, all_failures, submit):
+@click.option("--new-jaws", is_flag=True, default=False, help="Make new JAWS jobs")
+def resubmit(ctx, operation_ids, all_failures, submit, new_jaws):
     """
     Resubmit failed jobs
 
     If --all-failures is set, all failed jobs will be resubmitted.
     If --opid is set, the specified operation IDs will be resubmitted.
     If --submit is set, the jobs will be submitted. Otherwise, the jobs will be listed in the log output.
-    # add resubmit via JAWS instead of automation
+    If --new-jaws is set, resubmit by making a new JAWS job instead of via JAWS resubmit function.
     """
     watcher = ctx.obj
     watcher.restore_from_checkpoint()
@@ -93,7 +96,10 @@ def resubmit(ctx, operation_ids, all_failures, submit):
 
             if submit:
                 logger.info(f"Resubmitting {msg}")
-                job.job.submit_job()
+                if new_jaws:
+                    job.job.submit_job()
+                else: 
+                    job.job.resubmit_job()
             else:
                 logger.info(f"Submit flag not set. Found {msg}")
 
@@ -105,7 +111,10 @@ def resubmit(ctx, operation_ids, all_failures, submit):
                     msg = f"Job for {job.was_informed_by[0]} / {job.workflow_execution_id} Status: {job.job_status}"
                 if submit:
                     logger.info(f"Resubmitting {msg}")
-                    job.job.submit_job()
+                    if new_jaws:
+                        job.job.submit_job()
+                    else: 
+                        job.job.resubmit_job()
                 else:
                     logger.info(f"Submit flag not set. Found {msg}")
 

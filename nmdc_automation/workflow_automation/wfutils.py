@@ -135,7 +135,7 @@ class JawsRunner(JobRunnerABC):
     @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(2))
     def submit_job(self, force: bool = False) -> Optional[int]:
         """
-        Submit a job to J.A.W.S. Update the workflow state with the job id and status.
+        Submit a job to J.A.W.S. Update the workflow state with the J.A.W.S. job id and status.
         :param force: if True, submit the job even if it is in a state that does not require submission
         :return: {'run_id': 'int'}
         """
@@ -227,7 +227,7 @@ class JawsRunner(JobRunnerABC):
     @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(2))
     def resubmit_job(self, force: bool = False) -> Optional[int]:
         """
-        Resubmit a failed job to J.A.W.S. Update the workflow state with the job id and status.
+        Resubmit a failed job to J.A.W.S. Update the workflow state with the J.A.W.S. job id and status.
         :return: {'run_id': 'status'}
         """
         status = self.workflow.last_status
