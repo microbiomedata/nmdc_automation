@@ -309,7 +309,7 @@ class JobManager:
         job.workflow.state["last_status"] = job.job_status
         self.save_checkpoint()
         logger.warning(f"Job {job.opid} failed {job.workflow.state['failed_count']} times. Retrying.")
-        jobid = job.job.submit_job()
+        jobid = job.job.resubmit_job()
         return jobid
 
     def report(self) -> List[dict]:

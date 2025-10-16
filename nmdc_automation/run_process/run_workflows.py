@@ -62,8 +62,6 @@ def submit(ctx, job_ids):
         watcher.job_checkpoint()
 
 
-
-
 @watcher.command()
 @click.pass_context
 @click.option(
