@@ -135,7 +135,7 @@ class JawsRunner(JobRunnerABC):
     @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(2))
     def submit_job(self, force: bool = False) -> Optional[int]:
         """
-        Submit a job to J.A.W.S. Update the workflow state with the job id and status.
+        Submit a job to J.A.W.S. Update the workflow state with the J.A.W.S. job id and status.
         :param force: if True, submit the job even if it is in a state that does not require submission
         :return: {'run_id': 'int'}
         """
@@ -203,7 +203,7 @@ class JawsRunner(JobRunnerABC):
                 )
                 self.job_id = response['run_id']
                 logger.info(f"Submitted job {response['run_id']}")
-                logger.info(f"Starting wait period to allow job to be registered in jaws")
+                logger.info(f"Starting 60 second wait period to allow job to be registered in jaws")
                 time.sleep(60)  # wait for a minute to allow the job to be registered in jaws
             else:
                 logger.info(f"Dry run: skipping jaws job submission")
@@ -223,6 +223,37 @@ class JawsRunner(JobRunnerABC):
 
         finally:
             _cleanup_dirs(cleanup_zip_dirs)
+
+    @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(2))
+    def resubmit_job(self, force: bool = False) -> Optional[int]:
+        """
+        Resubmit a failed job to J.A.W.S. Update the workflow state with the J.A.W.S. job id and status.
+        :return: {'run_id': 'status'}
+        """
+        status = self.workflow.last_status
+        resubmit_id = self.job_id
+        if status and status.lower() in self.no_submit_states and not force:
+            logger.info(f"Job {self.job_id} in state {status}, skipping submission")
+            return None
+        try:
+            # Resubmit to J.A.W.S
+            logger.info(f"Resubmitting job to JAWS with ID: {resubmit_id}")
+            response = self.jaws_api.resubmit(run_id=resubmit_id)
+            self.job_id = response['{resubmit_id}']
+            logger.info(f"Resubmitted job {resubmit_id}")
+            logger.info(f"Starting 60 second wait period to allow job to be registered in jaws")
+            time.sleep(60)  # wait for a minute to allow the job to be registered in jaws
+ 
+            # update workflow state
+            self.workflow.done = False
+            self.workflow.update_state({"start": datetime.now(pytz.utc).isoformat()})
+            self.workflow.update_state({"jaws_jobid": self.job_id})
+            self.workflow.update_state({"last_status": "Submitted"})
+            return self.job_id
+
+        except Exception as e:
+            logger.error(f"Failed to Resubmit Job: {e}")
+            raise e
 
 
     @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(3))

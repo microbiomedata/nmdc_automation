@@ -22,3 +22,7 @@ for key,job_id in example_response_job_dict.items():
 #example of checking on a job that has been submitted
 s_response=jaws.status("79362",verbose=False)
 print(s_response)
+
+#example of resubmitting a job
+r_response=jaws.resubmit("79362")
+print(r_response)
