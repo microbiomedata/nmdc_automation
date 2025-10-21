@@ -55,6 +55,11 @@ class JobRunnerABC(ABC):
         pass
 
     @abstractmethod
+    def resubmit_job(self) -> str:
+        """ Resubmit a job """
+        pass
+
+    @abstractmethod
     def get_job_status(self) -> str:
         """ Get the status of a job """
         pass
@@ -407,6 +412,14 @@ class CromwellRunner(JobRunnerABC):
             raise e
         finally:
             _cleanup_files(cleanup_files)
+
+    def resubmit_job(self, force: bool = False) -> Optional[str]:
+        """
+        Resubmit a job to Cromwell. Update the workflow state with the job id and status.
+        :param force: if True, submit the job even if it is in a state that does not require submission
+        :return: the job id
+        """
+        return self.submit_job(force=force)
 
     def get_job_status(self) -> str:
         """ Get the status of a job from Cromwell """
