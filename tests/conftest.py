@@ -91,7 +91,6 @@ def mock_api(monkeypatch, requests_mock, test_data_dir):
         "http://localhost:8000/workflows/workflow_executions",
         json=resp
         )
-    requests_mock.post("http://localhost:8000/pids/bind", json=resp)
 
     rqcf = test_data_dir / "rqc_response2.json"
     rqc = json.load(open(rqcf))
