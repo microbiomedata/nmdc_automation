@@ -140,12 +140,6 @@ class NmdcRuntimeApi:
             logging.error(f"Response failed for: url: {url}, data: {data}, header: {self.header}")
             raise ValueError(f"Failed to mint ID of type {id_type} HTTP status: {resp.status_code} / ({resp.reason})")
         id = resp.json()[0]
-        if informed_by:
-            url = f"{self._base_url}pids/bind"
-            data = {"id_name": id, "metadata_record": {"informed_by": informed_by}}
-            resp = requests.post(url, data=json.dumps(data), headers=self.header)
-            if not resp.ok:
-                raise ValueError("Failed to bind metadata to pid")
         return id
 
     @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
