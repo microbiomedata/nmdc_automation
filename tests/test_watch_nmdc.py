@@ -7,7 +7,7 @@ from pytest import fixture
 from unittest import mock
 import requests_mock
 import shutil
-from unittest.mock import patch, PropertyMock, Mock
+from unittest.mock import mock_open, patch, PropertyMock, Mock
 
 from nmdc_schema.nmdc import Database
 from nmdc_automation.workflow_automation.watch_nmdc import (
@@ -108,13 +108,16 @@ def test_file_handler_write_state(site_config, initial_state_file_1_failure, fix
 
 def test_file_handler_get_output_path(site_config, initial_state_file_1_failure, fixtures_dir):
     # Arrange
-    was_informed_by = "nmdc:1234"
+    was_informed_by = ["nmdc:1234"]
     workflow_execution_id = "nmdc:56789"
     mock_job = Mock()
     mock_job.was_informed_by = was_informed_by
     mock_job.workflow_execution_id = workflow_execution_id
+    mock_job.manifest = None
 
-    expected_output_path = site_config.data_dir / Path(was_informed_by) / Path(workflow_execution_id)
+    expected_output_path = None
+    if len(was_informed_by) == 1:
+        expected_output_path = site_config.data_dir / Path(was_informed_by[0]) / Path(workflow_execution_id)
 
     fh = FileHandler(site_config, initial_state_file_1_failure)
 
@@ -129,13 +132,14 @@ def test_file_handler_get_output_path(site_config, initial_state_file_1_failure,
 
 def test_file_handler_write_metadata_if_not_exists(site_config, initial_state_file_1_failure, fixtures_dir, tmp_path):
     # Arrange
-    was_informed_by = "nmdc:1234"
+    was_informed_by = ["nmdc:1234"]
     workflow_execution_id = "nmdc:56789"
     job_metadata = {"id": "xyz-123-456", "status": "Succeeded"}
     mock_job = Mock()
     mock_job.was_informed_by = was_informed_by
     mock_job.workflow_execution_id = workflow_execution_id
     mock_job.job.metadata = job_metadata
+    mock_job.manifest = None
 
 
     # patch config.data_dir
@@ -265,11 +269,34 @@ def test_job_manager_prepare_and_cache_new_job_force(site_config, initial_state_
     assert job2.opid == opid
 
 
+def test_job_manager_prepare_and_cache_new_manifest_job(site_config, initial_state_file_1_failure, fixtures_dir):
+    # Arrange
+    fh = FileHandler(site_config, initial_state_file_1_failure)
+    jm = JobManager(site_config, fh)
+    new_job_state = json.load(open(fixtures_dir / "manifest_workflow_state.json"))
+    assert new_job_state
+    
+    new_job = WorkflowJob(site_config, new_job_state)
+    # Act
+    opid = "nmdc:test-opid-mf"
+    job = jm.prepare_and_cache_new_job(new_job, opid)
+    # Assert
+    assert job
+    assert isinstance(job, WorkflowJob)
+    assert job.opid == opid
+    assert not job.done
+    # cleanup
+    jm.job_cache = []
+
+
+
 def test_job_manager_get_finished_jobs(site_config, initial_state_file_1_failure, fixtures_dir):
 
     # Arrange - initial state has 1 failure and is not done
     fh = FileHandler(site_config, initial_state_file_1_failure)
     jm = JobManager(site_config, fh)
+
+    # Initial state file has last_status failure that will get processed as success
 
     # Add a finished job: finished job is not done, but has a last_status of Succeeded
     new_job_state = json.load(open(fixtures_dir / "mags_workflow_state.json"))
@@ -288,6 +315,14 @@ def test_job_manager_get_finished_jobs(site_config, initial_state_file_1_failure
     # sanity check
     assert len(jm.job_cache) == 3
 
+    # add a manifest success job
+    new_job_state2 = json.load(open(fixtures_dir / "manifest_workflow_state_2.json"))
+    assert new_job_state
+    new_job2 = WorkflowJob(site_config, new_job_state2)
+    jm.job_cache.append(new_job2)
+    # sanity check
+    assert len(jm.job_cache) == 4
+
     # Mock requests for job status
     with requests_mock.Mocker() as m:
         # Mock the successful job status
@@ -300,21 +335,32 @@ def test_job_manager_get_finished_jobs(site_config, initial_state_file_1_failure
             "http://localhost:8088/api/workflows/v1/12345678-abcd-efgh-ijkl-9876543210/status",
             json={"status": "Failed"}
             )
-
+        # Mock for the manifest job
+        m.get(
+            "http://localhost:8088/api/workflows/v1/dry_run/status",
+            json={"status": "Succeeded"}
+            )
+        
         # Act
         successful_jobs, failed_jobs = jm.get_finished_jobs()
         # Assert
         assert successful_jobs
+        assert len(successful_jobs) == 3
+
         assert failed_jobs
+        assert len(failed_jobs) == 1
     # cleanup
     jm.job_cache = []
 
 
-def test_job_manager_process_successful_job(site_config, initial_state_file_1_failure, fixtures_dir):
+def test_job_manager_process_successful_job(site_config, initial_state_file_1_failure, fixtures_dir, job_metadata_factory):
+    modified_job_metadata = job_metadata_factory(fixtures_dir / "mags_job_metadata.json")
+    assert modified_job_metadata is not None
+    
     # mock job.job.get_job_metadata - use fixture cromwell/succeded_metadata.json
-    job_metadata = json.load(open(fixtures_dir / "mags_job_metadata.json"))
+    #job_metadata = json.load(open(fixtures_dir / "mags_job_metadata.json"))
     with patch("nmdc_automation.workflow_automation.wfutils.CromwellRunner.get_job_metadata") as mock_get_metadata:
-        mock_get_metadata.return_value = job_metadata
+        mock_get_metadata.return_value = modified_job_metadata
 
         # Arrange
         fh = FileHandler(site_config, initial_state_file_1_failure)
@@ -388,6 +434,42 @@ def test_job_manager_process_failed_job_2_failures(site_config, initial_state_fi
     assert failed_job.done
     assert failed_job.job_status == "Failed"
 
+def test_job_manager_process_successful_manifest_job(site_config, initial_state_file_1_failure, fixtures_dir, job_metadata_factory, mock_jaws_api):
+    
+    modified_job_metadata = job_metadata_factory(fixtures_dir / "rqc_job_metadata.json")
+    assert modified_job_metadata is not None
+    
+    new_job_state = json.load(open(fixtures_dir / "manifest_workflow_state_2.json"))
+    mock_api_response = {
+        "status": "done",
+        "result": "succeeded"
+    }
+    mock_jaws_api.status.return_value = mock_api_response
+    
+    
+    # Mock the file system to simulate the existence and content of outputs.json
+    # so that the open of a file that doesn't exist in get_job_metadata doesn't fail
+    with patch('nmdc_automation.workflow_automation.wfutils.JawsRunner.get_job_metadata') as mock_get_metadata:
+        mock_get_metadata.return_value = modified_job_metadata
+
+        # Arrange
+        fh = FileHandler(site_config, initial_state_file_1_failure)
+        jm = JobManager(site_config, fh)
+        
+        assert new_job_state
+        new_job = WorkflowJob(site_config, new_job_state, jaws_api=mock_jaws_api)
+        jm.job_cache.append(new_job)
+        
+        # Act
+        db = jm.process_successful_job(new_job)
+        # Assert
+        assert db
+        assert isinstance(db, Database)
+        assert new_job.done
+        assert new_job.job_status == "succeeded" #jaws
+        # cleanup
+        jm.job_cache = []
+
 
 @fixture
 def mock_runtime_api_handler(site_config, mock_api):
@@ -416,6 +498,58 @@ def test_claim_jobs(mock_submit, site_config_file, site_config, fixtures_dir):
         # Assert
         assert unclaimed_wfj.job_status
 
+
+@mock.patch("nmdc_automation.workflow_automation.wfutils.CromwellRunner.submit_job")
+def test_claim_manifest_job(mock_submit, site_config_file, site_config, fixtures_dir):
+    '''
+    Note: this does not test submit (mock_submit), solely a unit test for the claim_job calls
+    submit_job is testing under test_wfutils.
+    '''
+    # Arrange
+    mock_submit.return_value = {"id": "nmdc:5678", "detail": {"id": "nmdc:5678"}}
+    with patch(
+            "nmdc_automation.workflow_automation.watch_nmdc.RuntimeApiHandler.claim_job"
+            ) as mock_claim_job, requests_mock.Mocker() as m:
+        mock_claim_job.return_value = {"id": "nmdc:5678", "detail": {"id": "nmdc:5678"}}
+        job_state = json.load(open(fixtures_dir / "manifest_workflow_state.json"))
+        
+        unclaimed_wfj = WorkflowJob(site_config, workflow_state=job_state)
+
+        # mock the status URL response
+        status_url = f"http://localhost:8088/api/workflows/v1/{unclaimed_wfj.job.job_id}/status"
+        m.get(status_url, json={"id": "nmdc:5678", "status": "Succeeded"})
+
+        w = Watcher(site_config_file)
+        w.claim_jobs(unclaimed_jobs=[unclaimed_wfj])
+
+        # Assert
+        assert unclaimed_wfj.job_status 
+
+@mock.patch("nmdc_automation.workflow_automation.wfutils.WorkflowStateManager.generate_submission_files")
+def test_write_jaws_status_to_state(mock_generate_submission_files, site_config_file, site_config, fixtures_dir, mock_jaws_api):
+    '''
+    Run claim and submit to watch the jaws submission keys get written to the state file
+    (unit tests for claim_job mock submit and bypass job_id updates)
+    '''
+
+    mock_generate_submission_files.return_value = {
+        "wdl_file": "workflowSource",
+        "sub": "workflowDependencies",
+        "inputs": "workflowInputs"
+    }
+    with patch(
+            "nmdc_automation.workflow_automation.watch_nmdc.RuntimeApiHandler.claim_job"
+            ) as mock_claim_job, requests_mock.Mocker() as m:
+        mock_claim_job.return_value = {"id": "nmdc:5678", "detail": {"id": "nmdc:5678"}}
+        job_state = json.load(open(fixtures_dir / "manifest_workflow_state.json"))
+        
+        unclaimed_wfj = WorkflowJob(site_config, workflow_state=job_state, jaws_api=mock_jaws_api, dry_run=True)
+
+        w = Watcher(site_config_file)
+        w.claim_jobs(unclaimed_jobs=[unclaimed_wfj])
+
+        # Assert
+        assert unclaimed_wfj.job_status 
 
 def test_runtime_manager_get_unclaimed_jobs(site_config, initial_state_file_1_failure, fixtures_dir, mock_api):
     # Arrange

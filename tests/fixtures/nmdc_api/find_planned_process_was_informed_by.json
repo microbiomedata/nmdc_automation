@@ -10,7 +10,7 @@
         "nmdc:dobj-11-13w34y20",
         "nmdc:dobj-11-85zb5826"
       ],
-      "execution_resource": "JGI",
+      "processing_institution": "JGI",
       "git_url": "https://github.com/microbiomedata/ReadsQC",
       "started_at_time": "2024-12-10T18:10:31.830482+00:00",
       "was_informed_by": "nmdc:omprc-12-hgksne68",
@@ -31,7 +31,7 @@
         "nmdc:dobj-11-mr4wan69",
         "nmdc:dobj-11-e1xj1y83"
       ],
-      "execution_resource": "JGI",
+      "processing_institution": "JGI",
       "git_url": "https://github.com/microbiomedata/metaAssembly",
       "started_at_time": "2024-12-10T18:10:35.041129+00:00",
       "was_informed_by": "nmdc:omprc-12-hgksne68",

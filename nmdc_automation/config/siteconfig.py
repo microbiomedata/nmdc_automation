@@ -113,6 +113,10 @@ class SiteConfig:
     @property
     def jaws_token(self):
         return self.config_data["jaws"]["jaws_token"]
+    
+    @property
+    def env(self):
+        return self.config_data.get("environment", {}).get("env", None)
 
     @property
     @lru_cache(maxsize=None)

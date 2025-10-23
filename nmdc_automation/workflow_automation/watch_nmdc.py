@@ -89,8 +89,23 @@ class FileHandler:
 
     def get_output_path(self, job: WorkflowJob) -> Path:
         """ Get the output path for a job """
+        
+        output_path = None
+        
         # construct path from string components
-        output_path = Path(self.config.data_dir) / job.was_informed_by / job.workflow_execution_id
+        if job.manifest:
+            output_path = Path(self.config.data_dir) / job.manifest / job.workflow_execution_id
+        
+        # Still want to ensure nothing went wrong so checking the was_informed_by length
+        elif len(job.was_informed_by) == 1:
+            output_path = Path(self.config.data_dir) / job.was_informed_by[0] / job.workflow_execution_id
+
+        # It shouldn't get to here because the sched logic creates one-valued was_informed_by currently;
+        # else something is very wrong.
+        else:
+            logger.error(f"Error: Multi-valued was_informed_by found with manifest unset. Skipping output creation.")
+            raise ValueError("Multi-valued was_informed_by but manifest unset. Output path not found")
+
         return output_path
 
     def write_metadata_if_not_exists(self, job: WorkflowJob)->Path:
@@ -221,7 +236,7 @@ class JobManager:
                 # check status
                 status = job.job.get_job_status()
 
-                if status.lower() == "succeded":
+                if status.lower() == "succeeded":
                     job.workflow.last_status = status
                     successful_jobs.append(job)
                     continue
@@ -250,7 +265,7 @@ class JobManager:
         database = Database()
 
         # Update the job metadata
-        logger.info(f"Getting job metadata: for {job.was_informed_by} job{job.opid} : {job.workflow.job_runner_id}")
+        logger.info(f"Getting job metadata: for {job.was_informed_by} job {job.opid} : {job.workflow.job_runner_id}")
         job.job.job_id = job.workflow.job_runner_id
         metadata = job.job.get_job_metadata()
         job.job.metadata = metadata
@@ -275,6 +290,7 @@ class JobManager:
             sys.exit(1)
         database.workflow_execution_set = [workflow_execution]
         logger.info(f"Created workflow execution record for job {job.opid}")
+        logger.debug(workflow_execution)
 
         job.done = True
         job.workflow.state["end"] = workflow_execution.ended_at_time

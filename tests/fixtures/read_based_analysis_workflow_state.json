@@ -9,7 +9,7 @@
         "wdl": "ReadbasedAnalysis.wdl",
         "activity_id": "nmdc:wfrbt-12-yw16js60.1",
         "activity_set": "workflow_execution_set",
-        "was_informed_by": "nmdc:omprc-11-0g272j90",
+        "was_informed_by": ["nmdc:omprc-11-0g272j90"],
         "trigger_activity": "nmdc:wfrqc-12-7btzkt48.1",
         "iteration": 1,
         "input_prefix": "ReadbasedAnalysis",

@@ -18,7 +18,7 @@ from tests.fixtures.db_utils import  load_fixture, reset_db
         "workflows-mt.yaml"
     ]
 )
-def test_load_workflow_process_nodes(test_db, workflow_file, workflows_config_dir):
+def test_load_workflow_process_nodes(test_db, mock_api, workflow_file, workflows_config_dir):
     """
     Test loading workflow process nodes from the database.
     """
@@ -35,11 +35,11 @@ def test_load_workflow_process_nodes(test_db, workflow_file, workflows_config_di
 
    # sanity checking these - they are used in the next step
     data_objs_by_id = get_required_data_objects_map(test_db, workflow_configs)
-    current_nodes = get_current_workflow_process_nodes(test_db, workflow_configs, data_objs_by_id)
+    current_nodes, manifest_map = get_current_workflow_process_nodes(test_db, mock_api, workflow_configs, data_objs_by_id)
     assert current_nodes
     assert len(current_nodes) == 2
 
-    workflow_process_nodes = load_workflow_process_nodes(test_db, workflow_configs)
+    workflow_process_nodes, manifest_map = load_workflow_process_nodes(test_db, mock_api, workflow_configs)
     # sanity check
     assert workflow_process_nodes
     assert len(workflow_process_nodes) == 2
@@ -72,7 +72,7 @@ def test_get_required_data_objects_map(test_db, workflows_config_dir):
 
 
 
-def test_load_workflow_process_nodes_with_obsolete_versions(test_db, workflows_config_dir):
+def test_load_workflow_process_nodes_with_obsolete_versions(test_db, mock_api, workflows_config_dir):
     """
     Test loading workflow process nodes for a case where there are obsolete versions of the same workflow
     """
@@ -84,10 +84,10 @@ def test_load_workflow_process_nodes_with_obsolete_versions(test_db, workflows_c
     workflow_config = load_workflow_configs(workflows_config_dir / "workflows.yaml")
     data_objs_by_id = get_required_data_objects_map(test_db, workflow_config)
 
-    # There are 8 workflow executions in the fixture, but only 4 are current:
+    # There are 7 workflow executions in the fixture, but only 4 are current:
     # 2 are obsolete  MAGs workflows,
-    # 1 is an obsolete Annotation workflow, and 1 is a legacy MetagenomeSequencing workflow
-    exp_num_db_workflow_execution_records = 8
+    # 1 is an obsolete Annotation workflow
+    exp_num_db_workflow_execution_records = 7
     exp_num_current_nodes = 5 # 4 current workflows and 1 data generation
     exp_current_node_types = [
         "nmdc:MetagenomeAssembly", "nmdc:MetagenomeAnnotation", "nmdc:ReadQcAnalysis",
@@ -101,7 +101,7 @@ def test_load_workflow_process_nodes_with_obsolete_versions(test_db, workflows_c
 
     # testing functions that are called by load_workflow_process_nodes
     # get_current_workflow_process_nodes
-    current_nodes = get_current_workflow_process_nodes(test_db, workflow_config, data_objs_by_id)
+    current_nodes, manifest_map = get_current_workflow_process_nodes(test_db, mock_api, workflow_config, data_objs_by_id)
     assert current_nodes
     assert len(current_nodes) == exp_num_current_nodes
     current_node_types = [node.type for node in current_nodes]
@@ -127,7 +127,7 @@ def test_load_workflow_process_nodes_with_obsolete_versions(test_db, workflows_c
     assert resolved_nodes
 
 
-def test_resolve_relationships(test_db, workflows_config_dir):
+def test_resolve_relationships(test_db, mock_api, workflows_config_dir):
     """
     Test that the relationships between workflow process nodes are resolved
     """
@@ -141,7 +141,7 @@ def test_resolve_relationships(test_db, workflows_config_dir):
 
     workflow_config = load_workflow_configs(workflows_config_dir / "workflows.yaml")
     data_objs_by_id = get_required_data_objects_map(test_db, workflow_config)
-    current_nodes = get_current_workflow_process_nodes(test_db, workflow_config, data_objs_by_id)
+    current_nodes, manifest_map = get_current_workflow_process_nodes(test_db, mock_api, workflow_config, data_objs_by_id)
     current_nodes_by_data_object_id, current_nodes = _map_nodes_to_data_objects(
         current_nodes, data_objs_by_id)
     assert current_nodes
@@ -160,27 +160,6 @@ def test_resolve_relationships(test_db, workflows_config_dir):
         else:
             assert node.parent
 
-
-def test_load_workflow_process_nodes_does_not_load_metagenome_sequencing(test_db, workflows_config_dir):
-    """
-    Test that legacy nmdc:MetagenomeSequencing instances are not loaded
-    """
-    exp_omprc = "nmdc:omprc-11-cegmwy02"
-    reset_db(test_db)
-    load_fixture(test_db, "legacy_data_obj.json", "data_object_set")
-    load_fixture(test_db, "legacy_data_generation.json", "data_generation_set")
-    load_fixture(test_db, "metagenome_sequencing.json", "workflow_execution_set")
-
-    workflow_config = load_workflow_configs(workflows_config_dir / "workflows.yaml")
-    data_objs_by_id = get_required_data_objects_map(test_db, workflow_config)
-    wf_execs = get_current_workflow_process_nodes(test_db, workflow_config, data_objs_by_id, allowlist=[exp_omprc,])
-    # We only expect the data generation to be loaded
-    assert wf_execs
-    assert len(wf_execs) == 1
-    wf = wf_execs[0]
-    assert wf.type == "nmdc:NucleotideSequencing"
-    assert wf.id == exp_omprc
-    assert wf.was_informed_by == exp_omprc
 
 
 @mark.parametrize(

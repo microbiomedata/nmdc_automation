@@ -3,7 +3,7 @@
       "name": "Metagenome Assembled Genomes Analysis Activity for nmdc:wfmag-11-00jn7876.1",
       "started_at_time": "2023-07-30T21:31:56.387227+00:00",
       "ended_at_time": "2023-07-30T21:34:32.750008+00:00",
-      "was_informed_by": "nmdc:omprc-11-7yj0jg57",
+      "was_informed_by": ["nmdc:omprc-11-7yj0jg57"],
       "execution_resource": "NERSC-Perlmutter",
       "git_url": "https://github.com/microbiomedata/metaMAGs",
       "has_input": [

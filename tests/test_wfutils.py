@@ -86,7 +86,7 @@ def test_cromwell_job_runner_get_job_metadata(site_config, fixtures_dir, mock_cr
     assert job_runner.metadata == metadata
 
 
-def test_jaws_job_runner(site_config, fixtures_dir, jaws_config_file_test, jaws_test_token_file):
+def test_jaws_job_runner(site_config, fixtures_dir, jaws_config_file_test, jaws_test_token_file, mock_womtool_validation):
     job_state = json.load(open(fixtures_dir / "mags_workflow_state.json"))
     state_manager = WorkflowStateManager(job_state)
     config = Configuration.from_files(jaws_config_file_test, jaws_test_token_file)
@@ -94,11 +94,6 @@ def test_jaws_job_runner(site_config, fixtures_dir, jaws_config_file_test, jaws_
     job_runner = JawsRunner(site_config, state_manager, api)
     assert job_runner
 
-
-@pytest.fixture(scope="session")
-def mock_jaws_api():
-    with mock.patch("jaws_client.api.JawsApi") as mock_jaws_api:
-        yield mock_jaws_api
 
 
 def test_workflow_job_as_workflow_execution_dict(site_config, fixtures_dir):
@@ -309,7 +304,7 @@ def test_cromwell_runner_generate_submission_files_exception(mock_cleanup_files,
 
 @mock.patch("nmdc_automation.workflow_automation.wfutils.WorkflowStateManager.fetch_release_file")
 def test_jaws_job_runner_generate_submission_files(mock_fetch_release_file, site_config, fixtures_dir,
-                                                   jaws_config_file_test, jaws_test_token_file):
+                                                   jaws_config_file_test, jaws_test_token_file, mock_womtool_validation):
     # Mock the file paths returned by fetch_release_file
     mock_wdl_path = '/tmp/test_workflow.wdl'
     mock_bundle_path = '/tmp/test_bundle.zip'
@@ -330,17 +325,51 @@ def test_jaws_job_runner_generate_submission_files(mock_fetch_release_file, site
     assert job_runner
 
     # Generate submission files and assert keys
-    submission_files = state_manager.generate_submission_files()
+    submission_files = state_manager.generate_submission_files(for_jaws=True)
     assert submission_files
-    assert "workflowSource" in submission_files
-    assert "workflowDependencies" in submission_files
-    assert "workflowInputs" in submission_files
-    assert "labels" in submission_files
+    assert "wdl_file" in submission_files
+    assert "sub" in submission_files
+    assert "inputs" in submission_files
+    
 
     # Clean up temporary files
     os.remove(mock_wdl_path)
     os.remove(mock_bundle_path)
 
+
+@mock.patch("nmdc_automation.workflow_automation.wfutils.WorkflowStateManager.fetch_release_file")
+def test_jaws_job_runner_generate_manifest_submission_files(mock_fetch_release_file, site_config, fixtures_dir,
+                                                   jaws_config_file_test, jaws_test_token_file, mock_womtool_validation):
+    # Mock the file paths returned by fetch_release_file
+    mock_wdl_path = '/tmp/test_workflow.wdl'
+    mock_bundle_path = '/tmp/test_bundle.zip'
+    mock_fetch_release_file.side_effect = [mock_wdl_path, mock_bundle_path]
+
+    # Create temporary files to avoid FileNotFoundError
+    with open(mock_wdl_path, 'w') as f:
+        f.write("mock WDL content")
+    with open(mock_bundle_path, 'w') as f:
+        f.write("mock bundle content")
+
+    # Load job state and set up objects
+    job_state = json.load(open(fixtures_dir / "manifest_workflow_state.json"))
+    state_manager = WorkflowStateManager(job_state)
+    config = Configuration.from_files(jaws_config_file_test, jaws_test_token_file)
+    api = JawsApi(config)
+    job_runner = JawsRunner(site_config, state_manager, api)
+    assert job_runner
+
+    # Generate submission files and assert keys
+    submission_files = state_manager.generate_submission_files(for_jaws=True)
+    assert submission_files
+    assert "wdl_file" in submission_files
+    assert "sub" in submission_files
+    assert "inputs" in submission_files
+    
+
+    # Clean up temporary files
+    os.remove(mock_wdl_path)
+    os.remove(mock_bundle_path)
 
 
 @mock.patch("nmdc_automation.workflow_automation.wfutils.WorkflowStateManager.generate_submission_files")
@@ -364,10 +393,14 @@ def test_cromwell_job_runner_submit_job_new_job(mock_generate_submission_files, 
     assert jobid
 
 
-def test_workflow_job_data_objects_and_execution_record_mags(site_config, fixtures_dir, tmp_path):
-    job_metadata = json.load(open(fixtures_dir / "mags_job_metadata.json"))
+def test_workflow_job_data_objects_and_execution_record_mags(site_config, fixtures_dir, job_metadata_factory, tmp_path):
+    #job_metadata = json.load(open(fixtures_dir / "mags_job_metadata.json"))
+
+    modified_job_metadata = job_metadata_factory(fixtures_dir / "mags_job_metadata.json")
+    assert modified_job_metadata is not None
+    
     workflow_state = json.load(open(fixtures_dir / "mags_workflow_state.json"))
-    job = WorkflowJob(site_config, workflow_state, job_metadata)
+    job = WorkflowJob(site_config, workflow_state, modified_job_metadata)
     data_objects = job.make_data_objects(output_dir=tmp_path)
     assert data_objects
     for data_object in data_objects:
@@ -396,12 +429,16 @@ def test_workflow_job_data_objects_and_execution_record_mags(site_config, fixtur
     assert isinstance(wfe.binned_contig_num, int)
 
 
-def test_workflow_execution_record_from_workflow_job(site_config, fixtures_dir, tmp_path):
-    job_metadata = json.load(open(fixtures_dir / "mags_job_metadata.json"))
+def test_workflow_execution_record_from_workflow_job(site_config, fixtures_dir, job_metadata_factory, tmp_path):
+    #job_metadata = json.load(open(fixtures_dir / "mags_job_metadata.json"))
+
+    modified_job_metadata = job_metadata_factory(fixtures_dir / "mags_job_metadata.json")
+    assert modified_job_metadata is not None
+
     workflow_state = json.load(open(fixtures_dir / "mags_workflow_state.json"))
     # remove 'end' from the workflow state to simulate a job that is still running
     workflow_state.pop('end')
-    job = WorkflowJob(site_config, workflow_state, job_metadata)
+    job = WorkflowJob(site_config, workflow_state, modified_job_metadata)
     data_objects = job.make_data_objects(output_dir=tmp_path)
 
     wfe = job.make_workflow_execution(data_objects)
@@ -409,10 +446,13 @@ def test_workflow_execution_record_from_workflow_job(site_config, fixtures_dir, 
     assert wfe.ended_at_time
 
 
-def test_make_data_objects_includes_workflow_execution_id_and_file_size(site_config, fixtures_dir, tmp_path):
-    job_metadata = json.load(open(fixtures_dir / "mags_job_metadata.json"))
+def test_make_data_objects_includes_workflow_execution_id_and_file_size(site_config, fixtures_dir, job_metadata_factory, tmp_path):
+    #job_metadata = json.load(open(fixtures_dir / "mags_job_metadata.json"))
+    modified_job_metadata = job_metadata_factory(fixtures_dir / "mags_job_metadata.json")
+    assert modified_job_metadata is not None
+
     workflow_state = json.load(open(fixtures_dir / "mags_workflow_state.json"))
-    job = WorkflowJob(site_config, workflow_state, job_metadata)
+    job = WorkflowJob(site_config, workflow_state, modified_job_metadata)
     data_objects = job.make_data_objects(output_dir=tmp_path)
     assert data_objects
     for data_object in data_objects:
@@ -445,3 +485,52 @@ def test_jaws_workflow_execution_record_has_ended_at_time(fixture_pair, site_con
     wfe = wfj.make_workflow_execution([])
     assert wfe.started_at_time
     assert wfe.ended_at_time
+
+
+@mock.patch("nmdc_automation.workflow_automation.wfutils.WorkflowStateManager.generate_submission_files")
+def test_jaws_job_runner_submit_job_new_job(mock_generate_submission_files, site_config, fixtures_dir, mock_jaws_api):
+    """
+        Test submitting a job through the JAWS job runner and set up of the jaws tag based on the config
+    """
+    mock_generate_submission_files.return_value = {
+        "wdl_file": "workflowSource",
+        "sub": "workflowDependencies",
+        "inputs": "workflowInputs"
+    }
+    # A new workflow job that has not been submitted - it has a workflow state
+    # but no job metadata
+    wf_state = json.load(open(fixtures_dir / "mags_workflow_state.json"))
+    #wfj = WorkflowJob(site_config, wf_state, job_metadata, jaws_api=mock_jaws_api)
+    wf_state['last_status'] = None # simulate a job that has not been submitted
+    wf_state['jaws_jobid'] = None # simulate a job that has not been submitted
+    wf_state['done'] = False # simulate a job that has not been submitted
+
+    wf_state_manager = WorkflowStateManager(wf_state)
+    job_runner = JawsRunner(site_config, wf_state_manager, mock_jaws_api, dry_run=True)
+    jobid = job_runner.submit_job()
+    assert site_config.env == "dev"
+    assert jobid
+
+@mock.patch("nmdc_automation.workflow_automation.wfutils.WorkflowStateManager.generate_submission_files")
+def test_jaws_job_runner_submit_job_new_manifest_job(mock_generate_submission_files, site_config, fixtures_dir, mock_jaws_api):
+    """
+        Test submitting a job through the JAWS job runner and set up of the jaws tag based on the config
+    """
+    mock_generate_submission_files.return_value = {
+        "wdl_file": "workflowSource",
+        "sub": "workflowDependencies",
+        "inputs": "workflowInputs"
+    }
+    # A new workflow job that has not been submitted - it has a workflow state
+    # but no job metadata
+    wf_state = json.load(open(fixtures_dir / "manifest_workflow_state.json"))
+    #wfj = WorkflowJob(site_config, wf_state, job_metadata, jaws_api=mock_jaws_api)
+    wf_state['last_status'] = None # simulate a job that has not been submitted
+    wf_state['jaws_jobid'] = None # simulate a job that has not been submitted
+    wf_state['done'] = False # simulate a job that has not been submitted
+
+    wf_state_manager = WorkflowStateManager(wf_state)
+    job_runner = JawsRunner(site_config, wf_state_manager, mock_jaws_api, dry_run=True)
+    jobid = job_runner.submit_job()
+    assert site_config.env == "dev"
+    assert jobid

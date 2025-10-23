@@ -10,6 +10,7 @@ import tempfile
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
+import time
 from tenacity import retry, wait_exponential, stop_after_attempt
 from typing import Any, Dict, List, Optional, Union
 import pytz
@@ -120,7 +121,7 @@ class JawsRunner(JobRunnerABC):
 
     def __init__(self,
                  site_config: SiteConfig, workflow: "WorkflowStateManager", jaws_api: jaws_api.JawsApi,
-                 job_metadata: Dict[str, Any] = None, job_site: str = None) -> None:
+                 job_metadata: Dict[str, Any] = None, job_site: str = None, dry_run: bool = False) -> None:
         super().__init__(site_config, workflow)
         self.jaws_api = jaws_api
         self._metadata = {}
@@ -128,6 +129,7 @@ class JawsRunner(JobRunnerABC):
             self._metadata = job_metadata
         self.job_site = job_site or self.DEFAULT_JOB_SITE
         self.no_submit_states = self.JAWS_NO_SUBMIT_STATES + self.NO_SUBMIT_STATES
+        self.dry_run = dry_run
 
 
     @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(2))
@@ -145,25 +147,45 @@ class JawsRunner(JobRunnerABC):
         try:
             files = self.workflow.generate_submission_files(for_jaws=True)
 
-            # Temporary fix to handle the fact that the JAWS API does not handle the sub argument and the zip file
-            if 'sub' in files:
-                extract_dir = os.path.dirname(files["sub"])
-                with zipfile.ZipFile(files["sub"], 'r') as zip_ref:
-                    zip_ref.extractall(extract_dir)
-                cleanup_zip_dirs.append(extract_dir)
+            if not self.dry_run:
+                # Temporary fix to handle the fact that the JAWS API does not handle the sub argument and the zip file
+                if 'sub' in files:
+                    extract_dir = os.path.dirname(files["sub"])
+                    with zipfile.ZipFile(files["sub"], 'r') as zip_ref:
+                        zip_ref.extractall(extract_dir)
+                    cleanup_zip_dirs.append(extract_dir)
 
-            # Validate
-            validation_resp = self.jaws_api.validate(
-                shell_check=False, wdl_file=files["wdl_file"],
-                inputs_file=files["inputs"]
-            )
-            if validation_resp["result"] != "succeeded":
-                logger.error(f"Failed to Validate Job: {validation_resp}")
-                raise Exception(f"Failed to Validate Job: {validation_resp}")
+                # Validate
+                validation_resp = self.jaws_api.validate(
+                    shell_check=False, wdl_file=files["wdl_file"],
+                    inputs_file=files["inputs"]
+                )
+                if validation_resp["result"] != "succeeded":
+                    logger.error(f"Failed to Validate Job: {validation_resp}")
+                    raise Exception(f"Failed to Validate Job: {validation_resp}")
+                else:
+                    logger.info(f"Validation Succeeded: {validation_resp}")
+            
             else:
-                logger.info(f"Validation Succeeded: {validation_resp}")
+                logger.info(f"Dry run: skipping file validation for jaws submission")
+        
 
-            tag_value = self.workflow.was_informed_by + "/" + self.workflow.workflow_execution_id
+            
+            if self.workflow.manifest:
+                tag_value = self.workflow.manifest + "/" + self.workflow.workflow_execution_id    
+            elif len(self.workflow.was_informed_by) == 1:
+                tag_value = self.workflow.was_informed_by[0] + "/" + self.workflow.workflow_execution_id
+            
+            else:
+                tag_value = ":".join(self.workflow.was_informed_by) + "/" + self.workflow.workflow_execution_id
+
+            
+            
+            # Prepend a dev tag if env=dev exists
+            if self.config.env is not None:
+                if self.config.env == "dev":
+                    tag_value = "dev/" + tag_value
+                
             # Submit to J.A.W.S
             logger.info(f"Submitting job to JAWS with tag: {tag_value}")
             logger.info(f"Site: {self.job_site}")
@@ -171,15 +193,21 @@ class JawsRunner(JobRunnerABC):
             logger.info(f"WDL: {files['wdl_file']}")
             logger.info(f"Sub: {files['sub']}")
 
-            response = self.jaws_api.submit(
-                wdl_file=files["wdl_file"],
-                sub=files["sub"],
-                inputs=files["inputs"],
-                tag = tag_value,
-                site = self.job_site
-            )
-            self.job_id = response['run_id']
-            logger.info(f"Submitted job {response['run_id']}")
+            if not self.dry_run:
+                response = self.jaws_api.submit(
+                    wdl_file=files["wdl_file"],
+                    sub=files["sub"],
+                    inputs=files["inputs"],
+                    tag = tag_value,
+                    site = self.job_site
+                )
+                self.job_id = response['run_id']
+                logger.info(f"Submitted job {response['run_id']}")
+                logger.info(f"Starting wait period to allow job to be registered in jaws")
+                time.sleep(60)  # wait for a minute to allow the job to be registered in jaws
+            else:
+                logger.info(f"Dry run: skipping jaws job submission")
+                self.job_id = "dry_run"                
 
             # update workflow state
             self.workflow.done = False
@@ -532,8 +560,13 @@ class WorkflowStateManager:
         return self.config.get("activity_id", self.config.get("workflow_execution_id", None))
 
     @property
-    def was_informed_by(self) -> Optional[str]:
+    def was_informed_by(self) -> Optional[list[str]]:
         return self.config.get("was_informed_by", None)
+    
+    @property
+    def manifest(self) -> Optional[str]:
+        return self.config.get("manifest", None)
+    
 
     @property
     def wdl(self) -> Optional[str]:
@@ -590,6 +623,7 @@ class WorkflowStateManager:
             raise ValueError("opid already set in job state")
         self.cached_state["opid"] = opid
 
+    
     def fetch_release_file(self, filename: str, suffix: str = None) -> str:
         """
         Download a release file from the Git repository and save it as a temporary file.
@@ -647,15 +681,18 @@ class WorkflowJob:
 
     """
     def __init__(self, site_config: SiteConfig, workflow_state: Dict[str, Any] = None,
-                 job_metadata: Dict['str', Any] = None, opid: str = None, jaws_api: jaws_api.JawsApi = None) -> None:
+                 job_metadata: Dict['str', Any] = None, opid: str = None, jaws_api: jaws_api.JawsApi = None, dry_run: bool = False) -> None:
         self.site_config = site_config
         self.workflow = WorkflowStateManager(workflow_state, opid)
+        
+        self.dry_run = dry_run
         # Use JawsRunner if jaws_api is provided, otherwise use CromwellRunner
         if jaws_api is None:
-            job_runner = CromwellRunner(site_config, self.workflow, job_metadata)
+            job_runner = CromwellRunner(site_config, self.workflow, job_metadata, dry_run=self.dry_run)
         else:
-            job_runner = JawsRunner(site_config, self.workflow, jaws_api, job_metadata)
+            job_runner = JawsRunner(site_config, self.workflow, jaws_api, job_metadata, dry_run=self.dry_run)
         self.job = job_runner
+        
 
     # Properties to access the site config, job state, and job runner attributes
     @property
@@ -668,7 +705,7 @@ class WorkflowJob:
         if self.opid and not force:
             raise ValueError("opid already set in job state")
         self.workflow.update_state({"opid": opid})
-
+    
     @property
     def done(self) -> Optional[bool]:
         """ Get the done state of the job """
@@ -694,10 +731,13 @@ class WorkflowJob:
         if not any(key in self.workflow.state for key in job_id_keys):
             status = "Unsubmitted"
             self.workflow.update_state({"last_status": status})
-        elif self.workflow.state.get("last_status") == "Succeeded":
+        
+        # Note "Succeeded" and "Failed" are cromwell nomenclature
+        elif self.workflow.state.get("last_status") == "Succeeded": 
             status = "Succeeded"
         elif self.workflow.state.get("last_status") == "Failed" and failed_count >= self.job.max_retries:
             status = "Failed"
+        # Compare to, if this is from jaws, the status is "succeeded" or "failed"
         else:
             status = self.job.get_job_status()
             self.workflow.update_state({"last_status": status})
@@ -724,10 +764,15 @@ class WorkflowJob:
         return self.site_config.url_root
 
     @property
-    def was_informed_by(self) -> str:
+    def was_informed_by(self) -> list[str]:
         """ get the was_informed_by ID value """
         return self.workflow.was_informed_by
-
+        
+    @property
+    def manifest(self) -> Optional[str]:
+        """ Get the manifest id """
+        return self.workflow.manifest
+    
     @property
     def as_workflow_execution_dict(self) -> Dict[str, Any]:
         """
@@ -739,6 +784,7 @@ class WorkflowJob:
             "name": self.workflow.workflow_execution_name,
             "git_url": self.workflow.config["git_repo"],
             "execution_resource": self.execution_resource,
+            "processing_institution": "NMDC",
             "was_informed_by": self.was_informed_by,
             "has_input": [dobj["id"] for dobj in self.workflow.config["input_data_objects"]],
             "started_at_time": self.job.started_at_time,
@@ -752,7 +798,8 @@ class WorkflowJob:
         """
 
         data_objects = []
-
+        current_cwd = Path.cwd()
+        logging.info(f"Current Working Directory (CWD) is: {current_cwd}")
         logger.info(f"Creating data objects for job {self.workflow_execution_id}")
         for output_spec in self.workflow.data_outputs:  # specs are defined in the workflow.yaml file under Outputs
             output_key = f"{self.workflow.input_prefix}.{output_spec['output']}"
@@ -774,7 +821,16 @@ class WorkflowJob:
 
             md5_sum = _md5(output_file)
             file_size_bytes = output_file.stat().st_size
-            file_url = f"{self.url_root}/{self.was_informed_by}/{self.workflow_execution_id}/{output_file.name}"
+            logger.info(f"File size: {file_size_bytes}")
+            
+            if len(self.was_informed_by) == 1:
+                file_url = f"{self.url_root}/{self.was_informed_by[0]}/{self.workflow_execution_id}/{output_file.name}"
+            elif self.manifest:
+                file_url = f"{self.url_root}/{self.manifest}/{self.workflow_execution_id}/{output_file.name}"
+            else:
+                logger.error(f"Error: manifest not defined and was_informed_by list is != 1. File url creation failed.")
+                raise Exception(f"Error: manifest not defined and was_informed_by list is != 1. File url creation failed.")
+                
 
             if output_dir:
                 new_output_file_path = Path(output_dir) / output_file.name
@@ -871,9 +927,29 @@ def _json_tmp(data):
     return fname
 
 
-def _md5(file):
-    return hashlib.md5(open(file, "rb").read()).hexdigest()
+# Default chunk size set at 4MiB; needed to balance speed
+# with being a good citizen as this is currently being run on
+# the NERSC login nodes
+def _md5(file, chunk_size=4194304):
 
+    # Previous implementation reads entire file to memory, which was problematic for large files
+    #return hashlib.md5(open(file, "rb").read()).hexdigest()
+
+    # Instead, read file in chunks
+    hasher = hashlib.md5()
+    try:
+        with open(file, 'rb') as f:
+            while True:
+                chunk = f.read(chunk_size)
+                if not chunk:  # If chunk is empty, we've reached the end of the file
+                    break
+                hasher.update(chunk) # Update the hash with the current chunk
+        return hasher.hexdigest()
+    
+    except Exception as e:
+        logger.error(f"Failed to get md5 checksum: {e}")
+        raise Exception(f"Failed to get md5 checksum: {e}")
+    
 
 def _cleanup_files(files: List[Union[tempfile.NamedTemporaryFile, tempfile.SpooledTemporaryFile]]):
     """Safely closes and removes files."""

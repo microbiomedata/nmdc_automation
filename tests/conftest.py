@@ -1,19 +1,24 @@
+import ast
+import configparser
 import json
 import os
 from pymongo import MongoClient
 from pathlib import Path
 from pytest import fixture
+from unittest import mock
 import requests_mock
 import shutil
 from time import time
-from unittest.mock import MagicMock
+import pandas as pd
 from yaml import load, Loader
+from typing import Callable
 
 
 from nmdc_automation.config import SiteConfig
 from nmdc_automation.models.workflow import WorkflowConfig
 from tests.fixtures import db_utils
 from nmdc_automation.workflow_automation.wfutils import WorkflowJob
+from jaws_client.config import Configuration
 
 @fixture(scope="session")
 def mock_job_state():
@@ -86,7 +91,6 @@ def mock_api(monkeypatch, requests_mock, test_data_dir):
         "http://localhost:8000/workflows/workflow_executions",
         json=resp
         )
-    requests_mock.post("http://localhost:8000/pids/bind", json=resp)
 
     rqcf = test_data_dir / "rqc_response2.json"
     rqc = json.load(open(rqcf))
@@ -140,6 +144,29 @@ def site_config_file(base_test_dir):
 def site_config(site_config_file):
     return SiteConfig(site_config_file)
 
+# New fixture to selectively use the dev API for queries
+@fixture
+def site_config_file_dev_api(site_config_file, tmp_path):
+    
+    # Create a path for the new temporary file.
+    temp_config = tmp_path / "site_configuration_test_dev_api.toml"
+
+    dev_api = 'api_url = "https://api-dev.microbiomedata.org"\n'
+
+    # read the content of the original TOML file
+    with open(site_config_file, "r") as f, \
+         open(temp_config, "w") as nf:
+        
+        for line in f:
+            if line.strip().startswith("api_url ="):
+                nf.write(dev_api)
+            else:
+                nf.write(line)
+
+
+    # Return the new config with api mod
+    return temp_config
+
 @fixture
 def initial_state_file_1_failure(fixtures_dir, tmp_path):
     state_file = fixtures_dir / "agent_state_1_failure.json"
@@ -147,6 +174,43 @@ def initial_state_file_1_failure(fixtures_dir, tmp_path):
     copied_state_file = tmp_path / "agent_state_1_failure.json"
     shutil.copy(state_file, copied_state_file)
     return copied_state_file
+
+@fixture
+
+def job_metadata_factory(base_test_dir: Path) -> Callable[[Path], dict]:
+    """
+    A fixture that acts as a factory for loading and modifying job metadata JSON files.
+    
+    This returns a callable that takes a Path to a JSON file.
+    The callable loads the file and substitutes 'test_pscratch' with a full path.
+    """
+    def _modified_job_metadata(json_path: Path) -> dict:
+        """
+        Loads any job_metadata.json, substitutes the relative paths defined for the outputs, 
+        and modifies them to the full path so that tests can work from any repo loc
+        """
+        #json_path = fixtures_dir / "mags_job_metadata.json"
+        
+        # Read the JSON file content as a single string
+        with open(json_path, "r") as f:
+            file_content = f.read()
+
+        # Substitute "test_pscratch" with "test_base_dir/test_pscratch"
+        # This happens on the raw string content of the file.
+        modified_content = file_content.replace("test_pscratch", f"{base_test_dir}/test_pscratch")
+
+        # Load the modified string back into a Python dictionary
+        return json.loads(modified_content)
+    
+    return _modified_job_metadata
+
+@fixture
+def mock_womtool_validation(mocker):
+    """
+    Mocks the validate_womtool_path method to prevent FileNotFoundError.
+    """
+    # This line replaces the original method with a mock that does nothing.
+    mocker.patch.object(Configuration, 'validate_womtool_path', return_value=None)
 
 
 # Sample Cromwell API responses
@@ -208,6 +272,10 @@ def mock_cromwell_api(fixtures_dir):
 
         yield m
 
+@fixture(scope="session")
+def mock_jaws_api():
+    with mock.patch("jaws_client.api.JawsApi") as mock_jaws_api:
+        yield mock_jaws_api
 
 @fixture(scope="session")
 def gold_import_dir(fixtures_dir):
@@ -218,6 +286,16 @@ def gold_import_files(gold_import_dir):
     # return the full paths to fixtures that simulate JGI import files. These are used to test the GoldMapper class.
     # One (1) file is a nucleotide sequencing file. All the other files are RQC, assembly, MAGs, etc.
     return [str(f) for f in gold_import_dir.iterdir() if f.is_file()]
+
+@fixture(scope="session")
+def import_config():
+    config = configparser.ConfigParser()
+    config.read(Path(__file__).parent / "fixtures" / "import_config.ini")
+    return config
+
+@fixture(scope="session")
+def import_config_file():
+    return Path(__file__).parent / "fixtures" / "import_config.ini"
 
 
 class MockNmdcRuntimeApi:
@@ -255,11 +333,54 @@ class MockNmdcRuntimeApi:
         }
 
 
-
-
-
-
-
 @fixture(scope="session")
 def mock_nmdc_runtime_api():
     return MockNmdcRuntimeApi()
+
+
+@fixture
+def grow_analysis_df(fixtures_dir):
+    grow_analysis_df = pd.read_csv(fixtures_dir / "grow_analysis_projects.csv")
+    grow_analysis_df.columns = [
+        "apGoldId",
+        "studyId",
+        "itsApId",
+        "project_name",
+        "biosample_id",
+        "seq_id",
+        "file_name",
+        "file_status",
+        "file_size",
+        "jdp_file_id",
+        "md5sum",
+        "analysis_project_id",
+    ]
+    grow_analysis_df = grow_analysis_df[
+        [
+            "apGoldId",
+            "studyId",
+            "itsApId",
+            "project_name",
+            "biosample_id",
+            "seq_id",
+            "file_name",
+            "file_status",
+            "file_size",
+            "jdp_file_id",
+            "md5sum",
+            "analysis_project_id",
+        ]
+    ]
+    # grow_analysis_df["project_name"] = grow_analysis_df["project_name"].apply(ast.literal_eval)
+    return grow_analysis_df
+
+@fixture
+def jgi_staging_config(fixtures_dir, tmp_path):
+    config_file = fixtures_dir / "jgi_staging_config.ini"
+    config = configparser.ConfigParser()
+    read_files = config.read(config_file)
+    if not read_files:
+        raise FileNotFoundError(f"Config file {config_file} not found.")
+    # set Globus root dir to tmp_path
+    config["GLOBUS"]["globus_root_dir"] = str(tmp_path)
+    return config

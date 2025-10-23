@@ -13,7 +13,7 @@ resource = "NERSC-Perlmutter"
 site = "Processing Site"
 
 [nmdc]
-url_root = "https://data.microbiomedata.org/data/"
+url_root = "https://data.microbiomedata.org/data/dev"
 api_url = "http://localhost:8000"
 
 [state]
@@ -31,3 +31,6 @@ client_secret = "O8Q!64t,^xy:"
 [jaws]
 jaws_config = "jaws-test.conf"
 jaws_token = "jaws-test-token.conf"
+
+[environment]
+env = "dev"

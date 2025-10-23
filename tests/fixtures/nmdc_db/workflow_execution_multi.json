@@ -1,0 +1,296 @@
+[
+  {
+    "id": "nmdc:wfmgan-11-kxtjhj81.1",
+    "name": "Metagenome Annotation Analysis Activity for nmdc:wfmgan-11-kxtjhj81.1",
+    "started_at_time": "2023-09-14T17:19:51.858955+00:00",
+    "ended_at_time": "2023-09-24T22:39:55.680322+00:00",
+    "was_informed_by": ["nmdc:omprc-11-bm72c549"],
+    "execution_resource": "NERSC-Perlmutter",
+    "processing_institution":"NMDC",
+    "git_url": "https://github.com/microbiomedata/mg_annotation",
+    "has_input": [
+      "nmdc:dobj-11-p0sjke96"
+    ],
+    "has_output": [
+      "nmdc:dobj-11-344kkq42",
+      "nmdc:dobj-11-rbkvr794",
+      "nmdc:dobj-11-rvsntj04",
+      "nmdc:dobj-11-wbb40p45",
+      "nmdc:dobj-11-dfm00404",
+      "nmdc:dobj-11-tg716576",
+      "nmdc:dobj-11-9zmgs435",
+      "nmdc:dobj-11-jn9v9p54",
+      "nmdc:dobj-11-rj83jj22",
+      "nmdc:dobj-11-1v5rdk30",
+      "nmdc:dobj-11-d1pt7n85",
+      "nmdc:dobj-11-g933a882",
+      "nmdc:dobj-11-mge5bt03",
+      "nmdc:dobj-11-1gxt4763",
+      "nmdc:dobj-11-pp16fa65",
+      "nmdc:dobj-11-71z5bn61",
+      "nmdc:dobj-11-h6jwbw44",
+      "nmdc:dobj-11-kena1c21",
+      "nmdc:dobj-11-hc6x9h30",
+      "nmdc:dobj-11-kqgj0c38",
+      "nmdc:dobj-11-2et55360",
+      "nmdc:dobj-11-km6c4m19",
+      "nmdc:dobj-11-avm4he79"
+    ],
+    "type": "nmdc:MetagenomeAnnotation",
+    "version": "v1.0.4",
+    "gold_analysis_project_identifiers": []
+  },
+  {
+    "id": "nmdc:wfmgan-11-kxtjhj81.2",
+    "name": "Metagenome Annotation Analysis Activity for nmdc:wfmgan-11-kxtjhj81.2",
+    "started_at_time": "2024-04-05T13:46:43.984717+00:00",
+    "ended_at_time": "2024-04-07T13:48:16.858419+00:00",
+    "was_informed_by": ["nmdc:omprc-11-bm72c549"],
+    "execution_resource": "NERSC-Perlmutter",
+    "processing_institution":"NMDC",
+    "git_url": "https://github.com/microbiomedata/mg_annotation",
+    "has_input": [
+      "nmdc:dobj-11-p0sjke96"
+    ],
+    "type": "nmdc:MetagenomeAnnotation",
+    "has_output": [
+      "nmdc:dobj-11-v0bwdc78",
+      "nmdc:dobj-11-ba609m63",
+      "nmdc:dobj-11-esycdj46",
+      "nmdc:dobj-11-jv21gq98",
+      "nmdc:dobj-11-vebpr554",
+      "nmdc:dobj-11-6w3hx171",
+      "nmdc:dobj-11-0s57nz70",
+      "nmdc:dobj-11-azrvb898",
+      "nmdc:dobj-11-dxcyna89",
+      "nmdc:dobj-11-rtraka21",
+      "nmdc:dobj-11-6sebq912",
+      "nmdc:dobj-11-ea52qx78",
+      "nmdc:dobj-11-ayw4ew24",
+      "nmdc:dobj-11-h7p1xf17",
+      "nmdc:dobj-11-ksdt8p74",
+      "nmdc:dobj-11-z4ycww26",
+      "nmdc:dobj-11-z03c6q88",
+      "nmdc:dobj-11-d5c2xp82",
+      "nmdc:dobj-11-sj2rr436",
+      "nmdc:dobj-11-nkwqxr50",
+      "nmdc:dobj-11-me573g27",
+      "nmdc:dobj-11-fmb4pa57",
+      "nmdc:dobj-11-3t6r8r94"
+    ],
+    "version": "v1.0.5"
+  },
+  {
+    "id": "nmdc:wfmgas-11-fw6wxd21.1",
+    "name": "Metagenome Assembly Activity for nmdc:wfmgas-11-fw6wxd21.1",
+    "started_at_time": "2023-09-13T21:03:24.603823+00:00",
+    "ended_at_time": "2023-09-13T21:03:24.603826+00:00",
+    "was_informed_by": ["nmdc:omprc-11-bm72c549"],
+    "processing_institution":"JGI",
+    "git_url": "https://github.com/microbiomedata/metaAssembly",
+    "has_input": [
+      "nmdc:dobj-11-v702hw34"
+    ],
+    "has_output": [
+      "nmdc:dobj-11-p0sjke96",
+      "nmdc:dobj-11-60ya7t63",
+      "nmdc:dobj-11-vmcme814",
+      "nmdc:dobj-11-g72bse26"
+    ],
+    "type": "nmdc:MetagenomeAssembly",
+    "version": "v1.0.3"
+  },
+  {
+    "id": "nmdc:wfrqc-11-mqkh9j68.1",
+    "name": "Read QC Activity for nmdc:wfrqc-11-mqkh9j68.1",
+    "started_at_time": "2023-09-13T21:03:24.603751+00:00",
+    "ended_at_time": "2023-09-13T21:03:24.603755+00:00",
+    "was_informed_by": ["nmdc:omprc-11-bm72c549"],
+    "processing_institution":"JGI",
+    "git_url": "https://github.com/microbiomedata/ReadsQC",
+    "has_input": [
+      "nmdc:dobj-11-9494pg86"
+    ],
+    "has_output": [
+      "nmdc:dobj-11-v702hw34",
+      "nmdc:dobj-11-snfv2s16"
+    ],
+    "type": "nmdc:ReadQcAnalysis",
+    "version": "v1.0.8"
+  },
+  {
+    "id": "nmdc:wfrbt-11-y0bq8j10.1",
+    "name": "Readbased Taxonomy Analysis Activity for nmdc:wfrbt-11-y0bq8j10.1",
+    "started_at_time": "2023-09-14T17:15:26.127524+00:00",
+    "ended_at_time": "2023-09-15T14:42:24.517663+00:00",
+    "was_informed_by": ["nmdc:omprc-11-bm72c549"],
+    "execution_resource": "NERSC-Perlmutter",
+    "processing_institution":"NMDC",
+    "git_url": "https://github.com/microbiomedata/ReadbasedAnalysis",
+    "has_input": [
+      "nmdc:dobj-11-v702hw34"
+    ],
+    "has_output": [
+      "nmdc:dobj-11-j8m1g608",
+      "nmdc:dobj-11-rdp9bw53",
+      "nmdc:dobj-11-npn6dw16",
+      "nmdc:dobj-11-k4g5g113",
+      "nmdc:dobj-11-jasbbr18",
+      "nmdc:dobj-11-p147h087",
+      "nmdc:dobj-11-tbczan91",
+      "nmdc:dobj-11-z25wk851",
+      "nmdc:dobj-11-kx977d77",
+      "nmdc:dobj-11-05g4s055"
+    ],
+    "type": "nmdc:ReadBasedTaxonomyAnalysis",
+    "version": "v1.0.5"
+  },
+  {
+    "id": "nmdc:wfmgan-11-zsea1s60.1",
+    "name": "Metagenome Annotation Analysis Activity for nmdc:wfmgan-11-zsea1s60.1",
+    "started_at_time": "2023-09-14T17:16:28.218124+00:00",
+    "ended_at_time": "2023-09-24T22:33:17.734899+00:00",
+    "was_informed_by": ["nmdc:omprc-11-tvg68444"],
+    "execution_resource": "NERSC-Perlmutter",
+    "processing_institution":"NMDC",
+    "git_url": "https://github.com/microbiomedata/mg_annotation",
+    "has_input": [
+      "nmdc:dobj-11-7kztfv07"
+    ],
+    "has_output": [
+      "nmdc:dobj-11-h7bgsd02",
+      "nmdc:dobj-11-wyqqf458",
+      "nmdc:dobj-11-agdez760",
+      "nmdc:dobj-11-yjxs6b62",
+      "nmdc:dobj-11-g7m5s848",
+      "nmdc:dobj-11-zcbps712",
+      "nmdc:dobj-11-7ye93162",
+      "nmdc:dobj-11-p3zggz54",
+      "nmdc:dobj-11-hc5y0c14",
+      "nmdc:dobj-11-6ee16h43",
+      "nmdc:dobj-11-b9k4t891",
+      "nmdc:dobj-11-vp2scw21",
+      "nmdc:dobj-11-fqep6f31",
+      "nmdc:dobj-11-zb9z9z25",
+      "nmdc:dobj-11-rhredj87",
+      "nmdc:dobj-11-wameyp26",
+      "nmdc:dobj-11-0ff42j35",
+      "nmdc:dobj-11-z5xf3h58",
+      "nmdc:dobj-11-gena6n78",
+      "nmdc:dobj-11-r4h8dh45",
+      "nmdc:dobj-11-2r62gh31",
+      "nmdc:dobj-11-mxj04d51",
+      "nmdc:dobj-11-fpkmwz35"
+    ],
+    "type": "nmdc:MetagenomeAnnotation",
+    "version": "v1.0.4",
+    "gold_analysis_project_identifiers": []
+  },
+  {
+    "id": "nmdc:wfmgan-11-zsea1s60.2",
+    "name": "Metagenome Annotation Analysis Activity for nmdc:wfmgan-11-zsea1s60.2",
+    "started_at_time": "2024-07-25T05:19:28.290790+00:00",
+    "ended_at_time": "2024-07-27T23:07:11.611111+00:00",
+    "was_informed_by": ["nmdc:omprc-11-tvg68444"],
+    "execution_resource": "NERSC-Perlmutter",
+    "processing_institution":"NMDC",
+    "git_url": "https://github.com/microbiomedata/mg_annotation",
+    "has_input": [
+      "nmdc:dobj-11-7kztfv07"
+    ],
+    "type": "nmdc:MetagenomeAnnotation",
+    "has_output": [
+      "nmdc:dobj-11-9kycbj25",
+      "nmdc:dobj-11-yya9pk46",
+      "nmdc:dobj-11-qa2ymx87",
+      "nmdc:dobj-11-wv94j606",
+      "nmdc:dobj-11-phwn3d35",
+      "nmdc:dobj-11-bes1xc26",
+      "nmdc:dobj-11-3p5bn945",
+      "nmdc:dobj-11-gcyskh38",
+      "nmdc:dobj-11-waq6nz90",
+      "nmdc:dobj-11-2m8sz819",
+      "nmdc:dobj-11-07zzyn83",
+      "nmdc:dobj-11-7v5n1d73",
+      "nmdc:dobj-11-32zgdr73",
+      "nmdc:dobj-11-7x7rss35",
+      "nmdc:dobj-11-n40eca97",
+      "nmdc:dobj-11-bsyj6j19",
+      "nmdc:dobj-11-mgy2bz77",
+      "nmdc:dobj-11-crkjxs33",
+      "nmdc:dobj-11-q4dc0b53",
+      "nmdc:dobj-11-my7psp40",
+      "nmdc:dobj-11-zywhr272",
+      "nmdc:dobj-11-r7cgzq74",
+      "nmdc:dobj-11-06104921",
+      "nmdc:dobj-11-xanh8x42",
+      "nmdc:dobj-11-mmxb9q67"
+    ],
+    "version": "v1.1.0"
+  },
+  {
+    "id": "nmdc:wfmgas-11-q03x3q96.1",
+    "name": "Metagenome Assembly Activity for nmdc:wfmgas-11-q03x3q96.1",
+    "started_at_time": "2023-09-13T20:28:24.238706+00:00",
+    "ended_at_time": "2023-09-13T20:28:24.238710+00:00",
+    "was_informed_by": ["nmdc:omprc-11-tvg68444"],
+    "processing_institution":"JGI",
+    "git_url": "https://github.com/microbiomedata/metaAssembly",
+    "has_input": [
+      "nmdc:dobj-11-fb4qz876"
+    ],
+    "has_output": [
+      "nmdc:dobj-11-7kztfv07",
+      "nmdc:dobj-11-668zjp44",
+      "nmdc:dobj-11-t96a1z62",
+      "nmdc:dobj-11-sd401v53"
+    ],
+    "type": "nmdc:MetagenomeAssembly",
+    "version": "v1.0.3"
+  },
+  {
+    "id": "nmdc:wfrqc-11-710c6609.1",
+    "name": "Read QC Activity for nmdc:wfrqc-11-710c6609.1",
+    "started_at_time": "2023-09-13T20:28:24.238628+00:00",
+    "ended_at_time": "2023-09-13T20:28:24.238634+00:00",
+    "was_informed_by": ["nmdc:omprc-11-tvg68444"],
+    "processing_institution":"JGI",
+    "git_url": "https://github.com/microbiomedata/ReadsQC",
+    "has_input": [
+      "nmdc:dobj-11-0v9yvx28"
+    ],
+    "has_output": [
+      "nmdc:dobj-11-fb4qz876",
+      "nmdc:dobj-11-h82p7x12"
+    ],
+    "type": "nmdc:ReadQcAnalysis",
+    "version": "v1.0.8"
+  },
+  {
+    "id": "nmdc:wfrbt-11-5zc5jn42.1",
+    "name": "Readbased Taxonomy Analysis Activity for nmdc:wfrbt-11-5zc5jn42.1",
+    "started_at_time": "2023-09-14T17:13:31.920875+00:00",
+    "ended_at_time": "2023-09-15T14:42:24.001531+00:00",
+    "was_informed_by": ["nmdc:omprc-11-tvg68444"],
+    "execution_resource": "NERSC-Perlmutter",
+    "processing_institution":"NMDC",
+    "git_url": "https://github.com/microbiomedata/ReadbasedAnalysis",
+    "has_input": [
+      "nmdc:dobj-11-fb4qz876"
+    ],
+    "has_output": [
+      "nmdc:dobj-11-53v4vq66",
+      "nmdc:dobj-11-p0vbk895",
+      "nmdc:dobj-11-ezsz7130",
+      "nmdc:dobj-11-0sn3t225",
+      "nmdc:dobj-11-nedmay70",
+      "nmdc:dobj-11-td1akt44",
+      "nmdc:dobj-11-jpp2rs41",
+      "nmdc:dobj-11-7q8y9k03",
+      "nmdc:dobj-11-kp0qrn28",
+      "nmdc:dobj-11-t294ry87"
+    ],
+    "type": "nmdc:ReadBasedTaxonomyAnalysis",
+    "version": "v1.0.5"
+  }
+]

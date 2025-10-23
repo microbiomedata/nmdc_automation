@@ -12,12 +12,13 @@
       "nmdc:dobj-11-assemblyagp",
       "nmdc:dobj-11-scaffolds"
     ],
-    "was_informed_by": "nmdc:omprc-11-metag1",
+    "was_informed_by": ["nmdc:omprc-11-metag1"],
     "id": "nmdc:wfmgas-11-test001.1",
     "execution_resource": "NERSC-Cori",
     "name": "Assembly Activity for nmdc:mga0vx38",
     "started_at_time": "2021-08-05T14:48:51+00:00",
     "type": "nmdc:MetagenomeAssembly",
-    "ended_at_time": "2021-09-15T10:13:20+00:00"
+    "ended_at_time": "2021-09-15T10:13:20+00:00",
+    "processing_institution":"NMDC"
   }
 ]
