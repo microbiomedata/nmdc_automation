@@ -55,7 +55,7 @@ def ensure_db(conn: sqlite3.Connection) -> None:
 
 
 def iter_done_files(metadata_dir: Path) -> Iterable[Path]:
-    yield from metadata_dir.glob("metadata*.json")
+    yield from metadata_dir.glob("metadata*.json.done")
 
 
 def mtime_to_iso(path: Path) -> str:
