@@ -1,7 +1,11 @@
 [
   {
   "claims": [
-    {"cancelled": true}
+    {
+      "op_id": "nmdc:sys-test",
+      "site_id": "NERSC",
+      "cancelled": true
+    }
   ],
   "config": {
     "activity": {

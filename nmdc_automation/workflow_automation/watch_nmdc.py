@@ -332,9 +332,15 @@ class JobManager:
 
 class RuntimeApiHandler:
     """ RuntimeApiHandler class for managing API calls to the runtime """
-    def __init__(self, config, jaws_api=None):
-        self.runtime_api = NmdcRuntimeApi(config)
+    def __init__(self, config, runtime_api=None, jaws_api=None):
+        #self.runtime_api = NmdcRuntimeApi(config)
         self.config = config
+        # Updated to handle passed in api (for example test fixture), else initialize like usual
+        if runtime_api:
+            self.runtime_api = runtime_api
+        else:
+            self.runtime_api = NmdcRuntimeApi(config)
+
         self.jaws_api = jaws_api
 
     def claim_job(self, job_id):
