@@ -18,7 +18,7 @@ from nmdc_automation.workflow_automation.watch_nmdc import (
 )
 from nmdc_automation.api.nmdcapi import NmdcRuntimeApi
 from nmdc_automation.workflow_automation.wfutils import WorkflowJob
-from tests.fixtures import db_utils
+from tests.fixtures.db_utils import load_fixture, reset_db
 
 
 # FileHandler init tests
@@ -422,8 +422,10 @@ def test_claim_jobs(mock_submit, site_config_file, site_config, fixtures_dir):
 
 #def test_runtime_manager_get_unclaimed_jobs(site_config, initial_state_file_1_failure, fixtures_dir, mock_api):
 #def test_runtime_manager_get_unclaimed_jobs(requests_mock, site_config, test_data_dir, test_client):
-def test_runtime_manager_get_unclaimed_jobs(site_config, test_data_dir, test_client):
-    # Arrange
+def test_runtime_manager_get_unclaimed_jobs(site_config, test_data_dir, test_db, test_client):
+    
+    reset_db(test_db)
+    load_fixture(test_db, "job_req_3.json", "jobs")
 
     # Need to bypass the default list_jobs side_effect so that it uses this mock data instead
     n = test_client    
