@@ -243,7 +243,7 @@ class NmdcRuntimeApi:
         return resp.json()
 
 
-    def list_from_collection(self, collection, filt=None, projection=None, max=50):
+    def list_from_collection(self, collection, filt=None, projection=None, max=100):
         url = f"{self._base_url}nmdcschema/{collection}"
         
         params = {
@@ -257,7 +257,6 @@ class NmdcRuntimeApi:
             #url += "&projection=%s" % (projection)
             params["projection"] = json.dumps(projection)
 
-        orig_url = url
         results = []
         while True:
             resp = requests.get(url, headers=self.header, params=params).json()
@@ -266,9 +265,14 @@ class NmdcRuntimeApi:
                 logging.warning(str(resp))
                 break
             results.extend(resp["resources"])
-            if "next_page_token" not in resp or not resp["next_page_token"]:
+            
+            # Handle pagination
+            next_token = resp.get("next_page_token")
+            if not next_token:
                 break
-            url = orig_url + "&page_token=%s" % (resp["next_page_token"])
+            
+            params["page_token"] = next_token
+
         
         return results
     
