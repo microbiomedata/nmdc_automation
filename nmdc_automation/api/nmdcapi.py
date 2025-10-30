@@ -340,10 +340,16 @@ class NmdcRuntimeApi:
             if "resources" not in response_json:
                 logging.warning(str(response_json))
                 break
+            
             results.extend(response_json["resources"])
-            if "next_page_token" not in response_json or not response_json["next_page_token"]:
+            
+            # Handle pagination
+            next_token = response_json.get("next_page_token")
+            if not next_token:
                 break
-            url = orig_url + "&page_token=%s" % (response_json["next_page_token"])
+            
+            params["page_token"] = next_token
+
         return results
 
     @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
