@@ -244,14 +244,14 @@
         "output": "kronaplot"
       }
     ],
-    "release": "v1.3.16",
+    "release": "v1.3.17",
     "trigger_activity": "nmdc:wfmgan-11-6x59p192.2",
     "was_informed_by": ["nmdc:omprc-11-cegmwy02"],
     "wdl": "mbin_nmdc.wdl"
   },
   "id": "nmdc:9f55ca6a-5075-11f0-8adc-d61879508756",
   "workflow": {
-    "id": "MAGs: v1.3.16"
+    "id": "MAGs: v1.3.17"
   }
 }
 ]
