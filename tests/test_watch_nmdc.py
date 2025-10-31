@@ -7,7 +7,7 @@ from pytest import fixture
 from unittest import mock
 import requests_mock
 import shutil
-from unittest.mock import patch, PropertyMock, Mock
+from unittest.mock import patch, PropertyMock, Mock, MagicMock
 
 from nmdc_schema.nmdc import Database
 from nmdc_automation.workflow_automation.watch_nmdc import (
@@ -16,8 +16,9 @@ from nmdc_automation.workflow_automation.watch_nmdc import (
     JobManager,
     RuntimeApiHandler,
 )
+from nmdc_automation.api.nmdcapi import NmdcRuntimeApi
 from nmdc_automation.workflow_automation.wfutils import WorkflowJob
-from tests.fixtures import db_utils
+from tests.fixtures.db_utils import load_fixture, reset_db
 
 
 # FileHandler init tests
@@ -419,16 +420,57 @@ def test_claim_jobs(mock_submit, site_config_file, site_config, fixtures_dir):
         assert unclaimed_wfj.job_status
 
 
-def test_runtime_manager_get_unclaimed_jobs(site_config, initial_state_file_1_failure, fixtures_dir, mock_api):
-    # Arrange
-    rt = RuntimeApiHandler(site_config)
-    # Act
-    unclaimed_jobs = rt.get_unclaimed_jobs(rt.config.allowed_workflows)
-    # Assert
-    assert unclaimed_jobs
+#def test_runtime_manager_get_unclaimed_jobs(site_config, initial_state_file_1_failure, fixtures_dir, mock_api):
+def test_runtime_manager_get_unclaimed_jobs(site_config, test_data_dir, test_db, test_client):
+    
+    reset_db(test_db)
+    load_fixture(test_db, "job_req_3.json", "jobs")
+
+    # Need to bypass the default list_jobs side_effect so that it uses this mock data instead
+    n = test_client    
+    if isinstance(n, MagicMock):
+    
+        with requests_mock.Mocker() as m:
+            
+            # --- CONSOLIDATED MOCK SETUP ---
+
+            # 1. MOCK THE /token ENDPOINT (Essential for real code to auth)
+            m.post("http://localhost:8000/token", json={
+                "access_token": "FAKE_TOKEN_FROM_MOCKER",
+                "token_type": "Bearer",
+                "expires_in": 3600
+            })
+            
+            # 2. MOCK THE PRIMARY /jobs ENDPOINT (Test Data)
+            rqcf = test_data_dir / "rqc_response2.json"
+            with open(rqcf, 'r') as f:
+                rqc = json.load(f)
+            rqc_resp = {"resources": [rqc]}
+            m.get("http://localhost:8000/jobs", json=rqc_resp)
+            
+            # 3. Restore the list_jobs implementation (to hit the mocks above)
+            n.list_jobs.side_effect = lambda *args, **kwargs: NmdcRuntimeApi.list_jobs(
+                n, *args, **kwargs
+            )
+
+            # 4. Initialize and Run the test within the Mocker context
+            rt = RuntimeApiHandler(site_config, runtime_api=n)
+
+            # Act
+            unclaimed_jobs = rt.get_unclaimed_jobs(rt.config.allowed_workflows)
+            
+            # Assert
+            assert unclaimed_jobs
+    else:
+        rt = RuntimeApiHandler(site_config, runtime_api=n)
+
+        # Act
+        unclaimed_jobs = rt.get_unclaimed_jobs(rt.config.allowed_workflows)
+        # Assert
+        assert unclaimed_jobs
 
 
-def test_reclaim_job(requests_mock, site_config_file, mock_api):
+def test_reclaim_job(requests_mock, site_config_file, test_client):
     requests_mock.real_http = True
 
     w = Watcher(site_config_file)

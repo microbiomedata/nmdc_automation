@@ -5,17 +5,26 @@ import os
 from pymongo import MongoClient
 from pathlib import Path
 from pytest import fixture
+import requests
 import requests_mock
 import shutil
 from time import time
 import pandas as pd
+import json
 from yaml import load, Loader
-
+from unittest.mock import MagicMock
+import logging
 
 from nmdc_automation.config import SiteConfig
 from nmdc_automation.models.workflow import WorkflowConfig
 from tests.fixtures import db_utils
 from nmdc_automation.workflow_automation.wfutils import WorkflowJob
+from nmdc_automation.api.nmdcapi import NmdcRuntimeApi as nmdcapi
+
+
+logger = logging.getLogger(__name__) 
+logger.setLevel(logging.DEBUG)
+
 
 @fixture(scope="session")
 def mock_job_state():
@@ -65,38 +74,221 @@ def mags_config(fixtures_dir)->WorkflowConfig:
 
 
 @fixture(scope="session")
-def test_db():
+def test_db_old():
     conn_str = os.environ.get("MONGO_URL", "mongodb://localhost:27017")
     return MongoClient(conn_str).test
 
-@fixture(scope="function")
-def mock_api(monkeypatch, requests_mock, test_data_dir):
-    monkeypatch.setenv("NMDC_API_URL", "http://localhost")
-    monkeypatch.setenv("NMDC_CLIENT_ID", "anid")
-    monkeypatch.setenv("NMDC_CLIENT_SECRET", "asecret")
-    token_resp = {"expires": {"minutes": time()+60},
-            "access_token": "abcd"
-            }
-    requests_mock.post("http://localhost:8000/token", json=token_resp)
+@fixture(scope="session")
+def test_db(site_config):
+
+    # Note: if your local API is up, ensure this is set up, else you will get failed tests
+    # due to a local instance of mongo not coordinating with the API's mongo backend
+    local_mongo_cfg = site_config.get_local_mongodb_config
+
+    # If there is no local runtime config found, connect to the usual local mongodb instance
+    # and default will use mock API
+    if not local_mongo_cfg:
+        #raise ValueError("MongoDB configuration block is missing from test site config.")
+        conn_str = os.environ.get("MONGO_URL", "mongodb://localhost:27017")
+        return MongoClient(conn_str).test
+
+    user = local_mongo_cfg.get("username")
+    password = local_mongo_cfg.get("password")
+    host = local_mongo_cfg.get("host", "localhost")
+    port = local_mongo_cfg.get("port", 27018)
+    auth_source = local_mongo_cfg.get("auth_source", "admin")
+    DB_NAME_FOR_TESTS = local_mongo_cfg.get("database", "test")
+
+    # runtime's docker-compose.yml is set up with mongodb credentials unless you
+    # manually change it not to.
+    if not user or not password:
+        raise ValueError(
+            "MongoDB 'username' and 'password' must be defined in the [local_runtime_mongodb] section."
+        )
+    
+    # Build URI with the necessary flags 
+    conn_str = (
+        f"mongodb://{user}:{password}@{host}:{port}/{DB_NAME_FOR_TESTS}"
+        f"?authSource={auth_source}&directConnection=true"
+    )
+
+    # Test without credentials
+    #conn_str = (
+    #    f"mongodb://{host}:{port}/{DB_NAME_FOR_TESTS}"
+    #    f"?authSource={auth_source}&directConnection=true"
+    #)
+
+    client = MongoClient(conn_str)
+    
+    # Optional: Quick check to verify connection (good practice)
+    try:
+        client.admin.command('ping') 
+    except Exception as e:
+        raise ConnectionError(f"Failed to connect to Docker MongoDB using URI: {conn_str}. Error: {e}")
+    
+
+    return client[DB_NAME_FOR_TESTS]
 
 
-    resp = ["nmdc:dobj-01-abcd4321"]
+# Default monkeypath is function scope, but we need a custom session scop so we can call it from
+# the session-scoped fixture mock_api_setup (else it complains)
+@fixture(scope="session")
+def session_monkeypatch():
+    from _pytest.monkeypatch import MonkeyPatch
+    m = MonkeyPatch()
+    yield m
+    m.undo()
+
+# Default request_mock needs to be set as custom session scope so that core API availability
+# is only checked once per session and not before each individual test
+@fixture(scope="session")
+def session_requests_mock(request):
+    """Provides a requests_mock.Mocker object with session scope."""
+    import requests_mock
+    m = requests_mock.Mocker()
+    m.start()
+    request.addfinalizer(m.stop)
+    return m
+
+
+
+@fixture(scope="session")
+def configured_api_mock(session_monkeypatch, test_db, test_data_dir):
+
+    # Create a mock for the API object
+    mock_api = MagicMock(spec=nmdcapi)
+    
+    # Inject the actual database client into the mock for testing logic 
+    # (This allows the function to query fixtures loaded into test_db)
+    mock_api.client = test_db.client
+
+    def mock_list_from_collection_side_effect(collection_name, query_filter=None, projection_fields=None):
+        projection = None
+        if projection_fields:
+            # Create a dictionary for MongoDB projection: {'field': 1, 'another_field': 1}
+            # Split the comma-delimited string, strip whitespace, and filter out any empty strings
+            field_list = [f.strip() for f in projection_fields.split(',') if f.strip()]
+            
+            if field_list:
+                # Create the inclusion projection dictionary
+                projection = {field: 1 for field in field_list}
+                
+                # Explicitly exclude the _id field if it wasn't requested
+                if '_id' not in projection:
+                    projection['_id'] = 0
+
+        collection = test_db[collection_name] 
+        cursor = collection.find(query_filter if query_filter else {}, projection)
+        return list(cursor)
+
+    mock_api.list_from_collection.side_effect = mock_list_from_collection_side_effect
+
+
+    def mock_create_job_side_effect(job_record):
+
+        # Ensure job_record is a dictionary if it came in as a JSON string
+        if isinstance(job_record, str):
+            job_data = json.loads(job_record)
+        else:
+            job_data = job_record
+
+        job_data["id"] = "new-job1234"
+
+        result = test_db.jobs.insert_one(job_data)
+
+        return job_data
+        
+    mock_api.create_job.side_effect = mock_create_job_side_effect
+
+    def mock_list_jobs_side_effect(query_filter):
+
+        cursor = test_db.jobs.find(query_filter if query_filter else {})
+        return list(cursor)
+        
+    mock_api.list_jobs.side_effect = mock_list_jobs_side_effect
+
+
+    mock_api._base_url = "http://localhost:8000/" 
+    mock_api.header = {
+        'Authorization': 'Bearer abcd', 
+        'Content-Type': 'application/json' 
+    }
+
+    mock_api.minter = MagicMock()
+    mock_api.minter.return_value = ["nmdc:dobj-01-abcd4321"]
+
+    session_monkeypatch.setenv("NMDC_API_URL", "http://localhost")
+    session_monkeypatch.setenv("NMDC_CLIENT_ID", "anid")
+    session_monkeypatch.setenv("NMDC_CLIENT_SECRET", "asecret")
+    #token_resp = {"expires": {"minutes": time()+60},
+    #        "access_token": "abcd"
+    #        }
+    #session_requests_mock.post("http://localhost:8000/token", json=token_resp)
+
+
+    # 1. Custom function to set state directly
+    def mock_get_token(self):
+        self.token = "fake_test_token_from_mock"
+        self.expires_at = time() + 3600 # Guaranteed future time
+
+    # 2. Bind the CUSTOM function to the mock instance
+    mock_api.get_token = mock_get_token.__get__(mock_api, nmdcapi) 
+
+    # 3. Call it to initialize the mock's state
+    mock_api.get_token()
+
+    #resp = ["nmdc:dobj-01-abcd4321"]
     # mock mint responses in sequence
 
-    requests_mock.post("http://localhost:8000/pids/mint", json=resp)
-    requests_mock.post(
-        "http://localhost:8000/workflows/workflow_executions",
-        json=resp
-        )
-    requests_mock.post("http://localhost:8000/pids/bind", json=resp)
+    #session_requests_mock.post("http://localhost:8000/pids/mint", json=resp)
+    #session_requests_mock.post(
+    #    "http://localhost:8000/workflows/workflow_executions",
+    #    json=resp
+    #    )
+    #session_requests_mock.post("http://localhost:8000/pids/bind", json=resp)
 
-    rqcf = test_data_dir / "rqc_response2.json"
-    rqc = json.load(open(rqcf))
-    rqc_resp = {"resources": [rqc]}
-    requests_mock.get("http://localhost:8000/jobs", json=rqc_resp)
+    #rqcf = test_data_dir / "rqc_response2.json"
+    #rqc = json.load(open(rqcf))
+    #rqc_resp = {"resources": [rqc]}
+    #session_requests_mock.get("http://localhost:8000/jobs", json=rqc_resp)
+    
+    #session_requests_mock.patch("http://localhost:8000/operations/nmdc:1234", json={})
+    #session_requests_mock.get("http://localhost:8000/operations/nmdc:1234", json={'metadata': {}})
 
-    requests_mock.patch("http://localhost:8000/operations/nmdc:1234", json={})
-    requests_mock.get("http://localhost:8000/operations/nmdc:1234", json={'metadata': {}})
+
+    return mock_api
+
+# Helper to check API availability (adjust URL/check method as needed)
+def is_api_available(site_config):
+    """Attempt a simple status check on the local API URL."""
+    try:
+        base_url = site_config.api_url 
+        
+        # Check that the api page is up
+        response = requests.get(f"{base_url}/", timeout=1)
+        if response.status_code != 200:
+            logger.warning(
+                    f"API is UP but check failed: Received status code {response.status_code} "
+                    f"from {base_url}/. Using mock API."
+                )
+        return response.status_code == 200
+    
+    except requests.exceptions.RequestException as e:
+        logger.error(f"API is DOWN: Connection failed to {base_url}/. Error: {e.__class__.__name__}: {e}")
+        return False
+
+@fixture(scope="session")
+def test_client(site_config, request):
+#def test_client(site_config, configured_api_mock):
+    """
+    Provides the real NmdcApi instance if available, otherwise returns a mock.
+    """
+    if is_api_available(site_config):
+        # Initialize and return the real API client
+        return nmdcapi(site_config)
+    else:
+        return request.getfixturevalue("configured_api_mock")
+
 
 
 @fixture(scope="session")

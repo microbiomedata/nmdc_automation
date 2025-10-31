@@ -98,12 +98,23 @@ class NmdcRuntimeApi:
             "client_secret": self.client_secret,
         }
         url = self._base_url + "token"
-
-        resp = requests.post(url, headers=h, data=data)
-        if not resp.ok:
-            logging.error(f"Failed to get token: {resp.text}")
-            resp.raise_for_status()
-        response_body = resp.json()
+        try:
+            resp = requests.post(url, headers=h, data=data)
+            # Check for API rejection (4xx or 5xx status codes)
+            if not resp.ok:
+                logging.error(f"Failed to get token: {resp.text}")
+                resp.raise_for_status()
+            response_body = resp.json()
+        except requests.exceptions.RequestException as e: # <--- CATCHES ALL REQUESTS ERRORS
+            # This block will catch ConnectionError, Timeout, HTTPError (from raise_for_status), etc.
+            logging.error(f"FATAL: A network or API request error occurred: {e}")
+            # You should log the error but still re-raise it to stop the infinite loop.
+            raise
+    
+        except Exception as e: # <--- CATCHES ALL OTHER UNEXPECTED PYTHON ERRORS
+            # This catches errors like NameError, TypeError, or low-level environment issues.
+            logging.error(f"FATAL: An unexpected general Python error occurred: {e}")
+            raise
 
         # Expires can be in days, hours, minutes, seconds - sum them up and convert to seconds
         expires = 0
@@ -231,6 +242,41 @@ class NmdcRuntimeApi:
             resp.raise_for_status()
         return resp.json()
 
+
+    def list_from_collection(self, collection, filt=None, projection=None, max=100):
+        url = f"{self._base_url}nmdcschema/{collection}"
+        
+        params = {
+                "max_page_size": max
+        }
+
+        if filt:
+            #url += "&filter=%s" % (json.dumps(filt))
+            params["filter"] = json.dumps(filt)
+        if projection:
+            #url += "&projection=%s" % (projection)
+            params["projection"] = json.dumps(projection)
+
+        results = []
+        while True:
+            resp = requests.get(url, headers=self.header, params=params).json()
+            
+            if "resources" not in resp:
+                logging.warning(str(resp))
+                break
+            results.extend(resp["resources"])
+            
+            # Handle pagination
+            next_token = resp.get("next_page_token")
+            if not next_token:
+                break
+            
+            params["page_token"] = next_token
+
+        
+        return results
+    
+
     @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
     @refresh_token
     def post_workflow_executions(self, obj_data):
@@ -262,6 +308,16 @@ class NmdcRuntimeApi:
             resp.raise_for_status()
         return resp.json()
 
+    @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
+    @refresh_token
+    def create_job(self, job_obj):
+        url = "%sjobs" % (self._base_url)
+        resp = requests.post(url, headers=self.header, data=json.dumps(job_obj))
+        if not resp.ok:
+            resp.raise_for_status()
+        return resp.json()
+    
+    
     # TODO test that this concatenates multi-page results
     @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
     @refresh_token
@@ -284,10 +340,16 @@ class NmdcRuntimeApi:
             if "resources" not in response_json:
                 logging.warning(str(response_json))
                 break
+            
             results.extend(response_json["resources"])
-            if "next_page_token" not in response_json or not response_json["next_page_token"]:
+            
+            # Handle pagination
+            next_token = response_json.get("next_page_token")
+            if not next_token:
                 break
-            url = orig_url + "&page_token=%s" % (response_json["next_page_token"])
+            
+            params["page_token"] = next_token
+
         return results
 
     @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
