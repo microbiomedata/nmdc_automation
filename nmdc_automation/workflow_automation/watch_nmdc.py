@@ -223,20 +223,22 @@ class JobManager:
         failed_jobs = []
         for job in self.job_cache:
             if not job.done:
-                if job.workflow.last_status.lower() == "succeeded" and job.opid:
+                if job.workflow.last_status == "succeeded" and job.opid:
                     successful_jobs.append(job)
                     continue
-                if job.workflow.last_status.lower() == "failed" and job.workflow.failed_count >= self._MAX_FAILS:
+                if job.workflow.last_status in ("failed", "null") and job.workflow.failed_count >= self._MAX_FAILS:
                     failed_jobs.append(job)
                     continue
-                # check status
-                status = job.job.get_job_status()
 
-                if status.lower() == "succeded":
+                # check status
+                raw_status = job.job.get_job_status()
+                status = "null" if raw_status is None else str(raw_status).strip().lower()
+
+                if status == "succeeded":
                     job.workflow.last_status = status
                     successful_jobs.append(job)
                     continue
-                elif status.lower() == "failed":
+                elif status in ("failed", "null"):
                     job.workflow.last_status = status
                     job.workflow.failed_count += 1
                     failed_jobs.append(job)
