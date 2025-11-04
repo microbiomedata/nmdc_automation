@@ -851,14 +851,14 @@ arrow = ">=0.15.0"
 
 [[package]]
 name = "jaws-client"
-version = "2.9.0"
+version = "2.7.0"
 description = "JAWS Client"
 optional = false
-python-versions = "<3.14,>=3.10"
+python-versions = "<3.12,>=3.10"
 groups = ["main"]
 files = [
-    {file = "jaws_client-2.9.0-py3-none-any.whl", hash = "sha256:341927fc34a379f3405a0d865894e5dceabb8111c34701c0224ad18f4696030f"},
-    {file = "jaws_client-2.9.0.tar.gz", hash = "sha256:976cbe384959b7832e2e08a204743bd0a220beb51890f6ed1422085d5bcd19e6"},
+    {file = "jaws_client-2.7.0-py3-none-any.whl", hash = "sha256:f32f9a0425b9a4c50ac009ee517808fa633f2297148f0a703973cc394aef0360"},
+    {file = "jaws_client-2.7.0.tar.gz", hash = "sha256:5bd5d5ead425ed9b070af8c76277443b4c0f44898371d0e6884990e04bf0495e"},
 ]
 
 [package.dependencies]
