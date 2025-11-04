@@ -80,15 +80,11 @@ brew services start mongodb-community
     poetry install
     ```
 
-3. Activate the poetry environment
-    ```bash  
-    poetry env activate
+3. Activate the poetry environment 
+    ```  
+    eval $(poetry env activate)
     ```
-    OR
-    ```bash
-    poetry shell
-    ```
-Depending on Poetry version
+    
 
 4. Run the tests
     ```bash
