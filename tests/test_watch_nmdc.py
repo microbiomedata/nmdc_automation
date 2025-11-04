@@ -316,10 +316,6 @@ def test_job_manager_get_finished_jobs(site_config, initial_state_file_1_failure
     # sanity check
     assert len(jm.job_cache) == 3
 
-    # second mock method if https requests fail
-    # with patch("nmdc_automation.workflow_automation.wfutils.CromwellRunner.get_job_status") as mock_status: 
-    #     mock_status.side_effect = ["Failed", "Succeeded", "Failed"] # first call fails, second succeeds, third fails, need a 4th for the new job
-
     # add a manifest success job
     new_job_state2 = json.load(open(fixtures_dir / "manifest_workflow_state_2.json"))
     assert new_job_state
@@ -330,12 +326,17 @@ def test_job_manager_get_finished_jobs(site_config, initial_state_file_1_failure
 
     # Mock requests for job status
     with requests_mock.Mocker() as m:
-        # Mock the successful job status
+        # Mock the initial job status from mags_workflow_state.json
+        m.get(
+            "http://localhost:8088/api/workflows/v1/8f4e1a0b-ca5c-455b-9db6-30957bcf4b4a/status",
+            json={"status": "Failed"}
+            )
+        # Mock the successful job status from agent_state_1_failure.json and failed_job_state_2.json
         m.get(
             "http://localhost:8088/api/workflows/v1/9492a397-eb30-472b-9d3b-abc123456789/status",
             json={"status": "Succeeded"}
             )
-        # Mock the failed job status
+        # Mock the failed job status, not sure where this job id came from, just using a placeholder?
         m.get(
             "http://localhost:8088/api/workflows/v1/12345678-abcd-efgh-ijkl-9876543210/status",
             json={"status": "Failed"}
