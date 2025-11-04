@@ -15,7 +15,8 @@ logger = logging.getLogger(__name__)
 warned_objects = set()
 
 
-def get_required_data_objects_map(db, workflows: List[WorkflowConfig]) -> Dict[str, DataObject]:
+#def get_required_data_objects_map(db, workflows: List[WorkflowConfig]) -> Dict[str, DataObject]:
+def get_required_data_objects_map(api, workflows: List[WorkflowConfig]) -> Dict[str, DataObject]:
     """
      Search for all the data objects that are required data object types for the workflows,
         and return a dictionary of data objects by ID. Cache the result.
@@ -23,13 +24,18 @@ def get_required_data_objects_map(db, workflows: List[WorkflowConfig]) -> Dict[s
     """
     # Build up a filter of what types are used
     required_types = {t for wf in workflows for t in wf.input_data_object_types}
-
+    q = {"data_object_type": {"$in": list(required_types)}}
+    records = api.list_from_collection("data_object_set", q)
     required_data_object_map = {
         rec["id"]: DataObject(**rec)
-        for rec in db.data_object_set.find(
-            {"data_object_type": {"$in": list(required_types)}}
-        )
+        for rec in records
     }
+    #required_data_object_map = {
+    #    rec["id"]: DataObject(**rec)
+    #    for rec in db.data_object_set.find(
+    #        {"data_object_type": {"$in": list(required_types)}}
+    #    )
+    #}
     return required_data_object_map
 
 def _get_latest_version(new_wfp_node, current_wfp_node):
@@ -123,7 +129,7 @@ def _is_missing_required_input_output(wf: WorkflowConfig, rec: dict, data_object
 
 
 def get_current_workflow_process_nodes(
-        db, workflows: List[WorkflowConfig],
+        api, workflows: List[WorkflowConfig],
         data_objects_by_id: Dict[str, DataObject], allowlist: List[str] = None) -> List[WorkflowProcessNode]:
     """
     Fetch the relevant workflow process nodes for the given workflows.
@@ -150,7 +156,8 @@ def get_current_workflow_process_nodes(
     # override query with allowlist
     if allowlist:
         q["id"] = {"$in": list(allowlist)}
-    dg_execution_records = db["data_generation_set"].find(q)
+    #dg_execution_records = db["data_generation_set"].find(q)
+    dg_execution_records = api.list_from_collection("data_generation_set", q)
     dg_execution_records = list(dg_execution_records)
 
     for wf in data_generation_workflows:
@@ -172,7 +179,8 @@ def get_current_workflow_process_nodes(
         if allowlist:  # TODO test this -jlp 20250718
             q = {"was_informed_by": {"$in": list(allowlist)}}
 
-        records = db[wf.collection].find(q)
+        #records = db[wf.collection].find(q)
+        records = api.list_from_collection(wf.collection, q)
         for rec in records:
             if rec['type'] != wf.type:
                 continue
@@ -310,7 +318,8 @@ def _map_nodes_to_data_objects(current_nodes: List[WorkflowProcessNode], require
     return node_data_object_map, current_nodes
 
 
-def load_workflow_process_nodes(db, workflows: list[WorkflowConfig], allowlist: list[str] = None) -> List[WorkflowProcessNode]:
+#def load_workflow_process_nodes(db, workflows: list[WorkflowConfig], allowlist: list[str] = None) -> List[WorkflowProcessNode]:
+def load_workflow_process_nodes(nmdcapi, workflows: list[WorkflowConfig], allowlist: list[str] = None) -> List[WorkflowProcessNode]:    
     """
     This reads the activities from Mongo.  It also
     finds the parent and child relationships between
@@ -321,17 +330,19 @@ def load_workflow_process_nodes(db, workflows: list[WorkflowConfig], allowlist: 
     for each activity.
 
     Inputs:
-    db: mongo database
+    nmdcapi: NmdcRuntimeApi class
     workflow: workflow
     """
 
     # This is map from the data object ID to the activity
     # that created it.
-    data_object_map = get_required_data_objects_map(db, workflows)
+    #data_object_map = get_required_data_objects_map(db, workflows)
+    data_object_map = get_required_data_objects_map(nmdcapi, workflows)
 
     # Build up a set of relevant activities and a map from
     # the output objects to the activity that generated them.
-    current_nodes = get_current_workflow_process_nodes(db, workflows, data_object_map, allowlist)
+    #current_nodes = get_current_workflow_process_nodes(db, workflows, data_object_map, allowlist)
+    current_nodes = get_current_workflow_process_nodes(nmdcapi, workflows, data_object_map, allowlist)
 
     node_data_object_map, current_nodes = _map_nodes_to_data_objects(current_nodes, data_object_map)
 
