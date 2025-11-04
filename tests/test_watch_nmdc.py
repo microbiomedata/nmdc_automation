@@ -276,6 +276,7 @@ def test_job_manager_get_finished_jobs(site_config, initial_state_file_1_failure
     # Arrange - initial state has 1 failure and is not done
     fh = FileHandler(site_config, initial_state_file_1_failure)
     jm = JobManager(site_config, fh)
+    # Initial state file has last_status failure that will get processed as success
 
     # Add a finished job: finished job is not done, but has a last_status of Succeeded
     new_job_state = json.load(open(fixtures_dir / "mags_workflow_state.json"))
@@ -286,7 +287,7 @@ def test_job_manager_get_finished_jobs(site_config, initial_state_file_1_failure
     assert len(jm.job_cache) == 2
 
     # add a failed job
-    failed_job_state = json.load(open(fixtures_dir / "failed_job_state_2.json"))
+    failed_job_state = json.load(open(fixtures_dir / "failed_job_state_2_v2.json")) #replaced failed_job_state_2.json because it held the same job as agent_state_1_failure.json
     assert failed_job_state
     failed_job = WorkflowJob(site_config, failed_job_state)
     assert failed_job.job_status.lower() == "failed"
@@ -294,26 +295,32 @@ def test_job_manager_get_finished_jobs(site_config, initial_state_file_1_failure
     # sanity check
     assert len(jm.job_cache) == 3
 
-    # # Mock requests for job status
-    # with requests_mock.Mocker() as m:
-    #     Mock the successful job status
-    #     m.get(
-    #         "http://localhost:8088/api/workflows/v1/9492a397-eb30-472b-9d3b-abc123456789/status",
-    #         json={"status": "Succeeded"}
-    #         )
-    #     # Mock the failed job status
-    #     m.get(
-    #         "http://localhost:8088/api/workflows/v1/12345678-abcd-efgh-ijkl-9876543210/status",
-    #         json={"status": "Failed"}
-    #         )
-
-    with patch("nmdc_automation.workflow_automation.wfutils.CromwellRunner.get_job_status") as mock_status: 
-        mock_status.side_effect = ["Failed", "Succeeded", "Failed"]
+    # Mock requests for job status
+    with requests_mock.Mocker() as m:
+        # Mock the initial job status from mags_workflow_state.json, last_status of Succeeded
+        m.get(
+            "http://localhost:8088/api/workflows/v1/8f4e1a0b-ca5c-455b-9db6-30957bcf4b4a/status",
+            json={"status": new_job_state["last_status"]}
+            )
+        # Mock the failed job status from agent_state_1_failure.json. 
+        # updated to only have one occurrence in cache, no longer returns two Succeeded
+        m.get(
+            "http://localhost:8088/api/workflows/v1/9492a397-eb30-472b-9d3b-abc123456789/status",
+            json={"status": "Succeeded"}
+            )
+        # Mock the failed job status from failed_job_state_2_v2.json. Used to not point to anything or update anything
+        m.get(
+            "http://localhost:8088/api/workflows/v1/12345678-abcd-efgh-ijkl-9876543210/status",
+            json={"status": failed_job_state["last_status"]}
+            )
+        
         # Act
         successful_jobs, failed_jobs = jm.get_finished_jobs()
         # Assert
         assert successful_jobs
+        assert len(successful_jobs) == 2
         assert failed_jobs
+        assert len(failed_jobs) == 1
     # cleanup
     jm.job_cache = []
 
