@@ -44,7 +44,7 @@ available as metadata in the NMDC database, and data objects on the NMDC data po
 
 - mongodb-community needs to be installed and running on the local machine
 - Python 3.11 or later
-- Poetry 
+- Poetry version 2.2.1
 
 
 Poetry Installation instructions can be found [Here](https://python-poetry.org/docs/#installing-with-pipx)
@@ -268,7 +268,7 @@ Watcher code and config files can be found
 2. Setup NMDC automation environment with `conda` and `poetry`. 
    1. load conda: `eval "$__conda_setup"` 
    3. in the `nmdc_automation` directory, install the nmdc_automation project with `poetry install`
-   4. `poetry shell` to use the environment
+   4. `eval $(poetry env activate)` to use the environment
 
 
 <details><summary>Example Setup:</summary>
@@ -285,16 +285,13 @@ Installing dependencies from lock file
 No dependencies to install or update
 
 Installing the current project: nmdc-automation (0.1.0)
-(base) nmdcda@perlmutter:login38:~/nmdc_automation/dev/nmdc_automation> poetry shell
-Spawning shell within /global/cfs/cdirs/m3408/nmdc_automation/dev/nmdc_automation/.venv
-. /global/cfs/cdirs/m3408/nmdc_automation/dev/nmdc_automation/.venv/bin/activate
-(base) nmdcda@perlmutter:login38:~/nmdc_automation/dev/nmdc_automation> . /global/cfs/cdirs/m3408/nmdc_automation/dev/nmdc_automation/.venv/bin/activate
-(nmdc-automation-py3.11) (base) nmdcda@perlmutter:login38:~/nmdc_automation/dev/nmdc_automation>
+(base) nmdcda@perlmutter:login06:~/nmdc_automation/dev/nmdc_automation> eval $(poetry env activate)
+(nmdc-automation-py3.11) (base) nmdcda@perlmutter:login06:~/nmdc_automation/dev/nmdc_automation
 ```
 </details>
 
 
-The `poetry shell` command will activate the environment for the current shell session. 
+The `eval $(poetry env activate)` command will activate the environment for the current shell session. 
 Environment `(nmdc-automation-py3.11)` will be displayed in the prompt.
 
 
