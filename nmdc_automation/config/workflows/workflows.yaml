@@ -26,10 +26,14 @@ Workflows:
     - Metagenome Raw Reads
     Predecessors:
     - Sequencing Interleaved
-    Input_prefix: nmdc_rqcfilter
+    Input_prefix: rqcfilter
     Inputs:
       input_files: do:Metagenome Raw Reads
       proj: "{workflow_execution_id}"
+      input_fq1: "[]"
+      input_fq2: "[]"
+      shortRead: true
+      interleaved: false
     Workflow Execution:
       name: "Read QC for {id}"
       input_read_bases: "{outputs.stats.input_read_bases}"
