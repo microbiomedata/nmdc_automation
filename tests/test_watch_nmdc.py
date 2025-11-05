@@ -493,7 +493,7 @@ def test_runtime_manager_get_unclaimed_jobs(site_config, test_data_dir, test_db,
             )
 
             # 4. Initialize and Run the test within the Mocker context
-            rt = RuntimeApiHandler(site_config, runtime_api=n)
+            rt = RuntimeApiHandler(site_config, jaws_api=None, runtime_api=n)
 
             # Act
             unclaimed_jobs = rt.get_unclaimed_jobs(rt.config.allowed_workflows)
@@ -501,7 +501,7 @@ def test_runtime_manager_get_unclaimed_jobs(site_config, test_data_dir, test_db,
             # Assert
             assert unclaimed_jobs
     else:
-        rt = RuntimeApiHandler(site_config, runtime_api=n)
+        rt = RuntimeApiHandler(site_config, jaws_api=None, runtime_api=n)
 
         # Act
         unclaimed_jobs = rt.get_unclaimed_jobs(rt.config.allowed_workflows)
@@ -535,3 +535,4 @@ def test_watcher_restore_from_checkpoint_and_report(site_config_file, fixtures_d
     assert rpt
     assert rpt['wdl'] == "mbin_nmdc.wdl"
     assert rpt['last_status'] == "Failed"
+
