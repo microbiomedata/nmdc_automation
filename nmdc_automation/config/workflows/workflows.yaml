@@ -33,7 +33,7 @@ Workflows:
       input_fq1: "[]"
       input_fq2: "[]"
       shortRead: true
-      interleaved: false
+      interleaved: true
     Workflow Execution:
       name: "Read QC for {id}"
       input_read_bases: "{outputs.stats.input_read_bases}"
