@@ -1,4 +1,3 @@
-import copy
 import json
 from pathlib import PosixPath, Path
 
@@ -17,8 +16,11 @@ from nmdc_automation.workflow_automation.watch_nmdc import (
     RuntimeApiHandler,
 )
 from nmdc_automation.workflow_automation.wfutils import WorkflowJob
-from tests.fixtures import db_utils
 
+@pytest.fixture(scope="session")
+def mock_jaws_api():
+    with mock.patch("jaws_client.api.JawsApi") as mock_jaws_api:
+        yield mock_jaws_api
 
 # FileHandler init tests
 def test_file_handler_init_from_state_file(site_config, initial_state_file_1_failure, tmp_path):
@@ -289,7 +291,6 @@ def test_job_manager_prepare_and_cache_new_manifest_job(site_config, initial_sta
     jm.job_cache = []
 
 
-
 def test_job_manager_get_finished_jobs(site_config, initial_state_file_1_failure, fixtures_dir):
 
     # Arrange - initial state has 1 failure and is not done
@@ -307,7 +308,7 @@ def test_job_manager_get_finished_jobs(site_config, initial_state_file_1_failure
     assert len(jm.job_cache) == 2
 
     # add a failed job
-    failed_job_state = json.load(open(fixtures_dir / "failed_job_state_2.json"))
+    failed_job_state = json.load(open(fixtures_dir / "failed_job_state_2_v2.json")) #replaced failed_job_state_2.json because it held the same job as agent_state_1_failure.json
     assert failed_job_state
     failed_job = WorkflowJob(site_config, failed_job_state)
     assert failed_job.job_status.lower() == "failed"
@@ -317,7 +318,7 @@ def test_job_manager_get_finished_jobs(site_config, initial_state_file_1_failure
 
     # add a manifest success job
     new_job_state2 = json.load(open(fixtures_dir / "manifest_workflow_state_2.json"))
-    assert new_job_state
+    assert new_job_state2
     new_job2 = WorkflowJob(site_config, new_job_state2)
     jm.job_cache.append(new_job2)
     # sanity check
@@ -325,22 +326,28 @@ def test_job_manager_get_finished_jobs(site_config, initial_state_file_1_failure
 
     # Mock requests for job status
     with requests_mock.Mocker() as m:
-        # Mock the successful job status
+        # Mock the initial job status from mags_workflow_state.json, last_status of Succeeded
+        m.get(
+            "http://localhost:8088/api/workflows/v1/8f4e1a0b-ca5c-455b-9db6-30957bcf4b4a/status",
+            json={"status": new_job_state["last_status"]}
+            )
+        # Mock the failed job status from agent_state_1_failure.json. 
+        # updated to only have one occurrence in cache, no longer returns two Succeeded
         m.get(
             "http://localhost:8088/api/workflows/v1/9492a397-eb30-472b-9d3b-abc123456789/status",
             json={"status": "Succeeded"}
             )
-        # Mock the failed job status
+        # Mock the failed job status from failed_job_state_2_v2.json. Used to not point to anything or update anything
         m.get(
             "http://localhost:8088/api/workflows/v1/12345678-abcd-efgh-ijkl-9876543210/status",
-            json={"status": "Failed"}
+            json={"status": failed_job_state["last_status"]}
             )
-        # Mock for the manifest job
+        # Mock for the manifest job, last status Submitted, mocking as Succeeded for sake of test
         m.get(
             "http://localhost:8088/api/workflows/v1/dry_run/status",
             json={"status": "Succeeded"}
             )
-        
+
         # Act
         successful_jobs, failed_jobs = jm.get_finished_jobs()
         # Assert
@@ -433,6 +440,34 @@ def test_job_manager_process_failed_job_2_failures(site_config, initial_state_fi
     # Assert
     assert failed_job.done
     assert failed_job.job_status == "Failed"
+
+def test_job_manager_get_finished_jobs_jaws_done_null(site_config, initial_state_file_1_failure, fixtures_dir, mock_jaws_api):
+    """
+    JAWS returns {"status":"done","result": null} (fixture null_result_jaws_status.json).
+    Ensure JobManager.get_finished_jobs() treats that as "null" and moves the job to failed_jobs
+    (incrementing failed_count).
+    """
+    null_job_state = json.load(open(fixtures_dir / "null_result_workflow_state.json"))
+    null_jaws_resp = json.load(open(fixtures_dir / "null_result_jaws_status.json"))
+    fh = FileHandler(site_config, initial_state_file_1_failure)
+    jm = JobManager(site_config, fh, jaws_api=mock_jaws_api)
+    null_job = WorkflowJob(site_config = site_config, workflow_state= null_job_state, jaws_api = mock_jaws_api, job_metadata = null_jaws_resp,)
+    jm.prepare_and_cache_new_job(null_job, null_job_state["claims"][0]["op_id"])
+    assert len(jm.job_cache) == 2
+
+    # mock the logic in jaws_api.get_job_status to return null_jaws_resp
+    job_status = ""
+    if null_jaws_resp['status'] != 'done':
+        job_status =  'running'
+    else:
+        job_status = null_jaws_resp['result']
+        # If the status is 'done' then return the result key
+    assert job_status is None
+
+    with patch("nmdc_automation.workflow_automation.wfutils.JawsRunner.get_job_status", return_value = job_status): # as mock_get_job_status:
+        successful_jobs, failed_jobs = jm.get_finished_jobs()
+        assert not successful_jobs
+        assert len(failed_jobs) == 2
 
 def test_job_manager_process_successful_manifest_job(site_config, initial_state_file_1_failure, fixtures_dir, job_metadata_factory, mock_jaws_api):
     
@@ -586,4 +621,3 @@ def test_watcher_restore_from_checkpoint_and_report(site_config_file, fixtures_d
     assert rpt
     assert rpt['wdl'] == "mbin_nmdc.wdl"
     assert rpt['last_status'] == "Failed"
-
