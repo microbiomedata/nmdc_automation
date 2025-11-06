@@ -30,8 +30,8 @@ Workflows:
     Inputs:
       input_files: do:Metagenome Raw Reads
       proj: "{workflow_execution_id}"
-      input_fq1: "[]"
-      input_fq2: "[]"
+      input_fq1: []
+      input_fq2: []
       shortRead: true
       interleaved: true
     Workflow Execution:
