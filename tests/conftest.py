@@ -12,14 +12,17 @@ from time import time
 import pandas as pd
 import json
 from yaml import load, Loader
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 import logging
+from typing import Callable
+
 
 from nmdc_automation.config import SiteConfig
 from nmdc_automation.models.workflow import WorkflowConfig
 from tests.fixtures import db_utils
 from nmdc_automation.workflow_automation.wfutils import WorkflowJob
 from nmdc_automation.api.nmdcapi import NmdcRuntimeApi as nmdcapi
+from jaws_client.config import Configuration
 
 
 logger = logging.getLogger(__name__) 
@@ -71,6 +74,21 @@ def mags_config(fixtures_dir)->WorkflowConfig:
     # normalize the keys from Key Name to key_name
     wf = {k.replace(" ", "_").lower(): v for k, v in wf.items()}
     return WorkflowConfig(**wf)
+
+@fixture(scope="function")
+def mock_api_small(monkeypatch, requests_mock):
+    monkeypatch.setenv("NMDC_API_URL", "http://localhost")
+    monkeypatch.setenv("NMDC_CLIENT_ID", "anid")
+    monkeypatch.setenv("NMDC_CLIENT_SECRET", "asecret")
+    token_resp = {"expires": {"minutes": time()+60},
+            "access_token": "abcd"
+            }
+    requests_mock.post("http://localhost:8000/token", json=token_resp)
+
+    resp = ["nmdc:dobj-01-abcd4321"]
+    # mock mint responses in sequence
+    requests_mock.post("http://localhost:8000/pids/mint", json=resp)
+    requests_mock.post("http://localhost:8000/pids/bind", json=resp)
 
 
 @fixture(scope="session")
@@ -183,6 +201,41 @@ def configured_api_mock(session_monkeypatch, test_db, test_data_dir):
 
     mock_api.list_from_collection.side_effect = mock_list_from_collection_side_effect
 
+    def mock_run_query_side_effect(api_filter, *args, **kwargs):
+        if isinstance(api_filter, dict) and 'aggregate' in api_filter:
+            collection_name = api_filter.get("aggregate")
+            pipeline = api_filter.get("pipeline", [])
+            logger.debug(f"{pipeline}")
+        
+        if collection_name and pipeline:
+            
+            collection = test_db[collection_name]
+            
+            try:
+                result_list = list(collection.aggregate(pipeline))
+                
+                # endpoint now takes care of formating the response content to a list so 
+                # no not need to reformat it as below. Keeping this here in case anything changes for now -jlp 20251106
+                #
+                # Format the result to the expected API cursor structure for queries run endpoint
+                #api_response = {
+                #    "ok": 1,
+                #    "cursor": {
+                #        "id": None, 
+                #        "batch": result_list 
+                #    }
+                #}
+                #return api_response
+
+                return result_list
+            
+            except Exception as e:
+                print(f"Error during aggregation on {collection_name}: {e}")
+                # Re-raise the exception or return a relevant error message/default
+                raise
+        return []
+
+    mock_api.run_query.side_effect = mock_run_query_side_effect
 
     def mock_create_job_side_effect(job_record):
 
@@ -334,6 +387,29 @@ def site_config_file(base_test_dir):
 def site_config(site_config_file):
     return SiteConfig(site_config_file)
 
+# New fixture to selectively use the dev API for queries
+@fixture
+def site_config_file_dev_api(site_config_file, tmp_path):
+    
+    # Create a path for the new temporary file.
+    temp_config = tmp_path / "site_configuration_test_dev_api.toml"
+
+    dev_api = 'api_url = "https://api-dev.microbiomedata.org"\n'
+
+    # read the content of the original TOML file
+    with open(site_config_file, "r") as f, \
+         open(temp_config, "w") as nf:
+        
+        for line in f:
+            if line.strip().startswith("api_url ="):
+                nf.write(dev_api)
+            else:
+                nf.write(line)
+
+
+    # Return the new config with api mod
+    return temp_config
+
 @fixture
 def initial_state_file_1_failure(fixtures_dir, tmp_path):
     state_file = fixtures_dir / "agent_state_1_failure.json"
@@ -343,23 +419,54 @@ def initial_state_file_1_failure(fixtures_dir, tmp_path):
     return copied_state_file
 
 @fixture
-def modified_job_metadata(fixtures_dir: Path, base_test_dir: Path) -> dict:
-    """
-    Loads mags_job_metadata.json, substitutes the relative paths defined for the outputs, 
-    and modifies them to the full path so that tests can work from any repo loc
-    """
-    json_path = fixtures_dir / "mags_job_metadata.json"
+def response_call1(fixtures_dir):
+    file_path = fixtures_dir / "response_page1.json"
+    with open(file_path, 'r') as f:
+        return json.load(f)
     
-    # Read the JSON file content as a single string
-    with open(json_path, "r") as f:
-        file_content = f.read()
+    
+@fixture
+def response_call2(fixtures_dir):
+    file_path = fixtures_dir / "response_page2.json"
+    with open(file_path, 'r') as f:
+        return json.load(f)
 
-    # Substitute "test_pscratch" with "test_base_dir/test_pscratch"
-    # This happens on the raw string content of the file.
-    modified_content = file_content.replace("test_pscratch", f"{base_test_dir}/test_pscratch")
+@fixture
 
-    # Load the modified string back into a Python dictionary
-    return json.loads(modified_content)
+def job_metadata_factory(base_test_dir: Path) -> Callable[[Path], dict]:
+    """
+    A fixture that acts as a factory for loading and modifying job metadata JSON files.
+    
+    This returns a callable that takes a Path to a JSON file.
+    The callable loads the file and substitutes 'test_pscratch' with a full path.
+    """
+    def _modified_job_metadata(json_path: Path) -> dict:
+        """
+        Loads any job_metadata.json, substitutes the relative paths defined for the outputs, 
+        and modifies them to the full path so that tests can work from any repo loc
+        """
+        #json_path = fixtures_dir / "mags_job_metadata.json"
+        
+        # Read the JSON file content as a single string
+        with open(json_path, "r") as f:
+            file_content = f.read()
+
+        # Substitute "test_pscratch" with "test_base_dir/test_pscratch"
+        # This happens on the raw string content of the file.
+        modified_content = file_content.replace("test_pscratch", f"{base_test_dir}/test_pscratch")
+
+        # Load the modified string back into a Python dictionary
+        return json.loads(modified_content)
+    
+    return _modified_job_metadata
+
+@fixture
+def mock_womtool_validation(mocker):
+    """
+    Mocks the validate_womtool_path method to prevent FileNotFoundError.
+    """
+    # This line replaces the original method with a mock that does nothing.
+    mocker.patch.object(Configuration, 'validate_womtool_path', return_value=None)
 
 
 # Sample Cromwell API responses
@@ -421,6 +528,10 @@ def mock_cromwell_api(fixtures_dir):
 
         yield m
 
+@fixture(scope="session")
+def mock_jaws_api():
+    with patch("jaws_client.api.JawsApi") as mock_jaws_api:
+        yield mock_jaws_api
 
 @fixture(scope="session")
 def gold_import_dir(fixtures_dir):

@@ -13,7 +13,7 @@ resource = "NERSC-Perlmutter"
 site = "Processing Site"
 
 [nmdc]
-url_root = "https://data.microbiomedata.org/data/"
+url_root = "https://data.microbiomedata.org/data/dev"
 api_url = "http://localhost:8000"
 
 [state]
