@@ -7,7 +7,7 @@ import os
 import logging
 from datetime import datetime
 from nmdc_automation.db.nmdc_mongo import get_db
-from nmdc_automation.jgi_file_staging.models import Sample
+from nmdc_automation.models.wfe_file_stages import JGISample
 from pydantic import ValidationError
 import argparse
 import json
@@ -22,7 +22,7 @@ def update_sample_in_mongodb(sample: dict, update_dict: dict, mdb) -> bool:
     update_dict.update({'update_date': datetime.now()})
     sample.update(update_dict)
     try:
-        sample_update = Sample(**sample)
+        sample_update = JGISample(**sample)
         sample_update_dict = sample_update.dict()
         mdb.samples.update_one({'jdp_file_id': sample_update_dict['jdp_file_id']}, {'$set': update_dict})
         return True
