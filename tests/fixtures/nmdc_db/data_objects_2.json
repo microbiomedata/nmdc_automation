@@ -357,7 +357,7 @@
     "description": "Metagenome Bins for nmdc:wfmag-11-nvfqkd03.2",
     "file_size_bytes": 484526,
     "md5_checksum": "4c6bf2a6eb47503967db91dbf3591a10",
-    "data_object_type": "Metagenome Bins",
+    "data_object_type": "Metagenome HQMQ Bins Compression File",
     "data_category": "processed_data",
     "url": "https://data.microbiomedata.org/data/nmdc:omprc-11-cegmwy02/nmdc:wfmag-11-nvfqkd03.2/nmdc_wfmag-11-nvfqkd03.2_hqmq_bin.zip",
     "type": "nmdc:DataObject"
