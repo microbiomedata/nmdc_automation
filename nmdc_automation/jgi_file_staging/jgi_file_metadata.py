@@ -297,7 +297,7 @@ def sample_records_to_sample_objects(sample_records: List[Dict[str, Any]]) -> Li
     """
     Convert JGISample records to JGISample objects
     :param sample_records: list of sample records
-    :return: list of JGISample objects
+    :return: list of Sample objects
     """
     sample_objects = []
     for sample_record in sample_records:
@@ -359,4 +359,4 @@ if __name__ == '__main__':
         insert_new_project_into_mongodb(config_file, mdb)
     else:
         get_samples_data(project_name, config_file, mdb, file)
-        print("JGISample metadata inserted into mongodb")
+        print("Sample metadata inserted into mongodb")
