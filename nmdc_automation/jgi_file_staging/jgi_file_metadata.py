@@ -14,7 +14,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from nmdc_automation.db.nmdc_mongo import get_db
-from nmdc_automation.jgi_file_staging.models import Sample, SequencingProject
+from nmdc_automation.models.wfe_file_stages import JGISample, JGISequencingProject
 from typing import List, Dict, Any
 from pydantic import ValidationError
 
@@ -293,16 +293,16 @@ def get_seq_unit_names(analysis_files_df, gold_id):
     return seq_unit_names_list
 
 
-def sample_records_to_sample_objects(sample_records: List[Dict[str, Any]]) -> List[Sample]:
+def sample_records_to_sample_objects(sample_records: List[Dict[str, Any]]) -> List[JGISample]:
     """
-    Convert sample records to Sample objects
+    Convert JGISample records to JGISample objects
     :param sample_records: list of sample records
-    :return: list of Sample objects
+    :return: list of JGISample objects
     """
     sample_objects = []
     for sample_record in sample_records:
         try:
-            sample_object = Sample(**sample_record)
+            sample_object = JGISample(**sample_record)
             sample_objects.append(sample_object.model_dump())
         except ValidationError as e:
             logging.exception(f"Validation error: {e}")
@@ -359,4 +359,4 @@ if __name__ == '__main__':
         insert_new_project_into_mongodb(config_file, mdb)
     else:
         get_samples_data(project_name, config_file, mdb, file)
-        print("Sample metadata inserted into mongodb")
+        print("JGISample metadata inserted into mongodb")
