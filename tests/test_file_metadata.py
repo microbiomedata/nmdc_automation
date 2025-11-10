@@ -109,7 +109,7 @@ def test_get_analysis_projects_from_jgi_proposal_id(mock_get):
     mock_get.return_value.status_code = 200
     mock_get.return_value.json.return_value = mock_data
 
-    gold_analysis_data = get_analysis_projects_from_jgi_proposal_id("11111", "ed42ef155670")
+    gold_analysis_data = get_analysis_projects_from_proposal_id("11111", "ed42ef155670")
     assert gold_analysis_data[0] == {
         "apGoldId": "Ga0499978",
         "apType": "Metagenome Analysis",
@@ -280,7 +280,7 @@ def test_get_samples_data_with_csv(mock_sample_objects, mock_get_token, mock_con
     csv_file = tmp_path / 'test.csv'
     csv_data.to_csv(csv_file, index=False)
 
-    test_db.sequencing_projects.insert_one({'project_name': 'GROW', 'jgi_proposal_id': 'test_proposal'})
+    test_db.sequencing_projects.insert_one({'sequencing_project_name': 'GROW', 'jgi_proposal_id': 'test_proposal'})
 
     with patch('nmdc_automation.jgi_file_staging.jgi_file_metadata.pd.read_csv', return_value=csv_data):
         get_samples_data('GROW', 'mock_config.ini', test_db, str(csv_file))
@@ -302,7 +302,7 @@ def test_get_samples_data_without_csv(mock_analysis, mock_files, mock_sample_obj
     mock_config.__getitem__.return_value = {'delay': '1', 'remove_files': '1'}
     mock_configparser.return_value = mock_config
 
-    test_db.sequencing_projects.insert_one({'project_name': 'Bioscales', 'jgi_proposal_id': 'test_proposal'})
+    test_db.sequencing_projects.insert_one({'project_name': 'Bioscales', 'proposal_id': 'test_proposal'})
 
     get_samples_data('Bioscales', 'mock_config.ini', test_db)
 
@@ -324,7 +324,7 @@ def test_get_samples_data_no_samples(mock_analysis, mock_files, mock_sample_obje
     mock_config.__getitem__.return_value = {'delay': '1', 'remove_files': '1'}
     mock_configparser.return_value = mock_config
 
-    test_db.sequencing_projects.insert_one({'project_name': 'NEON', 'jgi_proposal_id': 'test_proposal'})
+    test_db.sequencing_projects.insert_one({'project_name': 'NEON', 'proposal_id': 'test_proposal'})
 
     get_samples_data('NEON', 'mock_config.ini', test_db)
 
@@ -335,15 +335,15 @@ def test_get_samples_data_no_samples(mock_analysis, mock_files, mock_sample_obje
     mock_analysis.assert_called_once()
 
 
-@patch('nmdc_automation.jgi_file_staging.jgi_file_metadata.get_analysis_projects_from_jgi_proposal_id')
+@patch('nmdc_automation.jgi_file_staging.jgi_file_metadata.get_analysis_projects_from_proposal_id')
 @patch('nmdc_automation.jgi_file_staging.jgi_file_metadata.remove_unneeded_files')
 def test_get_analysis_files_df(mock_remove_unneeded, mock_get_analysis_projects):
     # Setup mock data
-    jgi_proposal_id = 123
+    proposal_id = 123
     ACCESS_TOKEN = 'mock_token'
     remove_files = ['badfile']
 
-    # Mock return from get_analysis_projects_from_jgi_proposal_id
+    # Mock return from get_analysis_projects_from_proposal_id
     mock_get_analysis_projects.return_value = [
         {'itsApId': 'ap1', 'other_field': 'value1'},
         {'itsApId': 'ap2', 'other_field': 'value2'}
@@ -360,7 +360,7 @@ def test_get_analysis_files_df(mock_remove_unneeded, mock_get_analysis_projects)
     mock_remove_unneeded.side_effect = lambda df, remove_files: df
 
     # Call the function
-    result_df = get_analysis_files_df(jgi_proposal_id, files_df, ACCESS_TOKEN, remove_files)
+    result_df = get_analysis_files_df(proposal_id, files_df, ACCESS_TOKEN, remove_files)
 
     # Assertions
     assert isinstance(result_df, pd.DataFrame)
@@ -373,7 +373,7 @@ def test_get_analysis_files_df(mock_remove_unneeded, mock_get_analysis_projects)
     assert result_df['request_id'].isnull().all()
 
     # Verify mocks were called
-    mock_get_analysis_projects.assert_called_once_with(jgi_proposal_id, ACCESS_TOKEN)
+    mock_get_analysis_projects.assert_called_once_with(proposal_id, ACCESS_TOKEN)
     mock_remove_unneeded.assert_called_once()
 
 
@@ -381,7 +381,7 @@ def test_get_analysis_files_df(mock_remove_unneeded, mock_get_analysis_projects)
 @patch('nmdc_automation.jgi_file_staging.jgi_file_metadata.get_request')
 def test_get_biosample_ids(mock_get_request):
     # Arrange
-    jgi_proposal_id = 456
+    proposal_id = 456
     ACCESS_TOKEN = 'mock_token'
     mock_response = [
         {'biosampleGoldId': 'biosample1'},
@@ -391,12 +391,12 @@ def test_get_biosample_ids(mock_get_request):
     mock_get_request.return_value = mock_response
 
     # Act
-    result = get_biosample_ids(jgi_proposal_id, ACCESS_TOKEN)
+    result = get_biosample_ids(proposal_id, ACCESS_TOKEN)
 
     # Assert
     assert result == ['biosample1', 'biosample2', 'biosample3']
     mock_get_request.assert_called_once_with(
-        f'https://gold-ws.jgi.doe.gov/api/v1/biosamples?itsProposalId={jgi_proposal_id}',
+        f'https://gold-ws.jgi.doe.gov/api/v1/biosamples?itsProposalId={proposal_id}',
         ACCESS_TOKEN
     )
 

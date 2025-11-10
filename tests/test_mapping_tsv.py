@@ -14,7 +14,7 @@ from nmdc_automation.jgi_file_staging.mapping_tsv import (
     get_study_id,
     create_mapping_tsv,
 )
-from nmdc_automation.jgi_file_staging.models import SequencingProject
+from nmdc_automation.models.wfe_file_stages import JGISequencingProject
 
 
 @pytest.fixture
@@ -28,7 +28,7 @@ def insert_sequencing_project(test_db):
              'analysis_projects_dir': '/global/cfs/cdirs/m3408/aim2/dev'},
         ]
         for p in projects:
-            obj = SequencingProject(**p)
+            obj = JGISequencingProject(**p)
             test_db.sequencing_projects.insert_one(obj.dict())
         return test_db
     return _insert
