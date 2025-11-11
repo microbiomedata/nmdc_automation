@@ -16,6 +16,7 @@ from datetime import datetime, timedelta, timezone
 from nmdc_automation.config import SiteConfig, UserConfig
 import logging
 from tenacity import retry, wait_exponential, stop_after_attempt
+from requests.exceptions import HTTPError
 
 logging_level = os.getenv("NMDC_LOG_LEVEL", logging.INFO)
 logging.basicConfig(
@@ -316,15 +317,20 @@ class NmdcRuntimeApi:
     @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
     @refresh_token
     def list_jobs(self, filt=None, max=100) -> List[dict]:
-        url = "%sjobs?max_page_size=%s" % (self._base_url, max)
-        d = {}
+        url = "%sjobs" % (self._base_url) 
+
+        params = {
+            "max_page_size": max
+        }
         if filt:
-            url += "&filter=%s" % (json.dumps(filt))
-        orig_url = url
+            #url += "&filter=%s" % (json.dumps(filt))
+            params["filter"] = json.dumps(filt)
+        
         results = []
         while True:
-            resp = requests.get(url, data=json.dumps(d), headers=self.header)
+            resp = requests.get(url, headers=self.header, params=params)
             if resp.status_code != 200:
+                # todo make this exit with failure more cleanly -jlp 20251104
                 resp.raise_for_status()
             try:
                 response_json = resp.json()
@@ -408,13 +414,12 @@ class NmdcRuntimeApi:
     @refresh_token
     def list_ops(self, filt=None, max_page_size=40):
         url = "%soperations?max_page_size=%d" % (self._base_url, max_page_size)
-        d = {}
         if filt:
             url += "&filter=%s" % (json.dumps(filt))
         orig_url = url
         results = []
         while True:
-            resp = requests.get(url, data=json.dumps(d), headers=self.header).json()
+            resp = requests.get(url, headers=self.header).json()
             if "resources" not in resp:
                 logging.warning(str(resp))
                 break
@@ -460,14 +465,20 @@ class NmdcRuntimeApi:
             resp.raise_for_status()
         return resp.json()
 
-    @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
-    @refresh_token
     def _run_query_single(self, query):
         url = "%squeries:run" % self._base_url
-        resp = requests.post(url, headers=self.header, data=json.dumps(query))
-        if not resp.ok:
-            resp.raise_for_status()
-        return resp.json()
+        try:
+            resp = requests.post(url, headers=self.header, data=json.dumps(query))
+            if not resp.ok:
+                resp.raise_for_status()
+            return resp.json()
+        
+        except HTTPError as e:
+            logger.error("HTTP Error occurred during query execution.")
+            logger.error(f"Status Code: {e.response.status_code}")
+            logger.error(f"Response Body: {e.response.text}")
+        
+            raise e
     
     @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
     @refresh_token

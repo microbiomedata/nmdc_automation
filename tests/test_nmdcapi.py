@@ -221,8 +221,7 @@ def test_run_query(test_db, test_client):
     
     resp = api.run_query(manifest_agg)
     assert resp
-    # TODO This and the side_effect need to be changed to not pass the raw response structure
-    assert len(resp['cursor']['batch']) == 38
+    assert len(resp) == 38
 
 
 @patch('nmdc_automation.api.nmdcapi.NmdcRuntimeApi._run_query_single') 
