@@ -254,9 +254,7 @@
   "claims": [
     {
       "op_id": "nmdc:sys0fwnncj90",
-      "site_id": "NERSC",
-      "nmdc_jobid": "nmdc:bc4836d4-9dc9-11f0-ad25-86125b21c123",
-      "jaws_jobid": "137411"
+      "site_id": "NERSC"
     }
   ]
 }
