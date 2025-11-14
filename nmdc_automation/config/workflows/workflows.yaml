@@ -26,10 +26,14 @@ Workflows:
     - Metagenome Raw Reads
     Predecessors:
     - Sequencing Interleaved
-    Input_prefix: nmdc_rqcfilter
+    Input_prefix: rqcfilter
     Inputs:
       input_files: do:Metagenome Raw Reads
       proj: "{workflow_execution_id}"
+      input_fq1: "[]"
+      input_fq2: "[]"
+      shortRead: true
+      interleaved: true
     Workflow Execution:
       name: "Read QC for {id}"
       input_read_bases: "{outputs.stats.input_read_bases}"
@@ -56,7 +60,7 @@ Workflows:
     Enabled: True
     Analyte Category: Metagenome
     Git_repo: https://github.com/microbiomedata/ReadsQC
-    Version: v1.0.18
+    Version: v1.0.20
     Collection: workflow_execution_set
     WDL: interleave_rqcfilter.wdl
     Input_prefix: nmdc_rqcfilter
@@ -95,7 +99,7 @@ Workflows:
     Enabled: True
     Analyte Category: Metagenome
     Git_repo: https://github.com/microbiomedata/metaAssembly
-    Version: v1.0.7-alpha.1
+    Version: v1.0.7-alpha.3
     WDL: jgi_assembly.wdl
     Collection: workflow_execution_set
     Predecessors:
@@ -292,7 +296,7 @@ Workflows:
     Enabled: True
     Analyte Category: Metagenome
     Git_repo: https://github.com/microbiomedata/metaMAGs
-    Version: v1.3.16
+    Version: v1.3.17
     WDL: mbin_nmdc.wdl
     Collection: workflow_execution_set
     Predecessors:

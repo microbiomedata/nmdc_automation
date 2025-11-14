@@ -9,7 +9,7 @@
         "wdl": "mbin_nmdc.wdl",
         "activity_id": "nmdc:wfmag-12-6jp3gm80.1",
         "activity_set": "workflow_execution_set",
-        "was_informed_by": "nmdc:omprc-11-hwz45c12",
+        "was_informed_by": ["nmdc:omprc-11-hwz45c12"],
         "trigger_activity": "nmdc:wfmgan-12-1hfw7y63.1",
         "iteration": 1,
         "input_prefix": "nmdc_mags",
@@ -268,7 +268,7 @@
       "done": false,
       "start": "2025-03-20T02:55:39.157169+00:00",
       "cromwell_jobid": "8f4e1a0b-ca5c-455b-9db6-30957bcf4b4a",
-      "last_status": "Succeeded",
+      "last_status": "succeeded",
       "nmdc_jobid": "nmdc:c18fb5f8-0536-11f0-9035-be45b851a8f7",
       "end": "2025-03-20T02:58:38.414Z"
     }

@@ -255,18 +255,23 @@ def import_projects(ctx,  import_file, import_yaml, site_configuration, update_d
                 "has_output": has_output,
                 "git_url": import_spec["Git_repo"],
                 "version": import_spec["Version"],
-                "execution_resource": import_mapper.import_specifications["Workflow Metadata"]["Execution Resource"],
+                "processing_institution": import_mapper.import_specifications["Workflow Metadata"]["Processing Institution"],
                 "started_at_time": datetime.datetime.now(pytz.utc).isoformat(),
                 "ended_at_time": datetime.datetime.now(pytz.utc).isoformat(),
-                "was_informed_by": nucleotide_sequencing_id,
+                "was_informed_by": [nucleotide_sequencing_id],
             }
             import_db['workflow_execution_set'].append(wfe_record)
 
+        # Add check for empty workflow_execution_set and remove it from the document
+        wfe_ct = len(import_db['workflow_execution_set'])
+        if wfe_ct == 0:
+            del import_db['workflow_execution_set']
+            logger.info("WARN: The 'workflow_execution_set' was an empty list and has been removed.")
 
         # Validate using the api
         db_update_json = json.dumps(import_db, indent=4)
         logger.info(
-            f"Validating {len(import_db['data_object_set'])} data objects and {len(import_db['workflow_execution_set'])} workflow executions"
+            f"Validating {len(import_db['data_object_set'])} data objects and {wfe_ct} workflow executions"
             )
         val_result = runtime_api.validate_metadata(import_db)
 
@@ -276,7 +281,7 @@ def import_projects(ctx,  import_file, import_yaml, site_configuration, update_d
             logger.info(f"Validation passed")
             if update_db:
                 # check if there are any workflow executions or data objects to add
-                if import_db['data_object_set'] or import_db['workflow_execution_set']:
+                if 'data_object_set' in import_db or 'workflow_execution_set' in import_db:
                     logger.info(f"Updating Database")
                     resp = runtime_api.post_workflow_executions(import_db)
                     logger.info(f"workflows/workflow_executions response: {resp}")
@@ -291,21 +296,21 @@ def import_projects(ctx,  import_file, import_yaml, site_configuration, update_d
                     logger.info(f"No updates to apply")
             else:
                 logger.info(f"Option --update-db not selected. No changes made")
-                if import_db['data_object_set'] or import_db['workflow_execution_set']:
+                if 'data_object_set' in import_db or 'workflow_execution_set' in import_db:
                     logger.info(f"Update json:")
-                    print(db_update_json)
+                    logger.info(db_update_json)
                 else:
                     logger.info(f"No new data objects or workflow executions to add")
 
                 if data_generation_update_query['updates']:
                     logger.info(f"Update query:")
-                    print(json.dumps(data_generation_update_query, indent=4))
+                    logger.info(json.dumps(data_generation_update_query, indent=4))
                 else:
                     logger.info(f"No updates to apply")
         else:
             logger.info(f"Validation failed")
             logger.info(f"Validation result: {val_result}")
-            print(db_update_json)
+            logger.info(db_update_json)
 
 
         logger.info("Updating minted IDs")

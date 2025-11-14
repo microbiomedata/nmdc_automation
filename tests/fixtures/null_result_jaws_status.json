@@ -1,0 +1,21 @@
+{
+    "compute_site_id": "nmdc",
+    "cpu_hours": null,
+    "cromwell_run_id": null,
+    "id": 137411,
+    "input_site_id": "nmdc",
+    "json_file": "/tmp/tmpkw0k3ebi.json",
+    "output_dir": null,
+    "result": null,
+    "status": "done",
+    "status_detail": "The run is complete.",
+    "submitted": "2025-10-01 03:05:42",
+    "tag": "nmdc:omprc-11-weea4z31/nmdc:wfmag-11-nullresult.1",
+    "team_id": "nmdc",
+    "updated": "2025-10-16 15:05:56",
+    "user_id": "nmdcda",
+    "wdl_file": "/tmp/tmptx3y8ksc/tmp7lqghtzf.wdl",
+    "workflow_name": null,
+    "workflow_root": null
+}
+

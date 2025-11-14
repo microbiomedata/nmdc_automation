@@ -16,6 +16,7 @@ from datetime import datetime, timedelta, timezone
 from nmdc_automation.config import SiteConfig, UserConfig
 import logging
 from tenacity import retry, wait_exponential, stop_after_attempt
+from requests.exceptions import HTTPError
 
 logging_level = os.getenv("NMDC_LOG_LEVEL", logging.INFO)
 logging.basicConfig(
@@ -98,12 +99,23 @@ class NmdcRuntimeApi:
             "client_secret": self.client_secret,
         }
         url = self._base_url + "token"
-
-        resp = requests.post(url, headers=h, data=data)
-        if not resp.ok:
-            logging.error(f"Failed to get token: {resp.text}")
-            resp.raise_for_status()
-        response_body = resp.json()
+        try:
+            resp = requests.post(url, headers=h, data=data)
+            # Check for API rejection (4xx or 5xx status codes)
+            if not resp.ok:
+                logging.error(f"Failed to get token: {resp.text}")
+                resp.raise_for_status()
+            response_body = resp.json()
+        except requests.exceptions.RequestException as e: # <--- CATCHES ALL REQUESTS ERRORS
+            # This block will catch ConnectionError, Timeout, HTTPError (from raise_for_status), etc.
+            logging.error(f"FATAL: A network or API request error occurred: {e}")
+            # You should log the error but still re-raise it to stop the infinite loop.
+            raise
+    
+        except Exception as e: # <--- CATCHES ALL OTHER UNEXPECTED PYTHON ERRORS
+            # This catches errors like NameError, TypeError, or low-level environment issues.
+            logging.error(f"FATAL: An unexpected general Python error occurred: {e}")
+            raise
 
         # Expires can be in days, hours, minutes, seconds - sum them up and convert to seconds
         expires = 0
@@ -140,12 +152,6 @@ class NmdcRuntimeApi:
             logging.error(f"Response failed for: url: {url}, data: {data}, header: {self.header}")
             raise ValueError(f"Failed to mint ID of type {id_type} HTTP status: {resp.status_code} / ({resp.reason})")
         id = resp.json()[0]
-        if informed_by:
-            url = f"{self._base_url}pids/bind"
-            data = {"id_name": id, "metadata_record": {"informed_by": informed_by}}
-            resp = requests.post(url, data=json.dumps(data), headers=self.header)
-            if not resp.ok:
-                raise ValueError("Failed to bind metadata to pid")
         return id
 
     @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
@@ -231,6 +237,41 @@ class NmdcRuntimeApi:
             resp.raise_for_status()
         return resp.json()
 
+
+    def list_from_collection(self, collection, filt=None, projection=None, max=100):
+        url = f"{self._base_url}nmdcschema/{collection}"
+        
+        params = {
+                "max_page_size": max
+        }
+
+        if filt:
+            #url += "&filter=%s" % (json.dumps(filt))
+            params["filter"] = json.dumps(filt)
+        if projection:
+            #url += "&projection=%s" % (projection)
+            params["projection"] = json.dumps(projection)
+
+        results = []
+        while True:
+            resp = requests.get(url, headers=self.header, params=params).json()
+            
+            if "resources" not in resp:
+                logging.warning(str(resp))
+                break
+            results.extend(resp["resources"])
+            
+            # Handle pagination
+            next_token = resp.get("next_page_token")
+            if not next_token:
+                break
+            
+            params["page_token"] = next_token
+
+        
+        return results
+    
+
     @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
     @refresh_token
     def post_workflow_executions(self, obj_data):
@@ -262,19 +303,34 @@ class NmdcRuntimeApi:
             resp.raise_for_status()
         return resp.json()
 
+    @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
+    @refresh_token
+    def create_job(self, job_obj):
+        url = "%sjobs" % (self._base_url)
+        resp = requests.post(url, headers=self.header, data=json.dumps(job_obj))
+        if not resp.ok:
+            resp.raise_for_status()
+        return resp.json()
+    
+    
     # TODO test that this concatenates multi-page results
     @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
     @refresh_token
     def list_jobs(self, filt=None, max=100) -> List[dict]:
-        url = "%sjobs?max_page_size=%s" % (self._base_url, max)
-        d = {}
+        url = "%sjobs" % (self._base_url) 
+
+        params = {
+            "max_page_size": max
+        }
         if filt:
-            url += "&filter=%s" % (json.dumps(filt))
-        orig_url = url
+            #url += "&filter=%s" % (json.dumps(filt))
+            params["filter"] = json.dumps(filt)
+        
         results = []
         while True:
-            resp = requests.get(url, data=json.dumps(d), headers=self.header)
+            resp = requests.get(url, headers=self.header, params=params)
             if resp.status_code != 200:
+                # todo make this exit with failure more cleanly -jlp 20251104
                 resp.raise_for_status()
             try:
                 response_json = resp.json()
@@ -284,10 +340,16 @@ class NmdcRuntimeApi:
             if "resources" not in response_json:
                 logging.warning(str(response_json))
                 break
+            
             results.extend(response_json["resources"])
-            if "next_page_token" not in response_json or not response_json["next_page_token"]:
+            
+            # Handle pagination
+            next_token = response_json.get("next_page_token")
+            if not next_token:
                 break
-            url = orig_url + "&page_token=%s" % (response_json["next_page_token"])
+            
+            params["page_token"] = next_token
+
         return results
 
     @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
@@ -352,13 +414,12 @@ class NmdcRuntimeApi:
     @refresh_token
     def list_ops(self, filt=None, max_page_size=40):
         url = "%soperations?max_page_size=%d" % (self._base_url, max_page_size)
-        d = {}
         if filt:
             url += "&filter=%s" % (json.dumps(filt))
         orig_url = url
         results = []
         while True:
-            resp = requests.get(url, data=json.dumps(d), headers=self.header).json()
+            resp = requests.get(url, headers=self.header).json()
             if "resources" not in resp:
                 logging.warning(str(resp))
                 break
@@ -404,14 +465,56 @@ class NmdcRuntimeApi:
             resp.raise_for_status()
         return resp.json()
 
+    def _run_query_single(self, query):
+        url = "%squeries:run" % self._base_url
+        try:
+            resp = requests.post(url, headers=self.header, data=json.dumps(query))
+            if not resp.ok:
+                resp.raise_for_status()
+            return resp.json()
+        
+        except HTTPError as e:
+            logger.error("HTTP Error occurred during query execution.")
+            logger.error(f"Status Code: {e.response.status_code}")
+            logger.error(f"Response Body: {e.response.text}")
+        
+            raise e
+    
     @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
     @refresh_token
     def run_query(self, query):
-        url = "%squeries:run" % self._base_url
-        resp = requests.post(url, headers=self.header, data=json.dumps(query))
-        if not resp.ok:
-            resp.raise_for_status()
-        return resp.json()
+    # Executes the initial query and handles cursor-based pagination to retrieve ALL results.
+    
+        all_results = []
+        cursor_id = None
+        current_command = query
+        
+        while True:
+            # Determine the command to send (initial query or getMore)
+            if cursor_id is not None:
+                # Subsequent call: Use the getMore command
+                current_command = {
+                    "getMore": cursor_id,
+                    # Include collection name if required by API for getMore
+                    #"collection": initial_query.get("aggregate")
+                }
+            
+            # Execute the query 
+            response_data = self._run_query_single(current_command) 
+
+            cursor = response_data.get("cursor", {})
+            batch = cursor.get("batch", [])
+            all_results.extend(batch)
+            
+            new_cursor_id = cursor.get("id")
+            
+            if new_cursor_id:
+                cursor_id = new_cursor_id
+            else:
+                break
+                
+        return all_results
+
 
     @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
     def find_planned_processes(self, filter: dict):
