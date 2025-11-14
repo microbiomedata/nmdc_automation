@@ -268,7 +268,7 @@
       "done": false,
       "start": "2025-03-20T02:55:39.157169+00:00",
       "cromwell_jobid": "8f4e1a0b-ca5c-455b-9db6-30957bcf4b4a",
-      "last_status": "Succeeded",
+      "last_status": "succeeded",
       "nmdc_jobid": "nmdc:c18fb5f8-0536-11f0-9035-be45b851a8f7",
       "end": "2025-03-20T02:58:38.414Z"
     }

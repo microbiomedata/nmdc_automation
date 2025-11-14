@@ -1,4 +1,3 @@
-import copy
 import json
 from pathlib import PosixPath, Path
 
@@ -7,7 +6,7 @@ from pytest import fixture
 from unittest import mock
 import requests_mock
 import shutil
-from unittest.mock import mock_open, patch, PropertyMock, Mock
+from unittest.mock import patch, PropertyMock, Mock, MagicMock
 
 from nmdc_schema.nmdc import Database
 from nmdc_automation.workflow_automation.watch_nmdc import (
@@ -16,8 +15,9 @@ from nmdc_automation.workflow_automation.watch_nmdc import (
     JobManager,
     RuntimeApiHandler,
 )
+from nmdc_automation.api.nmdcapi import NmdcRuntimeApi
 from nmdc_automation.workflow_automation.wfutils import WorkflowJob
-from tests.fixtures import db_utils
+from tests.fixtures.db_utils import load_fixture, reset_db
 
 
 # FileHandler init tests
@@ -375,7 +375,7 @@ def test_job_manager_process_successful_job(site_config, initial_state_file_1_fa
         assert db
         assert isinstance(db, Database)
         assert new_job.done
-        assert new_job.job_status == "Succeeded"
+        assert new_job.job_status.lower() == "succeeded"
         # cleanup
         jm.job_cache = []
 
@@ -399,7 +399,7 @@ def test_job_manager_get_finished_jobs_1_failure(site_config, initial_state_file
         assert not successful_jobs
         assert failed_jobs
         failed_job = failed_jobs[0]
-        assert failed_job.job_status == "Failed"
+        assert failed_job.job_status.lower() == "failed"
 
 @mock.patch("nmdc_automation.workflow_automation.wfutils.WorkflowStateManager.generate_submission_files")
 def test_job_manager_process_failed_job_1_failure(
@@ -432,7 +432,7 @@ def test_job_manager_process_failed_job_2_failures(site_config, initial_state_fi
     jm.process_failed_job(failed_job)
     # Assert
     assert failed_job.done
-    assert failed_job.job_status == "Failed"
+    assert failed_job.job_status.lower() == "failed"
 
 def test_job_manager_process_successful_manifest_job(site_config, initial_state_file_1_failure, fixtures_dir, job_metadata_factory, mock_jaws_api):
     
@@ -470,6 +470,33 @@ def test_job_manager_process_successful_manifest_job(site_config, initial_state_
         # cleanup
         jm.job_cache = []
 
+def test_job_manager_get_finished_jobs_jaws_done_null(site_config, initial_state_file_1_failure, fixtures_dir, mock_jaws_api):
+    """
+    JAWS returns {"status":"done","result": null} (fixture null_result_jaws_status.json).
+    Ensure JobManager.get_finished_jobs() treats that as "null" and moves the job to failed_jobs
+    (incrementing failed_count).
+    """
+    null_job_state = json.load(open(fixtures_dir / "null_result_workflow_state.json"))
+    null_jaws_resp = json.load(open(fixtures_dir / "null_result_jaws_status.json"))
+    fh = FileHandler(site_config, initial_state_file_1_failure)
+    jm = JobManager(site_config, fh, jaws_api=mock_jaws_api)
+    null_job = WorkflowJob(site_config = site_config, workflow_state= null_job_state, jaws_api = mock_jaws_api, job_metadata = null_jaws_resp,)
+    jm.prepare_and_cache_new_job(null_job, null_job_state["claims"][0]["op_id"])
+    assert len(jm.job_cache) == 2
+
+    # mock the logic in jaws_api.get_job_status to return null_jaws_resp
+    job_status = ""
+    if null_jaws_resp['status'] != 'done':
+        job_status =  'running'
+    else:
+        job_status = null_jaws_resp['result']
+        # If the status is 'done' then return the result key
+    assert job_status is None
+
+    with patch("nmdc_automation.workflow_automation.wfutils.JawsRunner.get_job_status", return_value = job_status): # as mock_get_job_status:
+        successful_jobs, failed_jobs = jm.get_finished_jobs()
+        assert not successful_jobs
+        assert len(failed_jobs) == 2
 
 @fixture
 def mock_runtime_api_handler(site_config, mock_api):
@@ -525,6 +552,7 @@ def test_claim_manifest_job(mock_submit, site_config_file, site_config, fixtures
         # Assert
         assert unclaimed_wfj.job_status 
 
+
 @mock.patch("nmdc_automation.workflow_automation.wfutils.WorkflowStateManager.generate_submission_files")
 def test_write_jaws_status_to_state(mock_generate_submission_files, site_config_file, site_config, fixtures_dir, mock_jaws_api):
     '''
@@ -551,16 +579,58 @@ def test_write_jaws_status_to_state(mock_generate_submission_files, site_config_
         # Assert
         assert unclaimed_wfj.job_status 
 
-def test_runtime_manager_get_unclaimed_jobs(site_config, initial_state_file_1_failure, fixtures_dir, mock_api):
-    # Arrange
-    rt = RuntimeApiHandler(site_config)
-    # Act
-    unclaimed_jobs = rt.get_unclaimed_jobs(rt.config.allowed_workflows)
-    # Assert
-    assert unclaimed_jobs
+
+#def test_runtime_manager_get_unclaimed_jobs(site_config, initial_state_file_1_failure, fixtures_dir, mock_api):
+def test_runtime_manager_get_unclaimed_jobs(site_config, test_data_dir, test_db, test_client):
+    
+    reset_db(test_db)
+    load_fixture(test_db, "job_req_3.json", "jobs")
+
+    # Need to bypass the default list_jobs side_effect so that it uses this mock data instead
+    n = test_client    
+    if isinstance(n, MagicMock):
+    
+        with requests_mock.Mocker() as m:
+            
+            # --- CONSOLIDATED MOCK SETUP ---
+
+            # 1. MOCK THE /token ENDPOINT (Essential for real code to auth)
+            m.post("http://localhost:8000/token", json={
+                "access_token": "FAKE_TOKEN_FROM_MOCKER",
+                "token_type": "Bearer",
+                "expires_in": 3600
+            })
+            
+            # 2. MOCK THE PRIMARY /jobs ENDPOINT (Test Data)
+            rqcf = test_data_dir / "rqc_response2.json"
+            with open(rqcf, 'r') as f:
+                rqc = json.load(f)
+            rqc_resp = {"resources": [rqc]}
+            m.get("http://localhost:8000/jobs", json=rqc_resp)
+            
+            # 3. Restore the list_jobs implementation (to hit the mocks above)
+            n.list_jobs.side_effect = lambda *args, **kwargs: NmdcRuntimeApi.list_jobs(
+                n, *args, **kwargs
+            )
+
+            # 4. Initialize and Run the test within the Mocker context
+            rt = RuntimeApiHandler(site_config, jaws_api=None, runtime_api=n)
+
+            # Act
+            unclaimed_jobs = rt.get_unclaimed_jobs(rt.config.allowed_workflows)
+            
+            # Assert
+            assert unclaimed_jobs
+    else:
+        rt = RuntimeApiHandler(site_config, jaws_api=None, runtime_api=n)
+
+        # Act
+        unclaimed_jobs = rt.get_unclaimed_jobs(rt.config.allowed_workflows)
+        # Assert
+        assert unclaimed_jobs
 
 
-def test_reclaim_job(requests_mock, site_config_file, mock_api):
+def test_reclaim_job(requests_mock, site_config_file, test_client):
     requests_mock.real_http = True
 
     w = Watcher(site_config_file)
@@ -585,5 +655,5 @@ def test_watcher_restore_from_checkpoint_and_report(site_config_file, fixtures_d
     rpt = reports[0]
     assert rpt
     assert rpt['wdl'] == "mbin_nmdc.wdl"
-    assert rpt['last_status'] == "Failed"
+    assert rpt['last_status'] == "failed"
 
