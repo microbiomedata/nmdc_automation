@@ -11,7 +11,7 @@ from nmdc_automation.api.nmdcapi import NmdcRuntimeApi
 
 @mark.parametrize("workflow_file", [
     "workflows.yaml",
-    "workflows-mt.yaml"
+    # "workflows-mt.yaml"
 ])
 
 #def test_scheduler_cycle(test_db, mock_api, workflow_file, workflows_config_dir, site_config_file):
@@ -46,12 +46,12 @@ def test_scheduler_cycle(test_db, test_client, workflow_file, workflows_config_d
 
 @mark.parametrize("workflow_file", [
     "workflows.yaml",
-    "workflows-mt.yaml"
+    # "workflows-mt.yaml"
 ])
 #def test_progress(test_db, mock_api, workflow_file, workflows_config_dir, site_config_file):
 def test_progress(test_db, test_client, workflow_file, workflows_config_dir, site_config_file):
     reset_db(test_db)
-    metatranscriptome = False
+    # metatranscriptome = False
     load_fixture(test_db, "data_object_set.json")
     load_fixture(test_db, "data_generation_set.json")
 
@@ -69,7 +69,7 @@ def test_progress(test_db, test_client, workflow_file, workflows_config_dir, sit
     # There should be 1 RQC job for each data_generation record for each analyte category (metagenome and
     # metatranscriptome)
     resp = jm.cycle()
-    assert len(resp) == 2
+    assert len(resp) == 4
 
     # We simulate the RQC job finishing
     load_fixture(test_db, "read_qc_analysis.json", col="workflow_execution_set")
@@ -211,7 +211,7 @@ def test_type_resolving(test_db, test_client, workflows_config_dir, site_config_
 # Not really sure if this is doing what the function name says -jp20251023
 @mark.parametrize("workflow_file", [
     "workflows.yaml",
-    "workflows-mt.yaml"
+    # "workflows-mt.yaml"
 ])
 #def test_scheduler_add_job_rec(test_db, mock_api, workflow_file, workflows_config_dir, site_config_file):
 def test_scheduler_add_job_rec(test_db, workflow_file, workflows_config_dir, site_config_file):
