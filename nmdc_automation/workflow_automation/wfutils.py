@@ -292,6 +292,7 @@ class JawsRunner(JobRunnerABC):
         """ Set the metadata """
         self._metadata = metadata
 
+    @property
     def max_retries(self) -> int:
         """ Get the maximum number of retries - Set this at 1 for now """
         return DEFAULT_MAX_RETRIES
@@ -722,6 +723,11 @@ class WorkflowJob:
             status = "Succeeded"
         elif self.workflow.state.get("last_status") == "Failed" and failed_count >= self.job.max_retries:
             status = "Failed"
+        # Compare to, if this is from jaws, the status is "succeeded" or "failed"
+        elif self.workflow.state.get("last_status") == "succeeded": 
+            status = "succeeded"
+        elif self.workflow.state.get("last_status") == "failed" and failed_count >= self.job.max_retries:
+            status = "failed"
         else:
             status = self.job.get_job_status()
             self.workflow.update_state({"last_status": status})
