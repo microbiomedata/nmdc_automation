@@ -12,11 +12,11 @@ from pathlib import Path
 from itertools import chain
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
-
-from nmdc_automation.db.nmdc_mongo import get_db
-from nmdc_automation.models.wfe_file_stages import JGISample, JGISequencingProject
-from typing import List, Dict, Any
 from pydantic import ValidationError
+
+from nmdc_automation.models.wfe_file_stages import JGISample, JGISequencingProject
+from nmdc_api_utilities.data_staging import JGISampleSearchAPI, JGISequencingProjectAPI
+from nmdc_automation.config import SiteConfig
 
 logging.basicConfig(filename='file_staging.log',
                     format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s',
@@ -68,7 +68,7 @@ def get_request(url: str, ACCESS_TOKEN: str) -> List[Dict[str, Any]]:
         raise requests.exceptions.RequestException(f"Error {response.status_code}: {response.text}")
 
 
-def get_samples_data(project_name: str, config_file: str, mdb, csv_file: str = None) -> None:
+def get_samples_data(project_name: str, config_file: str, site_configuration, csv_file: str = None) -> None:
     """
     Get JGI sample metadata using the gold API and store in a mongodb
     :param project_name: Name of project_name (e.g., GROW, Bioscales, NEON)
@@ -80,7 +80,10 @@ def get_samples_data(project_name: str, config_file: str, mdb, csv_file: str = N
     config = configparser.ConfigParser()
     config.read(config_file)
     ACCESS_TOKEN = get_access_token()
-    seq_project = mdb.sequencing_projects.find_one({'project_name': project_name})
+    seq_project = JGISequencingProjectAPI(env=site_configuration.env, 
+                                          client_id=site_configuration.client_id, 
+                                          client_secret=site_configuration.client_secret
+                                          ).get_jgi_sequencing_project(project_name)
     if csv_file is not None:
         gold_analysis_files_df = pd.read_csv(csv_file)
     else:
@@ -94,7 +97,10 @@ def get_samples_data(project_name: str, config_file: str, mdb, csv_file: str = N
 
     sample_objects = sample_records_to_sample_objects(gold_analysis_files_df.to_dict('records'))
     if len(sample_objects) > 0:
-        mdb.samples.insert_many(sample_objects)
+        jgi_sample_api = JGISampleSearchAPI(client_id=site_configuration.client_id, client_secret=site_configuration.client_secret)
+        for sample_object in sample_objects:
+            logging.debug(f'Inserting sample: {sample_object}')
+            jgi_sample_api.insert_jgi_sample(sample_object)
         logging.info(f"Inserted {len(sample_objects)} samples into mongodb")
 
 
@@ -325,7 +331,7 @@ def get_nmdc_study_id(proposal_id: int, ACCESS_TOKEN: str, config: configparser.
     return response_json['resources'][0]['id']
 
 
-def insert_new_project_into_mongodb(config_file: str, mdb) -> None:
+def insert_new_project_into_mongodb(config_file: str, site_configuration: SiteConfig) -> None:
     """
     Create a new project in mongodb
     """
@@ -336,14 +342,17 @@ def insert_new_project_into_mongodb(config_file: str, mdb) -> None:
 
     insert_dict = {'proposal_id': config['PROJECT']['proposal_id'], 'project_name': config['PROJECT']['name'],
                    'nmdc_study_id': nmdc_study_id, 'analysis_projects_dir': config['PROJECT']['analysis_projects_dir']}
-    insert_object = SequencingProject(**insert_dict)
-    mdb.sequencing_projects.insert_one(insert_object.dict())
+    insert_object = JGISequencingProject(**insert_dict)
+    
+    jgi_sequencing_project = JGISequencingProjectAPI()
+    jgi_sequencing_project.create_jgi_sequencing_project(insert_object.dict(), site_configuration.client_id, site_configuration.client_secret)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('project_name')
     parser.add_argument('config_file')
+    parser.add_argument('site_config_file')
     parser.add_argument('-i', '--insert_project', action='store_true',
                         help='insert new project into mongodb',
                         default=False)
@@ -354,9 +363,9 @@ if __name__ == '__main__':
     config_file = args['config_file']
     insert_project = args['insert_project']
     file = args['file']
-    mdb = get_db()
+    site_configuration = SiteConfig(args['site_config_file'])
     if insert_project:
-        insert_new_project_into_mongodb(config_file, mdb)
+        insert_new_project_into_mongodb(config_file, site_configuration)
     else:
-        get_samples_data(project_name, config_file, mdb, file)
+        get_samples_data(project_name, config_file, site_configuration, file)
         print("Sample metadata inserted into mongodb")
