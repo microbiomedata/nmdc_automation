@@ -420,13 +420,13 @@ def test_job_manager_process_failed_job_1_failure(
 
 
 
-def test_job_manager_process_failed_job_2_failures(site_config, initial_state_file_1_failure, fixtures_dir):
+def test_job_manager_process_failed_job_2_failures(site_config, initial_state_file_1_failure, fixtures_dir, mock_jaws_api):
     # Arrange
     fh = FileHandler(site_config, initial_state_file_1_failure)
-    jm = JobManager(site_config, fh)
+    jm = JobManager(site_config, fh, jaws_api=mock_jaws_api)
     failed_job_state = json.load(open(fixtures_dir / "failed_job_state_2.json"))
     assert failed_job_state
-    failed_job = WorkflowJob(site_config, failed_job_state)
+    failed_job = WorkflowJob(site_config, failed_job_state, jaws_api=mock_jaws_api)
     jm.job_cache.append(failed_job)
     # Act
     jm.process_failed_job(failed_job)

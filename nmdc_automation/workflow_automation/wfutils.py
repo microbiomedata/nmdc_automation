@@ -297,6 +297,7 @@ class JawsRunner(JobRunnerABC):
         """ Set the metadata """
         self._metadata = metadata
 
+    @property
     def max_retries(self) -> int:
         """ Get the maximum number of retries - Set this at 1 for now """
         return DEFAULT_MAX_RETRIES
