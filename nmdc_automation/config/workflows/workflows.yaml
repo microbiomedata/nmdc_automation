@@ -371,7 +371,7 @@ Workflows:
     Enabled: True
     Analyte Category: Metagenome
     Git_repo: https://github.com/microbiomedata/ReadbasedAnalysis
-    Version: v1.0.10
+    Version: v1.1.0
     WDL: ReadbasedAnalysis.wdl
     Collection: workflow_execution_set
     Predecessors:
@@ -385,42 +385,18 @@ Workflows:
       name: "Readbased Taxonomy Analysis for {id}"
       type: nmdc:ReadBasedTaxonomyAnalysis
     Outputs:
-    - output: final_gottcha2_report_tsv
-      data_object_type: GOTTCHA2 Classification Report
-      description: GOTTCHA2 Classification for {id}
-      name: GOTTCHA2 classification report file
-    - output: final_gottcha2_full_tsv
-      data_object_type: GOTTCHA2 Report Full
-      description: GOTTCHA2 Full Report for {id}
-      name: GOTTCHA2 report file
-    - output: final_gottcha2_krona_html
-      data_object_type: GOTTCHA2 Krona Plot
-      description: GOTTCHA2 Krona for {id}
-      name: GOTTCHA2 krona plot HTML file
-    - output: final_centrifuge_classification_tsv
-      data_object_type: Centrifuge Taxonomic Classification
-      description: Centrifuge Classification for {id}
-      name: Centrifuge output read classification file
-    - output: final_centrifuge_report_tsv
-      data_object_type: Centrifuge output report file
-      description: Centrifuge Report for {id}
-      name: Centrifuge Classification Report
-    - output: final_centrifuge_krona_html
-      data_object_type: Centrifuge Krona Plot
-      description: Centrifuge Krona for {id}
-      name: Centrifug krona plot HTML file
-    - output: final_kraken2_classification_tsv
-      data_object_type: Kraken2 Taxonomic Classification
-      description: Kraken2 Classification for {id}
-      name: Kraken2 output read classification file
-    - output: final_kraken2_report_tsv
-      data_object_type: Kraken2 Classification Report
-      description: Kraken2 Report for {id}
-      name: Kraken2 output report file
-    - output: final_kraken2_krona_html
-      data_object_type: Kraken2 Krona Plot
-      description: Kraken2 Krona for {id}
-      name: Kraken2 Krona plot HTML file
+    - output: final_singlem_classification_tsv
+      data_object_type: SingleM Taxonomic Classification	
+      description: SingleM Classification for {id}
+      name: SingleM classification file
+    - output: final_singlem_report_tsv  
+      data_object_type: SingleM Clustered Report
+      description: SingleM Clustered Report for {id}
+      name: SingleM clustered report file
+    - output: final_singlem_krona_html
+      data_object_type: SingleM Krona Plot
+      description: SingleM Krona for {id}
+      name: SingleM Krona plot HTML file
     - output: info_file
       data_object_type: Read Based Analysis Info File
       description: Read based analysis info for {id}
