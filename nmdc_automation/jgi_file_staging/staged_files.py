@@ -6,10 +6,9 @@ import logging
 from pathlib import Path
 
 from WDL.Type import Boolean
-from mongomock.database import Database
-from mongomock.mongo_client import MongoClient
 
-from nmdc_automation.db.nmdc_mongo import get_db
+from nmdc_api_utilities.data_staging import JGISampleSearchAPI
+from nmdc_automation.config import SiteConfig
 
 logging.basicConfig(
     filename="file_staging.log",
@@ -19,7 +18,7 @@ logging.basicConfig(
 )
 
 
-def get_list_staged_files(project: str, config: configparser, save_file_list: Boolean = None) -> pd.DataFrame:
+def get_list_staged_files(project: str, staged_data_dir: Path, save_file_list: Boolean = None) -> pd.DataFrame:
     """
     Get list of files that have been staged to filesystem
     :param project: name of the project
@@ -27,7 +26,7 @@ def get_list_staged_files(project: str, config: configparser, save_file_list: Bo
     :param save_file_list: Save list of staged files
     """
     # project root based on current file location
-    base_dir = Path(config["PROJECT"]["analysis_projects_dir"]) / project / f"analysis_files"
+    base_dir = Path(staged_data_dir/ project / f"analysis_files")
 
 
     proj_list = []
@@ -44,7 +43,7 @@ def get_list_staged_files(project: str, config: configparser, save_file_list: Bo
 
 
 def get_list_missing_staged_files(
-    project_name:str, config: configparser, mdb: Database, save_file_list: Boolean=False
+    project_name:str, staged_file_dir, save_file_list: Boolean=False
 ) -> list:
     """
     Get list of files on file system for a project and compare to list of files in database
@@ -54,11 +53,15 @@ def get_list_missing_staged_files(
     :param save_file_list: Save list of staged files
     """
 
-    stage_df = get_list_staged_files(project_name, config, save_file_list)
+    stage_df = get_list_staged_files(project_name, staged_file_dir, save_file_list)
     stage_df["file_key"] = stage_df.apply(
         lambda x: f"{x.analysis_project}-{x.file}", axis=1
     )
-    samples_df = pd.DataFrame(mdb.samples.find({"project_name": project_name}))
+    samples_df = pd.DataFrame(
+        JGISampleSearchAPI(env=site_configuration.env, 
+                           client_id=site_configuration.client_id, 
+                           client_secret=site_configuration.client_secret
+                           ).get_jgi_samples({'sequencing_project_name':project_name}))
     samples_df["file_key"] = samples_df.apply(
         lambda x: f"{x.apGoldId}-{x.file_name}", axis=1
     )
@@ -77,6 +80,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("project_name")
     parser.add_argument("config_file")
+    parser.add_argument('site_config_file')
     parser.add_argument(
         "-s",
         "--save_file_list",
@@ -89,14 +93,12 @@ if __name__ == "__main__":
     config_file = args["config_file"]
     save_file_list = args["save_file_list"]
     # Get the database connection
-    mdb = get_db()
-    if mdb is None:
-        logging.error("MongoDB connection failed")
-        exit(1)
+    
 
     # Get the list of missing staged files
     config = configparser.ConfigParser()
     config.read(config_file)
+    site_configuration = SiteConfig(args['site_config_file'])
     missing_files = get_list_missing_staged_files(
-        project_name, config, mdb, save_file_list
+        project_name, config, site_configuration, save_file_list
     )
