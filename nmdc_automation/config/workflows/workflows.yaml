@@ -422,10 +422,10 @@ Workflows:
       description: Kraken2 Krona for {id}
       name: Kraken2 Krona plot HTML file
     - output: final_singlem_classification_tsv
-      data_object_type: SingleM Taxonomic Classification	
+      data_object_type: SingleM Taxonomic Classification
       description: SingleM Classification for {id}
       name: SingleM classification file
-    - output: final_singlem_report_tsv  
+    - output: final_singlem_report_tsv
       data_object_type: SingleM Clustered Report
       description: SingleM Clustered Report for {id}
       name: SingleM clustered report file
