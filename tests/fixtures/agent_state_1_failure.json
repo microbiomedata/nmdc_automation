@@ -209,7 +209,7 @@
             ]
         },
         "activity_id": "nmdc:wfmag-11-g7msr323.1",
-        "last_status": "Failed",
+        "last_status": "failed",
         "done": false,
         "failed_count": 1,
         "start": "2024-09-16T19:33:32.562412+00:00",

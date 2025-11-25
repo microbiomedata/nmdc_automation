@@ -251,6 +251,7 @@ class JawsRunner(JobRunnerABC):
         """
         Get the status of a job. In JAWS this is the response from the status call
         and the status and results keys.
+        To do: make different variables for status and result
         """
         logger.debug(f"Getting job status for job {self.job_id}")
         resp = self.jaws_api.status(self.job_id)
@@ -296,6 +297,7 @@ class JawsRunner(JobRunnerABC):
         """ Set the metadata """
         self._metadata = metadata
 
+    @property
     def max_retries(self) -> int:
         """ Get the maximum number of retries - Set this at 1 for now """
         return DEFAULT_MAX_RETRIES
@@ -738,6 +740,11 @@ class WorkflowJob:
         elif self.workflow.state.get("last_status") == "Failed" and failed_count >= self.job.max_retries:
             status = "Failed"
         # Compare to, if this is from jaws, the status is "succeeded" or "failed"
+        elif self.workflow.state.get("last_status") == "succeeded": 
+            status = "succeeded"
+        elif self.workflow.state.get("last_status") == "failed" and failed_count >= self.job.max_retries:
+            status = "failed"
+        # Else look it up
         else:
             status = self.job.get_job_status()
             self.workflow.update_state({"last_status": status})

@@ -117,6 +117,13 @@ class SiteConfig:
     @property
     def env(self):
         return self.config_data.get("environment", {}).get("env", None)
+    
+    @property
+    def get_local_mongodb_config(self) -> dict:
+        """Returns the [local_mongodb] section if it exists, otherwise returns an empty dict.
+           This is for local runtime testing, explicitly """
+        return self.config_data.get("local_runtime_mongodb", {})
+
 
     @property
     @lru_cache(maxsize=None)

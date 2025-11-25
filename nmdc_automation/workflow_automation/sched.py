@@ -6,7 +6,7 @@ import uuid
 import os
 from time import sleep as _sleep
 from nmdc_automation.api.nmdcapi import NmdcRuntimeApi
-from nmdc_automation.db.nmdc_mongo import get_db
+#from nmdc_automation.db.nmdc_mongo import get_db
 from nmdc_automation.workflow_automation.workflows import load_workflow_configs
 from functools import lru_cache
 from nmdc_automation.workflow_automation.workflow_process import load_workflow_process_nodes
@@ -103,14 +103,22 @@ class MissingDataObjectException(Exception):
 
 class Scheduler:
 
-    def __init__(self, db, workflow_yaml,
-                 site_conf="site_configuration.toml"):
+    #def __init__(self, db, workflow_yaml,
+    #             site_conf="site_configuration.toml"):
+    def __init__(self, workflow_yaml,
+                 site_conf="site_configuration.toml", api=None):
 
         # Init
         # wf_file = os.environ.get(_WF_YAML_ENV, wfn)
         self.workflows = load_workflow_configs(workflow_yaml)
-        self.db = db
-        self.api = NmdcRuntimeApi(site_conf)
+        #self.db = db
+        
+        # Updated to handle passed in api (for example test fixture), else initialize like usual
+        if api:
+            self.api = api
+        else:
+            self.api = NmdcRuntimeApi(site_conf)
+            
         # TODO: Make force a optional parameter
         self.force = False
         if os.environ.get("FORCE") == "1":
@@ -235,13 +243,13 @@ class Scheduler:
 
         jr = {
             "workflow": {"id": f"{wf.name}: {wf.version}"},
-            "id": self.generate_job_id(),
-            "created_at": datetime.today().replace(microsecond=0),
+            #"id": self.generate_job_id(),
+            #"created_at": datetime.today().replace(microsecond=0),
             "config": job_config,
             "claims": [],
         }
-        logger.debug(f"full job info: {jr}") #jp
-        logger.info(f'JOB RECORD: {jr["id"]}')
+
+        #logger.info(f'JOB RECORD: {jr["id"]}')
         # This would make the job record
         # print(json.dumps(ji, indent=2))
         return jr
@@ -277,16 +285,19 @@ class Scheduler:
         # We need to see if any version exist and
         # if so get its ID
         ct = 0
+        last_id = None
+        
         # Only look for ID for informed_by len=1, and handle multi later -jlp 20250722
         # This should be ok to pass the array of was_informed_by to find the workflow in mongo -jlp 20250828
         #if len(informed_by) == 1:
         q = {"was_informed_by": informed_by, "type": wf.type}
-        for doc in self.db[wf.collection].find(q):
+        #for doc in self.db[wf.collection].find(q):
+        for doc in self.api.list_from_collection(wf.collection, q, "id"):
             ct += 1
             last_id = doc["id"]
 
 
-        if ct == 0:
+        if ct == 0 or last_id is None:
             # Get an ID
             if os.environ.get("MOCK_MINT"):
                 root_id = self.mock_mint(wf.type)
@@ -306,7 +317,8 @@ class Scheduler:
         # Filter by git_repo and version
         # Find all existing jobs for this workflow
         q = {"config.git_repo": wf.git_repo, "config.release": wf.version}
-        for j in self.db.jobs.find(q):
+        #for j in self.db.jobs.find(q):
+        for j in self.api.list_jobs(q):
             # the assumption is that a job in any state has been triggered by an activity
             # that was the result of an existing (completed) job
             act = j["config"]["trigger_activity"]
@@ -404,7 +416,9 @@ class Scheduler:
         """
         This function does a single cycle of looking for new jobs
         """
-        wfp_nodes, manifest_map = load_workflow_process_nodes(self.db, self.api, self.workflows, allowlist)
+        #wfp_nodes = load_workflow_process_nodes(self.db, self.workflows, allowlist) #orig
+        #wfp_nodes = load_workflow_process_nodes(self.api, self.workflows, allowlist) #605
+        wfp_nodes, manifest_map = load_workflow_process_nodes(self.api, self.workflows, allowlist)
         if wfp_nodes:
             for wfp_node in wfp_nodes:
                 msg = f"Found workflow process node {wfp_node.id}"
@@ -439,10 +453,16 @@ class Scheduler:
                 if dryrun:
                     continue
                 try:
+                    # This jr does not have the ID until it is submitted to mongo
                     jr = self.create_job_rec(job, manifest_map)
-                    self.db.jobs.insert_one(jr)
-                    if jr:
-                        job_recs.append(jr)
+                    
+                    #self.db.jobs.insert_one(jr) #TODO replace this with create_job endpoint below
+                    complete_jr = self.api.create_job(jr)
+
+                    if complete_jr:
+                        logger.info(f'JOB RECORD: {complete_jr["id"]}')
+                        job_recs.append(complete_jr)
+                        
                 except MissingDataObjectException as e:
                     logger.warning(f"Caught missing Data Object(s) for {job.informed_by}: Skipping")
                     logger.warning(e)
@@ -459,9 +479,10 @@ def main(site_conf, wf_file):  # pragma: no cover
     Main function
     """
     # site_conf = os.environ.get("NMDC_SITE_CONF", "site_configuration.toml")
-    db = get_db()
+    #db = get_db()
     logger.info("Initializing Scheduler")
-    sched = Scheduler(db, wf_file, site_conf=site_conf)
+    #sched = Scheduler(db, wf_file, site_conf=site_conf)
+    sched = Scheduler(wf_file, site_conf=site_conf)
 
     dryrun = False
     if os.environ.get("DRYRUN") == "1":

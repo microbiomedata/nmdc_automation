@@ -1,7 +1,7 @@
 {
         "type": "MAGs: v1.3.10",
-        "jaws_jobid": 149426,
-        "nmdc_jobid": "nmdc:66cf64b6-7462-11ef-8b84-abc123456789",
+        "cromwell_jobid": "12345678-abcd-efgh-ijkl-9876543210",
+        "nmdc_jobid": "nmdc:88cf64b6-7462-11ef-8b84-abc123456789",
         "conf": {
             "git_repo": "https://github.com/microbiomedata/metaMAGs",
             "release": "v1.3.10",
@@ -207,7 +207,7 @@
             ]
         },
         "activity_id": "nmdc:wfmag-11-g7msr323.1",
-        "last_status": "failed",
+        "last_status": "Failed",
         "done": false,
         "failed_count": 2,
         "start": "2024-09-16T19:33:32.562412+00:00",

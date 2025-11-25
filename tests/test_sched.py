@@ -6,13 +6,16 @@ from unittest.mock import patch, MagicMock
 from nmdc_automation.workflow_automation.workflow_process import load_workflow_process_nodes
 from nmdc_automation.workflow_automation.workflows import load_workflow_configs
 from tests.fixtures.db_utils import init_test, load_fixture, read_json, reset_db
+from unittest.mock import patch, PropertyMock, Mock
 from nmdc_automation.api.nmdcapi import NmdcRuntimeApi
 
 @mark.parametrize("workflow_file", [
     "workflows.yaml",
     "workflows-mt.yaml"
 ])
-def test_scheduler_cycle(test_db, mock_api, workflow_file, workflows_config_dir, site_config_file):
+
+#def test_scheduler_cycle(test_db, mock_api, workflow_file, workflows_config_dir, site_config_file):
+def test_scheduler_cycle(test_db, test_client, workflow_file, workflows_config_dir, site_config_file):
     """
     Test basic job creation.
     """
@@ -29,8 +32,10 @@ def test_scheduler_cycle(test_db, mock_api, workflow_file, workflows_config_dir,
     # Scheduler will find one job to create
     exp_num_jobs_initial = 1
     exp_num_jobs_cycle_1 = 0
-    jm = Scheduler(test_db, workflow_yaml=workflows_config_dir / workflow_file,
-                   site_conf=site_config_file)
+    #jm = Scheduler(test_db, workflow_yaml=workflows_config_dir / workflow_file,
+    #               site_conf=site_config_file)
+    jm = Scheduler(workflow_yaml=workflows_config_dir / workflow_file,
+                   site_conf=site_config_file, api=test_client)
     resp = jm.cycle()
     assert len(resp) == exp_num_jobs_initial
     assert resp[0]["config"]["git_repo"] in exp_rqc_git_repos
@@ -43,7 +48,8 @@ def test_scheduler_cycle(test_db, mock_api, workflow_file, workflows_config_dir,
     "workflows.yaml",
     "workflows-mt.yaml"
 ])
-def test_progress(test_db, mock_api, workflow_file, workflows_config_dir, site_config_file):
+#def test_progress(test_db, mock_api, workflow_file, workflows_config_dir, site_config_file):
+def test_progress(test_db, test_client, workflow_file, workflows_config_dir, site_config_file):
     reset_db(test_db)
     metatranscriptome = False
     if workflow_file == "workflows-mt.yaml":
@@ -53,8 +59,11 @@ def test_progress(test_db, mock_api, workflow_file, workflows_config_dir, site_c
 
 
 
-    jm = Scheduler(test_db, workflow_yaml=workflows_config_dir / workflow_file,
-                   site_conf= site_config_file)
+    #jm = Scheduler(test_db, workflow_yaml=workflows_config_dir / workflow_file,
+    #               site_conf= site_config_file)
+    jm = Scheduler(workflow_yaml=workflows_config_dir / workflow_file,
+                   site_conf= site_config_file,
+                   api=test_client)
     workflow_by_name = dict()
     for wf in jm.workflows:
         workflow_by_name[wf.name] = wf
@@ -128,7 +137,8 @@ def test_progress(test_db, mock_api, workflow_file, workflows_config_dir, site_c
     assert len(resp) == exp_num_post_annotation_jobs
 
 
-def test_multiple_versions(test_db, mock_api, workflows_config_dir, site_config_file):
+#def test_multiple_versions(test_db, mock_api, workflows_config_dir, site_config_file):
+def test_multiple_versions(test_db, test_client, workflows_config_dir, site_config_file):
     init_test(test_db)
     reset_db(test_db)
     test_db.jobs.delete_many({})
@@ -136,8 +146,11 @@ def test_multiple_versions(test_db, mock_api, workflows_config_dir, site_config_
     load_fixture(test_db, "data_object_set.json")
     load_fixture(test_db, "data_generation_set.json")
 
-    jm = Scheduler(test_db, workflow_yaml=workflows_config_dir / "workflows.yaml",
-                   site_conf=site_config_file)
+    #jm = Scheduler(test_db, workflow_yaml=workflows_config_dir / "workflows.yaml",
+    #               site_conf=site_config_file)
+    jm = Scheduler(workflow_yaml=workflows_config_dir / "workflows.yaml",
+                   site_conf=site_config_file,
+                   api=test_client)
     workflow_by_name = dict()
     for wf in jm.workflows:
         workflow_by_name[wf.name] = wf
@@ -163,27 +176,32 @@ def test_multiple_versions(test_db, mock_api, workflows_config_dir, site_config_
     assert len(resp) == 0
 
 
-def test_out_of_range(test_db, mock_api, workflows_config_dir, site_config_file):
+#def test_out_of_range(test_db, mock_api, workflows_config_dir, site_config_file):
+def test_out_of_range(test_db, test_client, workflows_config_dir, site_config_file):
     init_test(test_db)
     reset_db(test_db)
     test_db.jobs.delete_many({})
     load_fixture(test_db, "data_object_set.json")
     load_fixture(test_db, "data_generation_set.json")
-    jm = Scheduler(test_db, workflow_yaml=workflows_config_dir / "workflows.yaml",
-                   site_conf=site_config_file)
+    #jm = Scheduler(test_db, workflow_yaml=workflows_config_dir / "workflows.yaml",
+    #               site_conf=site_config_file)
+    jm = Scheduler(workflow_yaml=workflows_config_dir / "workflows.yaml",
+                   site_conf=site_config_file,
+                   api=test_client)
     # Let's create two RQC records.  One will be in range
     # and the other will not.  We should only get new jobs
     # for the one in range.
     load_fixture(test_db, "read_qc_analysis.json", col="workflow_execution_set")
-    load_fixture(test_db, "read_qc_analysis.json", col="workflow_execution_set", version="v0.0.1")
+    load_fixture(test_db, "rqc_out_of_range.json", col="workflow_execution_set")
 
     resp = jm.cycle()
-    # there is one additional metatronscriptome rqc job from the fixture
+    # there is one additional metatranscriptome rqc job from the fixture
     assert len(resp) == 2
     resp = jm.cycle()
     assert len(resp) == 0
 
-def test_type_resolving(test_db, mock_api, workflows_config_dir, site_config_file):
+#def test_type_resolving(test_db, mock_api, workflows_config_dir, site_config_file):
+def test_type_resolving(test_db, test_client, workflows_config_dir, site_config_file):
     """
     This tests the handling when the same type is used for
     different activity types.  The desired behavior is to
@@ -194,8 +212,11 @@ def test_type_resolving(test_db, mock_api, workflows_config_dir, site_config_fil
     load_fixture(test_db, "data_generation_set.json")
     load_fixture(test_db, "read_qc_analysis.json", col="workflow_execution_set")
 
-    jm = Scheduler(test_db, workflow_yaml=workflows_config_dir / "workflows.yaml",
-                   site_conf=site_config_file)
+    #jm = Scheduler(test_db, workflow_yaml=workflows_config_dir / "workflows.yaml",
+    #               site_conf=site_config_file)
+    jm = Scheduler(workflow_yaml=workflows_config_dir / "workflows.yaml",
+                   site_conf=site_config_file,
+                   api=test_client)
     workflow_by_name = dict()
     for wf in jm.workflows:
         workflow_by_name[wf.name] = wf
@@ -209,12 +230,13 @@ def test_type_resolving(test_db, mock_api, workflows_config_dir, site_config_fil
     assert len(resp) == 2
     # assert 'annotation' in resp[1]['config']['inputs']['contig_file']
 
-
+# Not really sure if this is doing what the function name says -jp20251023
 @mark.parametrize("workflow_file", [
     "workflows.yaml",
     "workflows-mt.yaml"
 ])
-def test_scheduler_add_job_rec(test_db, mock_api, workflow_file, workflows_config_dir, site_config_file):
+#def test_scheduler_add_job_rec(test_db, mock_api, workflow_file, workflows_config_dir, site_config_file):
+def test_scheduler_add_job_rec(test_db, workflow_file, workflows_config_dir, site_config_file):
     """
     Test basic job creation.
     """
@@ -222,13 +244,16 @@ def test_scheduler_add_job_rec(test_db, mock_api, workflow_file, workflows_confi
     load_fixture(test_db, "data_object_set.json")
     load_fixture(test_db, "data_generation_set.json")
 
-    jm = Scheduler(test_db, workflow_yaml=workflows_config_dir / workflow_file,
+    #jm = Scheduler(test_db, workflow_yaml=workflows_config_dir / workflow_file,
+    #               site_conf=site_config_file)
+    jm = Scheduler(workflow_yaml=workflows_config_dir / workflow_file,
                    site_conf=site_config_file)
     # sanity check
     assert jm
 
 
-def test_scheduler_find_new_jobs(test_db, mock_api, workflows_config_dir, site_config_file):
+#def test_scheduler_find_new_jobs(test_db, mock_api, workflows_config_dir, site_config_file):
+def test_scheduler_find_new_jobs(test_db, test_client, workflows_config_dir, site_config_file):
     """
     Test finding new jobs for a realisitic scenario:
     nmdc:omprc-11-cegmwy02 has no version-current MAGsAnalysis results.  The scheduler should find
@@ -241,12 +266,17 @@ def test_scheduler_find_new_jobs(test_db, mock_api, workflows_config_dir, site_c
 
     workflow_config = load_workflow_configs(workflows_config_dir / "workflows.yaml")
 
-    workflow_process_nodes, manifest_map = load_workflow_process_nodes(test_db, mock_api, workflow_config)
+    #scheduler = Scheduler(test_db, workflow_yaml=workflows_config_dir / "workflows.yaml", site_conf=site_config_file)
+    scheduler = Scheduler(workflow_yaml=workflows_config_dir / "workflows.yaml", 
+                          site_conf=site_config_file, 
+                          api=test_client)
+    assert scheduler
+
+    workflow_process_nodes, manifest_map = load_workflow_process_nodes(scheduler.api, workflow_config)
     # sanity check
     assert workflow_process_nodes
 
-    scheduler = Scheduler(test_db, workflow_yaml=workflows_config_dir / "workflows.yaml", site_conf=site_config_file)
-    assert scheduler
+    
 
     new_jobs = []
     found_jobs = []
@@ -268,7 +298,8 @@ def test_scheduler_find_new_jobs(test_db, mock_api, workflows_config_dir, site_c
     assert job_req["config"]["input_data_objects"]
 
 
-def test_scheduler_create_job_rec_raises_missing_data_object_exception(test_db, mock_api, workflows_config_dir, site_config_file):
+#def test_scheduler_create_job_rec_raises_missing_data_object_exception(test_db, mock_api, workflows_config_dir, site_config_file):
+def test_scheduler_create_job_rec_raises_missing_data_object_exception(test_db, test_client, workflows_config_dir, site_config_file):
     """
     Test that create_job_rec raises a MissingDataObjectException for missing data files
     """
@@ -279,12 +310,15 @@ def test_scheduler_create_job_rec_raises_missing_data_object_exception(test_db, 
 
     workflow_config = load_workflow_configs(workflows_config_dir / "workflows.yaml")
 
-    workflow_process_nodes, manifest_map = load_workflow_process_nodes(test_db, mock_api, workflow_config)
+    #scheduler = Scheduler(test_db, workflow_yaml=workflows_config_dir / "workflows.yaml", site_conf=site_config_file)
+    scheduler = Scheduler(workflow_yaml=workflows_config_dir / "workflows.yaml", site_conf=site_config_file, api=test_client)
+    assert scheduler
+
+    workflow_process_nodes, manifest_map = load_workflow_process_nodes(scheduler.api, workflow_config)
     # sanity check
     assert workflow_process_nodes
 
-    scheduler = Scheduler(test_db, workflow_yaml=workflows_config_dir / "workflows.yaml", site_conf=site_config_file)
-    assert scheduler
+    
 
     new_jobs = []
     found_jobs = []
@@ -308,7 +342,8 @@ def test_scheduler_create_job_rec_raises_missing_data_object_exception(test_db, 
         job_req = scheduler.create_job_rec(new_job, manifest_map)
 
 
-def test_scheduler_create_job_rec_has_input_files_as_array(test_db, mock_api, workflows_config_dir, site_config_file):
+#def test_scheduler_create_job_rec_has_input_files_as_array(test_db, mock_api, workflows_config_dir, site_config_file):
+def test_scheduler_create_job_rec_has_input_files_as_array(test_db, test_client, workflows_config_dir, site_config_file):
     """
     Test that the input_data_objects field is an array of strings.
     """
@@ -317,9 +352,14 @@ def test_scheduler_create_job_rec_has_input_files_as_array(test_db, mock_api, wo
     load_fixture(test_db, "data_generation_set.json")
     load_fixture(test_db, "read_qc_analysis.json", col="workflow_execution_set")
 
+    #jm = Scheduler(
+    #    test_db, workflow_yaml=workflows_config_dir / "workflows.yaml",
+    #    site_conf=site_config_file
+    #    )
     jm = Scheduler(
-        test_db, workflow_yaml=workflows_config_dir / "workflows.yaml",
-        site_conf=site_config_file
+        workflow_yaml=workflows_config_dir / "workflows.yaml",
+        site_conf=site_config_file, 
+        api=test_client
         )
 
     resp = jm.cycle()
@@ -336,7 +376,7 @@ def test_scheduler_create_job_rec_has_input_files_as_array(test_db, mock_api, wo
     "job_req_2.json",
     "cancelled_job_req_2.json"
 ])
-def test_scheduler_find_new_jobs_with_existing_job(job_fixture, test_db, mock_api, workflows_config_dir, site_config_file):
+def test_scheduler_find_new_jobs_with_existing_job(job_fixture, test_db, test_client, workflows_config_dir, site_config_file):
     """
     Test that the find_new_jobs method works as expected. We load an existing job fixture so we expect no new jobs to be found.
     """
@@ -348,12 +388,15 @@ def test_scheduler_find_new_jobs_with_existing_job(job_fixture, test_db, mock_ap
 
     workflow_config = load_workflow_configs(workflows_config_dir / "workflows.yaml")
 
-    workflow_process_nodes, manifest_map = load_workflow_process_nodes(test_db, mock_api, workflow_config)
+    #scheduler = Scheduler(test_db, workflow_yaml=workflows_config_dir / "workflows.yaml", site_conf=site_config_file)
+    scheduler = Scheduler(workflow_yaml=workflows_config_dir / "workflows.yaml", site_conf=site_config_file, api=test_client)
+    assert scheduler
+
+    workflow_process_nodes, manifest_map = load_workflow_process_nodes(scheduler.api, workflow_config)
     # sanity check
     assert workflow_process_nodes
 
-    scheduler = Scheduler(test_db, workflow_yaml=workflows_config_dir / "workflows.yaml", site_conf=site_config_file)
-    assert scheduler
+    
 
     new_jobs = []
     found_jobs = []
@@ -363,7 +406,8 @@ def test_scheduler_find_new_jobs_with_existing_job(job_fixture, test_db, mock_ap
 
     assert not new_jobs
 
-def test_scheduler_find_new_jobs3(test_db, mock_api, workflows_config_dir, site_config_file):
+#def test_scheduler_find_new_jobs3(test_db, mock_api, workflows_config_dir, site_config_file):
+def test_scheduler_find_new_jobs3(test_db, test_client, workflows_config_dir, site_config_file):
     """
     Test finding new jobs where two annotations with versions within range exist. A new MAGsAnalysis
      should be scheduled only for the latest version (a current bug schedules for both 20250714).
@@ -376,12 +420,15 @@ def test_scheduler_find_new_jobs3(test_db, mock_api, workflows_config_dir, site_
 
     workflow_config = load_workflow_configs(workflows_config_dir / "workflows.yaml")
 
-    workflow_process_nodes, manifest_map = load_workflow_process_nodes(test_db, mock_api, workflow_config)
+    #scheduler = Scheduler(test_db, workflow_yaml=workflows_config_dir / "workflows.yaml", site_conf=site_config_file)
+    scheduler = Scheduler(workflow_yaml=workflows_config_dir / "workflows.yaml", site_conf=site_config_file, api=test_client)
+    assert scheduler
+
+    workflow_process_nodes, manifest_map = load_workflow_process_nodes(scheduler.api, workflow_config)
     # sanity check
     assert workflow_process_nodes
 
-    scheduler = Scheduler(test_db, workflow_yaml=workflows_config_dir / "workflows.yaml", site_conf=site_config_file)
-    assert scheduler
+    
 
     new_jobs = []
     found_jobs = []
@@ -409,7 +456,8 @@ def test_scheduler_find_new_jobs3(test_db, mock_api, workflows_config_dir, site_
     assert job_req["config"]["input_data_objects"]
 
 
-def test_scheduler_find_new_jobs_for_multi_dgns(test_db, mock_api, workflows_config_dir, site_config_file):
+#def test_scheduler_find_new_jobs_for_multi_dgns(test_db, mock_api, workflows_config_dir, site_config_file):
+def test_scheduler_find_new_jobs_for_multi_dgns(test_db, test_client, workflows_config_dir, site_config_file):
     """
     Testing where db is loaded with two data generation sets with two annotations records with versions within range exist.
     This is to ensure that the loop over each dg_execution_record is keeping track of their own set of wf execution types
@@ -422,12 +470,13 @@ def test_scheduler_find_new_jobs_for_multi_dgns(test_db, mock_api, workflows_con
 
     workflow_config = load_workflow_configs(workflows_config_dir / "workflows.yaml")
 
-    workflow_process_nodes, manifest_map = load_workflow_process_nodes(test_db, mock_api, workflow_config)
+    #scheduler = Scheduler(test_db, workflow_yaml=workflows_config_dir / "workflows.yaml", site_conf=site_config_file)
+    scheduler = Scheduler(workflow_yaml=workflows_config_dir / "workflows.yaml", site_conf=site_config_file, api=test_client)
+    assert scheduler
+
+    workflow_process_nodes, manifest_map = load_workflow_process_nodes(scheduler.api, workflow_config)
     # sanity check
     assert workflow_process_nodes
-
-    scheduler = Scheduler(test_db, workflow_yaml=workflows_config_dir / "workflows.yaml", site_conf=site_config_file)
-    assert scheduler
 
     new_jobs = []
     found_jobs = []
@@ -460,7 +509,7 @@ def test_scheduler_find_new_jobs_for_multi_dgns(test_db, mock_api, workflows_con
     assert job_req["config"]["input_data_objects"]
 
 
-def test_scheduler_cycle_manifest(test_db, workflows_config_dir, site_config_file_dev_api):
+def test_scheduler_cycle_manifest(test_db, test_client, workflows_config_dir, site_config_file):
     """
     Test basic job creation for a data generation ID that is in a manifest set.
     Should return one job scheduled for the one manifest set
@@ -469,6 +518,8 @@ def test_scheduler_cycle_manifest(test_db, workflows_config_dir, site_config_fil
     TO DO: replace live dev aggregation call for stability of offline testing 
     Results: One manifest job is scheduled, a second dgns for the same manifest is skipped, and a
     non-manifest MAGs:v1.3.16 for nmdc:wfmgan-11-6x59p192.2 is created
+    Note: this used to take in 'site_config_file_dev_api' which was a fixture to use the live dev api (risky)
+    now that we have local endpoint support, reverting back to standard config 20251104 -jlp
     """
     exp_rqc_git_repos = [
         "https://github.com/microbiomedata/ReadsQC",
@@ -489,8 +540,12 @@ def test_scheduler_cycle_manifest(test_db, workflows_config_dir, site_config_fil
     # Scheduler will find one manifest job and one MAG to create
     exp_num_jobs_initial = 2
     exp_num_jobs_cycle_1 = 0
-    jm = Scheduler(test_db, workflow_yaml=workflows_config_dir / "workflows.yaml",
-                   site_conf=site_config_file_dev_api)
+    #jm = Scheduler(test_db, workflow_yaml=workflows_config_dir / "workflows.yaml",
+    #               site_conf=site_config_file_dev_api)
+#    jm = Scheduler(workflow_yaml=workflows_config_dir / "workflows.yaml",
+#                   site_conf=site_config_file_dev, api=test_client)
+    jm = Scheduler(workflow_yaml=workflows_config_dir / "workflows.yaml",
+                   site_conf=site_config_file, api=test_client)
     
     with patch.object(jm.api, 'minter', return_value="mocked-id-123"):
         resp = jm.cycle()
@@ -502,7 +557,7 @@ def test_scheduler_cycle_manifest(test_db, workflows_config_dir, site_config_fil
         assert len(resp) == exp_num_jobs_cycle_1
 
 
-def test_scheduler_cycle_manifest_multi(test_db, workflows_config_dir, site_config_file_dev_api):
+def test_scheduler_cycle_manifest_multi(test_db, test_client, workflows_config_dir, site_config_file):
     """
     Test basic job creation for a data generation ID that is in a manifest set.
     Should return one job scheduled for the one manifest set
@@ -511,6 +566,7 @@ def test_scheduler_cycle_manifest_multi(test_db, workflows_config_dir, site_conf
     TO DO: replace live dev aggregation call for stability of offline testing 
     Results: One manifest job is scheduled, a second dgns for the same manifest is skipped, and a
     non-manifest MAGs:v1.3.16 for nmdc:wfmgan-11-6x59p192.2 is created
+    note: site_config_file_dev_api before
     """
     exp_rqc_git_repos = [
         "https://github.com/microbiomedata/ReadsQC",
@@ -526,8 +582,8 @@ def test_scheduler_cycle_manifest_multi(test_db, workflows_config_dir, site_conf
     # Scheduler will find two manifest jobs
     exp_num_jobs_initial = 2
     exp_num_jobs_cycle_1 = 0
-    jm = Scheduler(test_db, workflow_yaml=workflows_config_dir / "workflows.yaml",
-                   site_conf=site_config_file_dev_api)
+    jm = Scheduler(workflow_yaml=workflows_config_dir / "workflows.yaml",
+                   site_conf=site_config_file, api=test_client)
     
     with patch.object(jm.api, 'minter', return_value="mocked-id-123"):
         resp = jm.cycle()
@@ -539,7 +595,7 @@ def test_scheduler_cycle_manifest_multi(test_db, workflows_config_dir, site_conf
         assert len(resp) == exp_num_jobs_cycle_1
 
 
-def test_scheduler_mock_api(test_db, mock_api, workflows_config_dir, site_config_file):
+def test_scheduler_mock_api(test_db, mock_api_small, workflows_config_dir, site_config_file):
     """ 
     Patch the NmdcRuntimeApi class itself as it's seen by the Scheduler module.
     The patch targets the class itself BEFORE instantiation.
@@ -556,7 +612,7 @@ def test_scheduler_mock_api(test_db, mock_api, workflows_config_dir, site_config
         # This is where you specify the mock's behavior.
         mock_api_instance.minter.return_value = 'mocked-id-123'
     
-        jm = Scheduler(test_db, workflow_yaml=workflows_config_dir / "workflows.yaml",
+        jm = Scheduler(workflow_yaml=workflows_config_dir / "workflows.yaml",
                        site_conf=site_config_file)
         
         minted_id = jm.api.minter("test")
@@ -564,7 +620,7 @@ def test_scheduler_mock_api(test_db, mock_api, workflows_config_dir, site_config
         assert minted_id == 'mocked-id-123'
 
 
-def test_scheduler_mock_minter(test_db, mock_api, workflows_config_dir, site_config_file_dev_api):
+def test_scheduler_mock_minter(test_db, test_client, workflows_config_dir, site_config_file):
     """ 
     Patch the NmdcRuntimeApi class itself as it's seen by the Scheduler module.
     The patch targets the class instantiation. This tests that when the site config is
@@ -575,8 +631,8 @@ def test_scheduler_mock_minter(test_db, mock_api, workflows_config_dir, site_con
     load_fixture(test_db, "data_object_set.json")
     load_fixture(test_db, "data_generation_set.json")
 
-    jm = Scheduler(test_db, workflow_yaml=workflows_config_dir / "workflows.yaml",
-                       site_conf=site_config_file_dev_api)
+    jm = Scheduler(workflow_yaml=workflows_config_dir / "workflows.yaml",
+                       site_conf=site_config_file, api=test_client)
     
     with patch.object(jm.api, 'minter', return_value="mocked-id-123"):
         resp = jm.cycle()
