@@ -35,11 +35,12 @@ def test_load_workflow_process_nodes(test_db, test_client, workflow_file, workfl
 
    # sanity checking these - they are used in the next step
     data_objs_by_id = get_required_data_objects_map(test_client, workflow_configs)
-    current_nodes = get_current_workflow_process_nodes(test_client, workflow_configs, data_objs_by_id)
+    current_nodes, manifest_map = get_current_workflow_process_nodes(test_client, workflow_configs, data_objs_by_id)
     assert current_nodes
     assert len(current_nodes) == 2
 
-    workflow_process_nodes = load_workflow_process_nodes(test_client, workflow_configs)
+    workflow_process_nodes, manifest_map = load_workflow_process_nodes(test_client, workflow_configs)
+
     # sanity check
     assert workflow_process_nodes
     assert len(workflow_process_nodes) == 2
@@ -102,7 +103,7 @@ def test_load_workflow_process_nodes_with_obsolete_versions(test_db, test_client
 
     # testing functions that are called by load_workflow_process_nodes
     # get_current_workflow_process_nodes
-    current_nodes = get_current_workflow_process_nodes(test_client, workflow_config, data_objs_by_id)
+    current_nodes, manifest_map = get_current_workflow_process_nodes(test_client, workflow_config, data_objs_by_id)
     assert current_nodes
     assert len(current_nodes) == exp_num_current_nodes
     current_node_types = [node.type for node in current_nodes]
@@ -142,7 +143,7 @@ def test_resolve_relationships(test_db, test_client, workflows_config_dir):
 
     workflow_config = load_workflow_configs(workflows_config_dir / "workflows.yaml")
     data_objs_by_id = get_required_data_objects_map(test_client, workflow_config)
-    current_nodes = get_current_workflow_process_nodes(test_client, workflow_config, data_objs_by_id)
+    current_nodes, manifest_map = get_current_workflow_process_nodes(test_client, workflow_config, data_objs_by_id)
     current_nodes_by_data_object_id, current_nodes = _map_nodes_to_data_objects(
         current_nodes, data_objs_by_id)
     assert current_nodes
