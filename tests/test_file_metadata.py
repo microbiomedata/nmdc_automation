@@ -26,7 +26,7 @@ from nmdc_automation.jgi_file_staging.jgi_file_metadata import (
     remove_unneeded_files,
     get_nmdc_study_id,
 )
-from nmdc_automation.jgi_file_staging.models import Sample
+from nmdc_automation.models.wfe_file_stages import JGISample as Sample
 
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
@@ -40,7 +40,7 @@ def mock_get(mocker):
 
 def test_get_nmdc_study_id(mock_get, import_config):
     ACCESS_TOKEN = 'mock_token'
-    nmdc_study_id = get_nmdc_study_id(import_config['PROJECT']['proposal_id'], ACCESS_TOKEN, import_config)
+    nmdc_study_id = get_nmdc_study_id(import_config['PROJECT']['jgi_proposal_id'], ACCESS_TOKEN, import_config)
     assert nmdc_study_id == import_config['PROJECT']['nmdc_study_id']
 
     import_config['PROJECT']['nmdc_study_id'] = ''
@@ -49,7 +49,7 @@ def test_get_nmdc_study_id(mock_get, import_config):
    'websites': [],}]}
     mock_get.return_value.status_code = 200
 
-    nmdc_study_id = get_nmdc_study_id(import_config['PROJECT']['proposal_id'], ACCESS_TOKEN, import_config)
+    nmdc_study_id = get_nmdc_study_id(import_config['PROJECT']['jgi_proposal_id'], ACCESS_TOKEN, import_config)
     assert nmdc_study_id == 'nmdc:sty-11-28tm5d36'
 
 def test_get_access_token(mock_get):
@@ -104,7 +104,7 @@ def test_get_sequence_id(mock_get, import_config, fixtures_dir):
     assert sequence_id == []
 
 
-def test_get_analysis_projects_from_proposal_id(mock_get):
+def test_get_analysis_projects_from_jgi_proposal_id(mock_get):
     mock_data = pd.read_csv(Path.joinpath(FIXTURE_DIR, "grow_gold_analysis_projects.csv")).to_dict("records")
     mock_get.return_value.status_code = 200
     mock_get.return_value.json.return_value = mock_data
@@ -280,7 +280,7 @@ def test_get_samples_data_with_csv(mock_sample_objects, mock_get_token, mock_con
     csv_file = tmp_path / 'test.csv'
     csv_data.to_csv(csv_file, index=False)
 
-    test_db.sequencing_projects.insert_one({'project_name': 'GROW', 'proposal_id': 'test_proposal'})
+    test_db.sequencing_projects.insert_one({'sequencing_project_name': 'GROW', 'jgi_proposal_id': 'test_proposal'})
 
     with patch('nmdc_automation.jgi_file_staging.jgi_file_metadata.pd.read_csv', return_value=csv_data):
         get_samples_data('GROW', 'mock_config.ini', test_db, str(csv_file))
