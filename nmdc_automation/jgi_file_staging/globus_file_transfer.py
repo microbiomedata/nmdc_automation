@@ -190,6 +190,10 @@ def submit_globus_batch_file(project: str, config_file: str, site_configuration:
 
 
 def insert_globus_status_into_mongodb(task_id: str, task_status: str, site_configuration):
+    """
+    Insert globus task into MongoDB via the GlobusTaskAPI
+    :param task_id: globus task id
+    :param task_status: task status"""
     globus_api = GlobusTaskAPI(env=site_configuration.env,
                               client_id=site_configuration.client_id, 
                               client_secret=site_configuration.client_secret)
@@ -197,11 +201,20 @@ def insert_globus_status_into_mongodb(task_id: str, task_status: str, site_confi
 
 
 def get_globus_task_status(task_id: str):
+    """
+    Get globus task status via the globus CLI
+    :param task_id: globus task id
+    :return: task status"""
     output = subprocess.run(['globus', 'task', 'show', task_id], capture_output=True, text=True)
     return output.stdout.split('\n')[6].split(':')[1].strip()
 
 
 def update_globus_task_status(task_id: str, task_status: str, site_configuration):
+    """
+    Update globus task status in MongoDB via the GlobusTaskAPI
+    :param task_id: globus task id
+    :param task_status: new task status
+    :param site_configuration: Site configuration object"""
     globus_api = GlobusTaskAPI(env=site_configuration.env,
                               client_id=site_configuration.client_id, 
                               client_secret=site_configuration.client_secret
