@@ -11,7 +11,6 @@ from tests.fixtures import db_utils
 from nmdc_automation.jgi_file_staging.mapping_tsv import (
     get_gold_ids,
     get_gold_analysis_project,
-    get_study_id,
     create_mapping_tsv,
 )
 from nmdc_automation.models.wfe_file_stages import JGISequencingProject
