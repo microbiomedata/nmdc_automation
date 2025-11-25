@@ -205,6 +205,9 @@ def get_sequence_id(biosample_id: str, ACCESS_TOKEN: str) -> List[str]:
 
 
 def get_analysis_projects_from_proposal_id(proposal_id: int, ACCESS_TOKEN: str) -> List[dict]:
+    """
+    Get Metagenome and Metatranscriptome analysis projects from Gold using the proposal id
+    """
     gold_analysis_url = f'https://gold-ws.jgi.doe.gov/api/v1/analysis_projects?itsProposalId={proposal_id}'
     gold_analysis_data = get_request(gold_analysis_url, ACCESS_TOKEN)
     ap_type_gold_analysis_data = [proj for proj in gold_analysis_data if
@@ -213,7 +216,9 @@ def get_analysis_projects_from_proposal_id(proposal_id: int, ACCESS_TOKEN: str) 
 
 
 def get_files_and_agg_ids(sequencing_id: str, ACCESS_TOKEN: str) -> List[dict]:
-    # Given a JGI sequencing ID, get the list of files and agg_ids associated with the biosample
+    """ 
+    Given a JGI sequencing ID, get the list of files and agg_ids associated with the biosample 
+    """
     logging.debug(f"sequencing_id {sequencing_id}")
     seqid_url = f"https://files.jgi.doe.gov/search/?q={sequencing_id}&f=project_id&a=false&h=false&d=asc&p=1&x=10&api_version=2"
     files_data = get_request(seqid_url, ACCESS_TOKEN)
@@ -225,6 +230,9 @@ def get_files_and_agg_ids(sequencing_id: str, ACCESS_TOKEN: str) -> List[dict]:
 
 
 def create_all_files_list(sample_files_list, biosample_id, seq_id, all_files_list) -> None:
+    """
+    Create list of dicts of sample data. Goes through each sample and grabs only the information we need. 
+    """
     for sample in sample_files_list:
         for files_dict in sample['files']:
             seq_unit_name = None if 'seq_unit_name' not in files_dict['metadata'].keys() else files_dict['metadata'][
@@ -258,6 +266,11 @@ def remove_unneeded_files(seq_files_df: pd.DataFrame, remove_files_list: list) -
 
 
 def remove_large_files(seq_files_df: pd.DataFrame, remove_files_list: list) -> pd.DataFrame:
+    """
+    remove large files from seq_files_df
+    :param seq_files_df:
+    :param remove_files_list:
+    :return: DataFrame"""
     pattern = '|'.join(remove_files_list)
     return seq_files_df[~(seq_files_df.file_name.str.contains(pattern))]
 
@@ -285,7 +298,12 @@ def remove_duplicate_analysis_files(seq_files_df: pd.DataFrame) -> pd.DataFrame:
     return seq_files_df
 
 
-def get_seq_unit_names(analysis_files_df, gold_id):
+def get_seq_unit_names(analysis_files_df: pd.DataFrame, gold_id: str) -> List[str]:
+    """
+    Get list of seq unit names for a given gold id
+    :param analysis_files_df:
+    :param gold_id:
+    :return: list of seq unit names"""
     seq_unit_names = []
     for idx, row in analysis_files_df.loc[pd.notna(analysis_files_df.seq_unit_name)
                                           & (analysis_files_df.apGoldId == gold_id)
@@ -333,7 +351,9 @@ def get_nmdc_study_id(proposal_id: int, ACCESS_TOKEN: str, config: configparser.
 
 def insert_new_project_into_mongodb(config_file: str, site_configuration: SiteConfig) -> None:
     """
-    Create a new project in mongodb
+    Create a new project in mongodb via the JGISequencingProjectAPI
+    :param config_file: Config file with parameters
+    :param site_configuration: Site configuration object    
     """
     config = configparser.ConfigParser()
     config.read(config_file)
