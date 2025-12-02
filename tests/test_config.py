@@ -23,6 +23,7 @@ def test_config(monkeypatch, test_data_dir, base_test_dir):
     assert conf.client_id
     assert conf.client_secret
     assert conf.allowed_workflows
+    assert conf.env == "dev"
 
 
 def test_config_missing(monkeypatch):

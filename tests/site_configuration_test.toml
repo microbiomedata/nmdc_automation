@@ -13,7 +13,7 @@ resource = "NERSC-Perlmutter"
 site = "Processing Site"
 
 [nmdc]
-url_root = "https://data.microbiomedata.org/data/"
+url_root = "https://data.microbiomedata.org/data/dev"
 api_url = "http://localhost:8000"
 
 [state]
@@ -25,9 +25,23 @@ activity_id_state = "/Path/to/activity_id_state"
 workflows_config = "workflows.yaml"
 
 [credentials]
-client_id = "sys0wm66"
-client_secret = "O8Q!64t,^xy:"
+client_id = "generateme"
+client_secret = "generateme"
 
 [jaws]
 jaws_config = "jaws-test.conf"
 jaws_token = "jaws-test-token.conf"
+
+# Commented out by default
+# Uncomment this block if wanting to test with local runtime setup
+# make sure your runtime .env is set up accordingly
+#[local_runtime_mongodb]
+#host = "localhost"
+#port = 27018
+#username = "admin" # Use the root username defined in Docker
+#password = "root"
+#database = "test"
+#auth_source = "admin" # The database where the 'admin' user is defined
+
+[environment]
+env = "dev"

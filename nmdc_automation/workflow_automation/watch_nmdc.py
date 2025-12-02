@@ -93,14 +93,18 @@ class FileHandler:
         output_path = None
         
         # construct path from string components
-        if len(job.was_informed_by) == 1:
+        if job.manifest:
+            output_path = Path(self.config.data_dir) / job.manifest / job.workflow_execution_id
+        
+        # Still want to ensure nothing went wrong so checking the was_informed_by length
+        elif len(job.was_informed_by) == 1:
             output_path = Path(self.config.data_dir) / job.was_informed_by[0] / job.workflow_execution_id
-        #
-        # Note: This needs to be updated to handle manifest_set_records - jlp 20250722 TODO
+
         # It shouldn't get to here because the sched logic creates one-valued was_informed_by currently;
         # else something is very wrong.
         else:
-            logger.debug(f"WARN: Multi-valued was_informed_by found. Skipping output creation.")
+            logger.error(f"Error: Multi-valued was_informed_by found with manifest unset. Skipping output creation.")
+            raise ValueError("Multi-valued was_informed_by but manifest unset. Output path not found")
 
         return output_path
 
@@ -223,20 +227,22 @@ class JobManager:
         failed_jobs = []
         for job in self.job_cache:
             if not job.done:
-                if job.workflow.last_status.lower() == "succeeded" and job.opid:
+                if job.workflow.last_status == "succeeded" and job.opid:
                     successful_jobs.append(job)
                     continue
-                if job.workflow.last_status.lower() == "failed" and job.workflow.failed_count >= self._MAX_FAILS:
+                if job.workflow.last_status in ("failed", "null") and job.workflow.failed_count >= self._MAX_FAILS:
                     failed_jobs.append(job)
                     continue
-                # check status
-                status = job.job.get_job_status()
 
-                if status.lower() == "succeded":
+                # check status
+                raw_status = job.job.get_job_status()
+                status = "null" if raw_status is None else str(raw_status).strip().lower()
+
+                if status == "succeeded":
                     job.workflow.last_status = status
                     successful_jobs.append(job)
                     continue
-                elif status.lower() == "failed":
+                elif status in ("failed", "null"):
                     job.workflow.last_status = status
                     job.workflow.failed_count += 1
                     failed_jobs.append(job)
@@ -261,7 +267,7 @@ class JobManager:
         database = Database()
 
         # Update the job metadata
-        logger.info(f"Getting job metadata: for {job.was_informed_by} job{job.opid} : {job.workflow.job_runner_id}")
+        logger.info(f"Getting job metadata: for {job.was_informed_by} job {job.opid} : {job.workflow.job_runner_id}")
         job.job.job_id = job.workflow.job_runner_id
         metadata = job.job.get_job_metadata()
         job.job.metadata = metadata
@@ -286,6 +292,7 @@ class JobManager:
             sys.exit(1)
         database.workflow_execution_set = [workflow_execution]
         logger.info(f"Created workflow execution record for job {job.opid}")
+        logger.debug(workflow_execution)
 
         job.done = True
         job.workflow.state["end"] = workflow_execution.ended_at_time
@@ -332,9 +339,15 @@ class JobManager:
 
 class RuntimeApiHandler:
     """ RuntimeApiHandler class for managing API calls to the runtime """
-    def __init__(self, config, jaws_api=None):
-        self.runtime_api = NmdcRuntimeApi(config)
+    def __init__(self, config, jaws_api=None, runtime_api=None):
+        #self.runtime_api = NmdcRuntimeApi(config)
         self.config = config
+        # Updated to handle passed in api (for example test fixture), else initialize like usual
+        if runtime_api:
+            self.runtime_api = runtime_api
+        else:
+            self.runtime_api = NmdcRuntimeApi(config)
+
         self.jaws_api = jaws_api
 
     def claim_job(self, job_id):

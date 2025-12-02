@@ -34,3 +34,8 @@ client_secret = "xxxxxxxx"
 jaws_config = "path/to/jaws/config"
 jaws_token = "path/to/jaws/token"
 
+[notifications]
+slack_webhook = "https://hooks.slack.com/services/000000000/B00000000/XXXXXXXXXXXXXXXX"
+
+[environment]
+env = "dev"
