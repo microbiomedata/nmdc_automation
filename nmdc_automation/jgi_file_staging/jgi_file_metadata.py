@@ -16,7 +16,7 @@ from pydantic import ValidationError
 
 from nmdc_automation.models.wfe_file_stages import JGISample, JGISequencingProject
 from nmdc_api_utilities.data_staging import JGISampleSearchAPI, JGISequencingProjectAPI
-from nmdc_automation.config import SiteConfig
+from nmdc_automation.config import SiteConfig, ProjectConfig
 
 logging.basicConfig(filename='file_staging.log',
                     format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s',
@@ -68,7 +68,7 @@ def get_request(url: str, ACCESS_TOKEN: str) -> List[Dict[str, Any]]:
         raise requests.exceptions.RequestException(f"Error {response.status_code}: {response.text}")
 
 
-def get_samples_data(project_name: str, config_file: str, site_configuration, csv_file: str = None) -> None:
+def get_samples_data(project_name: str, site_configuration, staging_configuration, csv_file: str = None) -> None:
     """
     Get JGI sample metadata using the gold API and store in a mongodb
     :param project_name: Name of project_name (e.g., GROW, Bioscales, NEON)
@@ -77,8 +77,6 @@ def get_samples_data(project_name: str, config_file: str, site_configuration, cs
     :return:
     """
     # check_restore_status()
-    config = configparser.ConfigParser()
-    config.read(config_file)
     ACCESS_TOKEN = get_access_token()
     seq_project = JGISequencingProjectAPI(env=site_configuration.env, 
                                           client_id=site_configuration.client_id, 
@@ -87,9 +85,9 @@ def get_samples_data(project_name: str, config_file: str, site_configuration, cs
     if csv_file is not None:
         gold_analysis_files_df = pd.read_csv(csv_file)
     else:
-        files_df = get_sample_files(seq_project['proposal_id'], ACCESS_TOKEN)
-        gold_analysis_files_df = get_analysis_files_df(seq_project['proposal_id'], files_df, ACCESS_TOKEN,
-                                                       eval(config['JDP']['remove_files']))
+        files_df = get_sample_files(seq_project['jgi_proposal_id'], ACCESS_TOKEN)
+        gold_analysis_files_df = get_analysis_files_df(seq_project['jgi_proposal_id'], files_df, ACCESS_TOKEN,
+                                                     staging_configuration.remove_files)
 
     gold_analysis_files_df['project_name'] = project_name
     logging.debug(f'number of samples to insert: {len(gold_analysis_files_df)}')
@@ -334,14 +332,11 @@ def sample_records_to_sample_objects(sample_records: List[Dict[str, Any]]) -> Li
     return sample_objects
 
 
-
-
-def get_nmdc_study_id(proposal_id: int, ACCESS_TOKEN: str, config: configparser.ConfigParser) -> str:
+def get_nmdc_study_id(proposal_id: int, ACCESS_TOKEN: str) -> str:
     """
     Get NMDC study from proposal id
     """
-    if config['PROJECT']['nmdc_study_id']:
-        return config['PROJECT']['nmdc_study_id']
+    
     url = f'https://api.microbiomedata.org/nmdcschema/study_set?filter= \
     {{"jgi_portal_study_identifiers":"jgi.proposal:{proposal_id}"}}'
 
@@ -349,34 +344,34 @@ def get_nmdc_study_id(proposal_id: int, ACCESS_TOKEN: str, config: configparser.
     return response_json['resources'][0]['id']
 
 
-def insert_new_project_into_mongodb(config_file: str, site_configuration: SiteConfig) -> None:
+def insert_new_project_into_mongodb(project_configuration: ProjectConfig, site_configuration: SiteConfig) -> None:
     """
     Create a new project in mongodb via the JGISequencingProjectAPI
     :param config_file: Config file with parameters
     :param site_configuration: Site configuration object    
     """
-    config = configparser.ConfigParser()
-    config.read(config_file)
+   
+    nmdc_study_id = get_nmdc_study_id(
+        project_configuration.jgi_proposal_id, get_access_token()
+        ) if not project_configuration.nmdc_study_id else project_configuration.nmdc_study_id
 
-    nmdc_study_id = get_nmdc_study_id(int(config['PROJECT']['proposal_id']), get_access_token(), config)
-
-    insert_dict = {'proposal_id': config['PROJECT']['proposal_id'], 'project_name': config['PROJECT']['name'],
-                   'nmdc_study_id': nmdc_study_id, 'analysis_projects_dir': config['PROJECT']['analysis_projects_dir']}
+    insert_dict = {'proposal_id': project_configuration.jgi_proposal_id, 'project_name': project_configuration.sequencing_project_name,
+                   'nmdc_study_id': nmdc_study_id, 'sequencing_project_description': project_configuration.sequencing_project_description}
     insert_object = JGISequencingProject(**insert_dict)
     
     jgi_sequencing_project = JGISequencingProjectAPI()
-    jgi_sequencing_project.create_jgi_sequencing_project(insert_object.dict(), site_configuration.client_id, site_configuration.client_secret)
+    jgi_sequencing_project.create_jgi_sequencing_project(insert_object.model_dump(), site_configuration.client_id, site_configuration.client_secret)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('project_name')
-    parser.add_argument('config_file')
     parser.add_argument('site_config_file')
     parser.add_argument('-i', '--insert_project', action='store_true',
                         help='insert new project into mongodb',
                         default=False)
     parser.add_argument('-f', '--file', help='csv file with files to stage')
+    parser.add_argument('-p', '--project_config_file', help='project configuration file', default='configs/project_config.toml')
     args = vars((parser.parse_args()))
 
     project_name = args['project_name']
@@ -385,7 +380,8 @@ if __name__ == '__main__':
     file = args['file']
     site_configuration = SiteConfig(args['site_config_file'])
     if insert_project:
-        insert_new_project_into_mongodb(config_file, site_configuration)
+        project_configuration = ProjectConfig(args['project_config_file'])
+        insert_new_project_into_mongodb(project_configuration, site_configuration)
     else:
         get_samples_data(project_name, config_file, site_configuration, file)
         print("Sample metadata inserted into mongodb")
