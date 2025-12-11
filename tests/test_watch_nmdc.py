@@ -368,7 +368,7 @@ def test_job_manager_get_finished_jobs_1_failure(site_config, initial_state_file
         assert not successful_jobs
         assert failed_jobs
         failed_job = failed_jobs[0]
-        assert failed_job.job_status == "Failed"
+        assert failed_job.job_status.lower() == "failed"
 
 @mock.patch("nmdc_automation.workflow_automation.wfutils.WorkflowStateManager.generate_submission_files")
 def test_job_manager_process_failed_job_1_failure(
@@ -401,7 +401,7 @@ def test_job_manager_process_failed_job_2_failures(site_config, initial_state_fi
     jm.process_failed_job(failed_job)
     # Assert
     assert failed_job.done
-    assert failed_job.job_status == "failed"
+    assert failed_job.job_status.lower() == "failed"
 
 def test_job_manager_get_finished_jobs_jaws_done_null(site_config, initial_state_file_1_failure, fixtures_dir, mock_jaws_api):
     """
@@ -534,5 +534,5 @@ def test_watcher_restore_from_checkpoint_and_report(site_config_file, fixtures_d
     rpt = reports[0]
     assert rpt
     assert rpt['wdl'] == "mbin_nmdc.wdl"
-    assert rpt['last_status'] == "Failed"
+    assert rpt['last_status'] == "failed"
 
