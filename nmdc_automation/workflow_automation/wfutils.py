@@ -176,6 +176,7 @@ class JawsRunner(JobRunnerABC):
             elif len(self.workflow.was_informed_by) == 1:
                 tag_value = self.workflow.was_informed_by[0] + "/" + self.workflow.workflow_execution_id
             
+            # This will work to schedule but shouldn't go to this block unless bug or new feature support
             else:
                 tag_value = ":".join(self.workflow.was_informed_by) + "/" + self.workflow.workflow_execution_id
 
