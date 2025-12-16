@@ -467,7 +467,7 @@ class WorkflowStateManager:
         inputs = {}
         prefix = self.input_prefix
         for input_key, input_val in self.inputs.items():
-            if isinstance(input_val, str):
+            if isinstance(input_val, str) and self.site_config:
                 input_val = self.site_config.map_data_location(input_val)
             inputs[f"{prefix}.{input_key}"] = input_val
         return inputs
