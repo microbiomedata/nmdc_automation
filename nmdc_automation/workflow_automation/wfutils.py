@@ -452,10 +452,11 @@ class WorkflowStateManager:
     LABEL_SUBMITTER_VALUE = "nmdcda"
     LABEL_PARAMETERS = ["release", "wdl", "git_repo"]
 
-    def __init__(self, state: Dict[str, Any] = None, opid: str = None):
+    def __init__(self, state: Dict[str, Any] = None, opid: str = None, site_config: SiteConfig | None = None):
         if state is None:
             state = {}
         self.cached_state = state
+        self.site_config = site_config
         if opid and "opid" in self.cached_state:
             raise ValueError("opid already set in job state")
         if opid:
@@ -466,6 +467,8 @@ class WorkflowStateManager:
         inputs = {}
         prefix = self.input_prefix
         for input_key, input_val in self.inputs.items():
+            if isinstance(input_val, str):
+                input_val = self.site_config.map_data_location(input_val)
             inputs[f"{prefix}.{input_key}"] = input_val
         return inputs
 
@@ -487,6 +490,7 @@ class WorkflowStateManager:
             # Get file paths
             wdl_file = self.fetch_release_file(self.config["wdl"], suffix=".wdl")
             bundle_file = self.fetch_release_file("bundle.zip", suffix=".zip")
+            # look here
             workflow_inputs_path = _json_tmp(self.generate_workflow_inputs())
             workflow_labels_path = _json_tmp(self.generate_workflow_labels())
 
@@ -685,7 +689,7 @@ class WorkflowJob:
     def __init__(self, site_config: SiteConfig, workflow_state: Dict[str, Any] = None,
                  job_metadata: Dict['str', Any] = None, opid: str = None, jaws_api: jaws_api.JawsApi = None, dry_run: bool = False) -> None:
         self.site_config = site_config
-        self.workflow = WorkflowStateManager(workflow_state, opid)
+        self.workflow = WorkflowStateManager(workflow_state, opid, site_config,)
         
         self.dry_run = dry_run
         # Use JawsRunner if jaws_api is provided, otherwise use CromwellRunner
