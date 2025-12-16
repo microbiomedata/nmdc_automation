@@ -44,7 +44,7 @@ available as metadata in the NMDC database, and data objects on the NMDC data po
 
 - mongodb-community needs to be installed and running on the local machine
 - Python 3.11 or later
-- Poetry 
+- Poetry version 2.2.1
 
 
 Poetry Installation instructions can be found [Here](https://python-poetry.org/docs/#installing-with-pipx)
@@ -80,15 +80,11 @@ brew services start mongodb-community
     poetry install
     ```
 
-3. Activate the poetry environment
-    ```bash  
-    poetry env activate
+3. Activate the poetry environment 
+    ```  
+    eval $(poetry env activate)
     ```
-    OR
-    ```bash
-    poetry shell
-    ```
-Depending on Poetry version
+    
 
 4. Run the tests
     ```bash
@@ -166,10 +162,8 @@ The Watcher "watches" the `jobs` table in the NMDC database looking for unclaime
 A `WorkflowJob` consists of a `WorkflowStateManager` and a `JobRunner` and is responsible for preparing the 
 required inputs for an analysis job, submitting it to the job running service.
 
-The default job running service is [JAWS](https://ipo.lbl.gov/joint-genome-institute-analysis-workflow-service-jaws-for-complex-computational-pipelines-on-multiple-compute-resources/).
-The legacy job running service is a self-managed SLURM/Condor/Cromwell stack running on Permutter. 
+NMDC's job running service is [JAWS](https://ipo.lbl.gov/joint-genome-institute-analysis-workflow-service-jaws-for-complex-computational-pipelines-on-multiple-compute-resources/).
 
-Details can be found in [README_Slurm.md](docs/README_Slurm.md)
 
 The `JobRunner` is also responsible for processing the resulting data and metadata when the job completes.  
 The watcher maintains a record of it's current activity in a `State File`
@@ -272,7 +266,7 @@ Watcher code and config files can be found
 2. Setup NMDC automation environment with `conda` and `poetry`. 
    1. load conda: `eval "$__conda_setup"` 
    3. in the `nmdc_automation` directory, install the nmdc_automation project with `poetry install`
-   4. `poetry shell` to use the environment
+   4. `eval $(poetry env activate)` to use the environment
 
 
 <details><summary>Example Setup:</summary>
@@ -289,16 +283,13 @@ Installing dependencies from lock file
 No dependencies to install or update
 
 Installing the current project: nmdc-automation (0.1.0)
-(base) nmdcda@perlmutter:login38:~/nmdc_automation/dev/nmdc_automation> poetry shell
-Spawning shell within /global/cfs/cdirs/m3408/nmdc_automation/dev/nmdc_automation/.venv
-. /global/cfs/cdirs/m3408/nmdc_automation/dev/nmdc_automation/.venv/bin/activate
-(base) nmdcda@perlmutter:login38:~/nmdc_automation/dev/nmdc_automation> . /global/cfs/cdirs/m3408/nmdc_automation/dev/nmdc_automation/.venv/bin/activate
-(nmdc-automation-py3.11) (base) nmdcda@perlmutter:login38:~/nmdc_automation/dev/nmdc_automation>
+(base) nmdcda@perlmutter:login06:~/nmdc_automation/dev/nmdc_automation> eval $(poetry env activate)
+(nmdc-automation-py3.11) (base) nmdcda@perlmutter:login06:~/nmdc_automation/dev/nmdc_automation
 ```
 </details>
 
 
-The `poetry shell` command will activate the environment for the current shell session. 
+The `eval $(poetry env activate)` command will activate the environment for the current shell session. 
 Environment `(nmdc-automation-py3.11)` will be displayed in the prompt.
 
 
@@ -315,18 +306,13 @@ names `nohup.out` in addition to being written to the `watcher-[dev/prod].log` f
 1. `rm nohup.out` (Long term logging is captured in the `watcher-[dev/prod].log` file, which is retained)
 2. `nohup ./run_watcher_dev.sh &` (for dev) OR `nohup ./run_watcher_prod.sh &` (for prod)
     
-> [!NOTE]
-> These scripts use the JAWS service to run jobs.  If you want to use SLURM/Condor, use `run_dev_slurm.sh` or `run_prod_slurm.sh`
-
-
-
 #### Monitoring the Watcher
 
 Same process as as [Checking the Watcher Status](#check-the-watcher-status)
 
 ##### JAWS
 
-JAWS is the default job running service.  It is a Cromwell-based service that runs jobs on NERSC and other compute resources.
+JAWS is a Cromwell-based service that runs jobs on NERSC and other compute resources.
 Documentation can be found [here](https://jaws-docs.readthedocs.io/en/latest/).
 
 With the `jaws_jobid` from the `agent.state` files, you can check the status of the job in the JAWS service
@@ -463,9 +449,9 @@ state file is defined in the site configuration file. For dev this location is:
       "opid": "nmdc:sys0z232qf64",
       "done": true,
       "start": "2025-03-06T19:24:52.176365+00:00",
-      "cromwell_jobid": "0b138671-824d-496a-b681-24fb6cb207b3",
+      "jaws_jobid": "0b138671-824d-496a-b681-24fb6cb207b3",
       "last_status": "Failed",
-      "nmdc_jobid": "nmdc:9380c834-fab7-11ef-b4bd-0a13321f5970",
+      "nmdc_jobid": 147004,
       "failed_count": 3
     }
 ```
@@ -474,7 +460,7 @@ state file is defined in the site configuration file. For dev this location is:
 
 Similar to a `jobs` record, with these additional things to note:
 - `done` is a boolean indicating if the job is complete
-- `cromwell_jobid` is the job ID from the Cromwell service
+- `jaws_jobid` is the job ID from JAWS service
 - `last_status` is the last known status of the job - this is updated by the watcher
 - `failed_count` is the number of times the job has failed
 
@@ -482,11 +468,11 @@ Similar to a `jobs` record, with these additional things to note:
 
 #### Handling Failed Jobs
 
-By default, the Watcher will retry a failed job 1 additional time via `jaws resubmit`. 
+By default, the Watcher will retry a failed job 1 additional time via `jaws submit`. 
 If the job fails again, the Watcher will mark the job as `done` and update the status to `Failed`.
 
 Some things to note:
 
-For jobs that have failed for with a transient incomplete data download, these may be resolved by invoking the `jaws download $jaws_jobid` command
+For jobs that have failed  with a transient incomplete data download, these may be resolved by invoking the `jaws download $jaws_jobid` command
 
-For jobs that may have failed due to Cromwell or other system errors and need to be resubmitted, use the [API release endpoint](https://api.microbiomedata.org/docs#/jobs/release_job_jobs__job_id__release_post) to mark a claimed job as failed and have JAWS resubmit the job if the JAWS job itself cannot be resubmitted. This will increase the `claims` array in the `jobs` record by 1. 
+For jobs that may have failed due to system errors and need to be resubmitted, use the [API release endpoint](https://api.microbiomedata.org/docs#/jobs/release_job_jobs__job_id__release_post) to mark a claimed job as failed and have JAWS resubmit the job if the JAWS job itself cannot be resubmitted. This will increase the `claims` array in the `jobs` record by 1. 

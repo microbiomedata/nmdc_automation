@@ -16,6 +16,7 @@ from datetime import datetime, timedelta, timezone
 from nmdc_automation.config import SiteConfig, UserConfig
 import logging
 from tenacity import retry, wait_exponential, stop_after_attempt
+from requests.exceptions import HTTPError
 
 logging_level = os.getenv("NMDC_LOG_LEVEL", logging.INFO)
 logging.basicConfig(
@@ -151,12 +152,6 @@ class NmdcRuntimeApi:
             logging.error(f"Response failed for: url: {url}, data: {data}, header: {self.header}")
             raise ValueError(f"Failed to mint ID of type {id_type} HTTP status: {resp.status_code} / ({resp.reason})")
         id = resp.json()[0]
-        if informed_by:
-            url = f"{self._base_url}pids/bind"
-            data = {"id_name": id, "metadata_record": {"informed_by": informed_by}}
-            resp = requests.post(url, data=json.dumps(data), headers=self.header)
-            if not resp.ok:
-                raise ValueError("Failed to bind metadata to pid")
         return id
 
     @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
@@ -470,14 +465,56 @@ class NmdcRuntimeApi:
             resp.raise_for_status()
         return resp.json()
 
+    def _run_query_single(self, query):
+        url = "%squeries:run" % self._base_url
+        try:
+            resp = requests.post(url, headers=self.header, data=json.dumps(query))
+            if not resp.ok:
+                resp.raise_for_status()
+            return resp.json()
+        
+        except HTTPError as e:
+            logger.error("HTTP Error occurred during query execution.")
+            logger.error(f"Status Code: {e.response.status_code}")
+            logger.error(f"Response Body: {e.response.text}")
+        
+            raise e
+    
     @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
     @refresh_token
     def run_query(self, query):
-        url = "%squeries:run" % self._base_url
-        resp = requests.post(url, headers=self.header, data=json.dumps(query))
-        if not resp.ok:
-            resp.raise_for_status()
-        return resp.json()
+    # Executes the initial query and handles cursor-based pagination to retrieve ALL results.
+    
+        all_results = []
+        cursor_id = None
+        current_command = query
+        
+        while True:
+            # Determine the command to send (initial query or getMore)
+            if cursor_id is not None:
+                # Subsequent call: Use the getMore command
+                current_command = {
+                    "getMore": cursor_id,
+                    # Include collection name if required by API for getMore
+                    #"collection": initial_query.get("aggregate")
+                }
+            
+            # Execute the query 
+            response_data = self._run_query_single(current_command) 
+
+            cursor = response_data.get("cursor", {})
+            batch = cursor.get("batch", [])
+            all_results.extend(batch)
+            
+            new_cursor_id = cursor.get("id")
+            
+            if new_cursor_id:
+                cursor_id = new_cursor_id
+            else:
+                break
+                
+        return all_results
+
 
     @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
     def find_planned_processes(self, filter: dict):

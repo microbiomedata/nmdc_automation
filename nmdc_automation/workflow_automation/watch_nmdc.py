@@ -93,14 +93,18 @@ class FileHandler:
         output_path = None
         
         # construct path from string components
-        if len(job.was_informed_by) == 1:
+        if job.manifest:
+            output_path = Path(self.config.data_dir) / job.manifest / job.workflow_execution_id
+        
+        # Still want to ensure nothing went wrong so checking the was_informed_by length
+        elif len(job.was_informed_by) == 1:
             output_path = Path(self.config.data_dir) / job.was_informed_by[0] / job.workflow_execution_id
-        #
-        # Note: This needs to be updated to handle manifest_set_records - jlp 20250722 TODO
+
         # It shouldn't get to here because the sched logic creates one-valued was_informed_by currently;
         # else something is very wrong.
         else:
-            logger.debug(f"WARN: Multi-valued was_informed_by found. Skipping output creation.")
+            logger.error(f"Error: Multi-valued was_informed_by found with manifest unset. Skipping output creation.")
+            raise ValueError("Multi-valued was_informed_by but manifest unset. Output path not found")
 
         return output_path
 
@@ -240,7 +244,6 @@ class JobManager:
                     continue
                 elif status in ("failed", "null"):
                     job.workflow.last_status = status
-                    job.workflow.failed_count += 1
                     failed_jobs.append(job)
                     continue
                 else:
@@ -288,6 +291,7 @@ class JobManager:
             sys.exit(1)
         database.workflow_execution_set = [workflow_execution]
         logger.info(f"Created workflow execution record for job {job.opid}")
+        logger.debug(workflow_execution)
 
         job.done = True
         job.workflow.state["end"] = workflow_execution.ended_at_time

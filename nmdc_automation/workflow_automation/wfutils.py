@@ -170,11 +170,17 @@ class JawsRunner(JobRunnerABC):
                 logger.info(f"Dry run: skipping file validation for jaws submission")
         
 
-            # its ok if the tag value prints the array 
-            if len(self.workflow.was_informed_by) == 1:
+            
+            if self.workflow.manifest:
+                tag_value = self.workflow.manifest + "/" + self.workflow.workflow_execution_id    
+            elif len(self.workflow.was_informed_by) == 1:
                 tag_value = self.workflow.was_informed_by[0] + "/" + self.workflow.workflow_execution_id
+            
+            # This will work to schedule but shouldn't go to this block unless bug or new feature support
             else:
-                tag_value = str(self.workflow.was_informed_by) + "/" + self.workflow.workflow_execution_id
+                tag_value = ":".join(self.workflow.was_informed_by) + "/" + self.workflow.workflow_execution_id
+
+            
             
             # Prepend a dev tag if env=dev exists
             if self.config.env is not None:
@@ -559,6 +565,11 @@ class WorkflowStateManager:
     @property
     def was_informed_by(self) -> Optional[list[str]]:
         return self.config.get("was_informed_by", None)
+    
+    @property
+    def manifest(self) -> Optional[str]:
+        return self.config.get("manifest", None)
+    
 
     @property
     def wdl(self) -> Optional[str]:
@@ -615,6 +626,7 @@ class WorkflowStateManager:
             raise ValueError("opid already set in job state")
         self.cached_state["opid"] = opid
 
+    
     def fetch_release_file(self, filename: str, suffix: str = None) -> str:
         """
         Download a release file from the Git repository and save it as a temporary file.
@@ -672,15 +684,18 @@ class WorkflowJob:
 
     """
     def __init__(self, site_config: SiteConfig, workflow_state: Dict[str, Any] = None,
-                 job_metadata: Dict['str', Any] = None, opid: str = None, jaws_api: jaws_api.JawsApi = None) -> None:
+                 job_metadata: Dict['str', Any] = None, opid: str = None, jaws_api: jaws_api.JawsApi = None, dry_run: bool = False) -> None:
         self.site_config = site_config
         self.workflow = WorkflowStateManager(workflow_state, opid)
+        
+        self.dry_run = dry_run
         # Use JawsRunner if jaws_api is provided, otherwise use CromwellRunner
         if jaws_api is None:
-            job_runner = CromwellRunner(site_config, self.workflow, job_metadata)
+            job_runner = CromwellRunner(site_config, self.workflow, job_metadata, dry_run=self.dry_run)
         else:
-            job_runner = JawsRunner(site_config, self.workflow, jaws_api, job_metadata)
+            job_runner = JawsRunner(site_config, self.workflow, jaws_api, job_metadata, dry_run=self.dry_run)
         self.job = job_runner
+        
 
     # Properties to access the site config, job state, and job runner attributes
     @property
@@ -693,7 +708,7 @@ class WorkflowJob:
         if self.opid and not force:
             raise ValueError("opid already set in job state")
         self.workflow.update_state({"opid": opid})
-
+    
     @property
     def done(self) -> Optional[bool]:
         """ Get the done state of the job """
@@ -719,7 +734,9 @@ class WorkflowJob:
         if not any(key in self.workflow.state for key in job_id_keys):
             status = "Unsubmitted"
             self.workflow.update_state({"last_status": status})
-        elif self.workflow.state.get("last_status") == "Succeeded":
+        
+        # Note "Succeeded" and "Failed" are cromwell nomenclature
+        elif self.workflow.state.get("last_status") == "Succeeded": 
             status = "Succeeded"
         elif self.workflow.state.get("last_status") == "Failed" and failed_count >= self.job.max_retries:
             status = "Failed"
@@ -728,6 +745,7 @@ class WorkflowJob:
             status = "succeeded"
         elif self.workflow.state.get("last_status") == "failed" and failed_count >= self.job.max_retries:
             status = "failed"
+        # Else look it up
         else:
             status = self.job.get_job_status()
             self.workflow.update_state({"last_status": status})
@@ -757,7 +775,12 @@ class WorkflowJob:
     def was_informed_by(self) -> list[str]:
         """ get the was_informed_by ID value """
         return self.workflow.was_informed_by
-
+        
+    @property
+    def manifest(self) -> Optional[str]:
+        """ Get the manifest id """
+        return self.workflow.manifest
+    
     @property
     def as_workflow_execution_dict(self) -> Dict[str, Any]:
         """
@@ -810,6 +833,12 @@ class WorkflowJob:
             
             if len(self.was_informed_by) == 1:
                 file_url = f"{self.url_root}/{self.was_informed_by[0]}/{self.workflow_execution_id}/{output_file.name}"
+            elif self.manifest:
+                file_url = f"{self.url_root}/{self.manifest}/{self.workflow_execution_id}/{output_file.name}"
+            else:
+                logger.error(f"Error: manifest not defined and was_informed_by list is != 1. File url creation failed.")
+                raise Exception(f"Error: manifest not defined and was_informed_by list is != 1. File url creation failed.")
+                
 
             if output_dir:
                 new_output_file_path = Path(output_dir) / output_file.name
