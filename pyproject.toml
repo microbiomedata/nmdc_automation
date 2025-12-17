@@ -29,7 +29,7 @@ python = ">=3.10,<3.12"
 pymongo = "^4.3.3"
 pyYAML = "^6.0"
 requests = "^2.28.2"
-nmdc-schema = "^11.13.0"
+nmdc-schema = "^11.14.0"
 deepdiff = ">=7.0.1"
 pytz = ">=2024.1"
 python-dotenv = "^1.0.0"
@@ -51,7 +51,7 @@ tenacity = "^9.0.0"
 jaws-client = {version = "2.9.0", source = "jgi"}
 regex = "^2024.11.6"
 testfixtures = "^8.3.0"
-
+nmdc-api-utilities = "^0.6.0"
 [[tool.poetry.source]]
 name = "jgi"
 url = "https://code.jgi.doe.gov/api/v4/projects/312/packages/pypi/simple"
