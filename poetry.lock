@@ -1712,14 +1712,14 @@ files = [
 
 [[package]]
 name = "nmdc-api-utilities"
-version = "0.5.0"
+version = "0.6.0"
 description = "A Python library for general research functions using NMDC APIs"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "nmdc_api_utilities-0.5.0-py3-none-any.whl", hash = "sha256:f6f1dc01482c10ab4497154b0b6a6e47e4f229758531bdc067a1297a386ee468"},
-    {file = "nmdc_api_utilities-0.5.0.tar.gz", hash = "sha256:bb7d3613a364abd78e9c54c414bea46ac069af64040d5b70f28cfa43ac0f8fe8"},
+    {file = "nmdc_api_utilities-0.6.0-py3-none-any.whl", hash = "sha256:3852d8d5aa7be0f51be42a0d130cb6cc3f57f5cb62543ec9a6d2f03576ab3f23"},
+    {file = "nmdc_api_utilities-0.6.0.tar.gz", hash = "sha256:fd18dd093954f70fbae1d0e88f229da6de13628d4a2305383b5f7bd913a33dba"},
 ]
 
 [package.dependencies]
@@ -4210,4 +4210,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.12"
-content-hash = "c55e6467a052c4e2bafe92a9018cfd8fe230452d4c9f4d2ea4d936f5a1ddf040"
+content-hash = "19ce7e3d2f6bfba6fee1585388d24e0014d660e487946baba8668e82e115e832"
