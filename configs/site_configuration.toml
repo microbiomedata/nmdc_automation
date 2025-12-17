@@ -14,7 +14,9 @@ site = "Processing Site"
 
 [nmdc]
 url_root = "https://data.microbiomedata.org/data/"
+results_root = "/global/cfs/cdirs/m3408/results"
 api_url = "https://api.microbimedata.org"
+
 
 [state]
 watch_state = "State File"
