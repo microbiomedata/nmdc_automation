@@ -557,6 +557,51 @@ def test_scheduler_cycle_manifest(test_db, test_client, workflows_config_dir, si
         assert len(resp) == exp_num_jobs_cycle_1
 
 
+def test_scheduler_cycle_downstream_manifest(test_db, test_client, workflows_config_dir, site_config_file):
+    """
+    Test basic job creation for a data generation ID that is in a manifest set.
+    Should return one job scheduled for the one manifest set
+    This currently uses a modified dev site config so that the dev-api gets called to test the
+    aggregations whereas other unit tests mock the api for minting IDs, else it will hang
+    TO DO: replace live dev aggregation call for stability of offline testing 
+    Results: One manifest job is scheduled, a second dgns for the same manifest is skipped, and a
+    non-manifest MAGs:v1.3.16 for nmdc:wfmgan-11-6x59p192.2 is created
+    Note: this used to take in 'site_config_file_dev_api' which was a fixture to use the live dev api (risky)
+    now that we have local endpoint support, reverting back to standard config 20251104 -jlp
+    """
+    exp_rqc_git_repos = [
+        "https://github.com/microbiomedata/ReadbasedAnalysis",
+        "https://github.com/microbiomedata/metaAssembly"
+    ]
+    # init_test(test_db)
+    reset_db(test_db)
+
+    load_fixture(test_db, "data_objects_in_manifest_downstream.json", "data_object_set")
+    load_fixture(test_db, "data_generation_in_manifest.json", "data_generation_set")
+    load_fixture(test_db, "manifest_set.json", "manifest_set")
+
+    # Load an existing and completed readsqc job for the manifest dgns
+    load_fixture(test_db, "job_manifest_readsqc.json", "jobs")
+    # Load the finished readsQC so that assembly will schedule
+    load_fixture(test_db, "workflow_execution_manifest_asm.json", "workflow_execution_set")
+
+
+    # Scheduler will find one manifest-related asm job
+    exp_num_jobs_initial = 2
+    exp_num_jobs_cycle_1 = 0
+    
+    jm = Scheduler(workflow_yaml=workflows_config_dir / "workflows.yaml",
+                   site_conf=site_config_file, api=test_client)
+    
+    with patch.object(jm.api, 'minter', return_value="mocked-id-123"):
+        resp = jm.cycle()
+        assert len(resp) == exp_num_jobs_initial
+        assert resp[0]["config"]["git_repo"] in exp_rqc_git_repos
+
+        # All jobs should now be in a submitted state
+        resp = jm.cycle()
+        assert len(resp) == exp_num_jobs_cycle_1
+
 def test_scheduler_cycle_manifest_multi(test_db, test_client, workflows_config_dir, site_config_file):
     """
     Test basic job creation for a data generation ID that is in a manifest set.
