@@ -223,6 +223,20 @@ def get_current_workflow_process_nodes(
 
             workflow_process_nodes.add(wfp_node)
 
+    # Build the list of data_generation_id_sets to manifest id for non-dgns processing workflows
+    # so we can add the manifest property to wfp_nodes when was_informed_by > 1
+    dg_set_to_manifest_map = {} 
+    for manifest_id, manifest_data in manifest_map.items():
+        dg_ids_list = manifest_data.get('data_generation_set') 
+        
+        if dg_ids_list:
+            # 1. Sort the list and convert it to a hashable tuple
+            key_tuple = tuple(sorted(dg_ids_list)) #ex: ('id1', 'id2')
+            
+            if key_tuple not in dg_set_to_manifest_map:
+                dg_set_to_manifest_map[key_tuple] = manifest_id
+
+
     for wf in workflow_execution_workflows:
         q = {}
         if wf.git_repo:
@@ -258,6 +272,15 @@ def get_current_workflow_process_nodes(
                     sorted_was_informed_by = sorted(rec["was_informed_by"])
                     # Join the sorted elements with "_" as the separator
                     current_found_rec_key = "_".join(sorted_was_informed_by)
+
+                    # Look for the manifest ID to add to the workflow process node
+                    # Normalize the list: sort and convert to tuple
+                    current_manifest = None
+                    key_tuple = tuple(sorted(rec["was_informed_by"])) # Result: ('id1', 'id2')
+                    if key_tuple in dg_set_to_manifest_map:
+                        current_manifest = dg_set_to_manifest_map[key_tuple]
+                    if current_manifest:
+                        wfp_node.add_to_manifest(current_manifest)
 
                 # if there is already a wfp_node added for this workflow type, check if version is more recent
                 # then add it and replace previous one.

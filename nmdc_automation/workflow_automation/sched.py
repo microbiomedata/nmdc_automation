@@ -65,16 +65,15 @@ class SchedulerJob:
         self.workflow = workflow
         self.trigger_act = trigger_act
         self.trigger_id = trigger_act.id
-
-        # Default is typically the trigger act's was_informed_by
         self.informed_by = trigger_act.was_informed_by
 
         # Default has no manifest 
         self.manifest = None
         
-        # However, if we see a manifest associated with the WorkflorProcessNode that triggered the job
-        # (which is set for DataGeneration workflowprocess nodes), then we want to override the default
-        # and look for the list of DataGeneration ID that are found in the manifest map
+        # Set the manifest if found; DataGeneration workflowprocess nodes need their
+        # was_informed_by list assigned from the manifest_map
+        # Note: was_informed_by will be properly set from trigger_act.was_informed_by 
+        # for jobs downstream of readsqc (non-dgns wf records)
         
         if len(trigger_act.manifest) == 1:
 
@@ -87,10 +86,12 @@ class SchedulerJob:
             # It will return None if the key doesn't exist.
             mapped_value = manifest_map.get(manifest_key)
             
+            # For dgns wfp nodes
             # Check if a value was found, is a dict, and contains the required key.
             # This will be the associated data_generation_set IDs with the manifest set
             if isinstance(mapped_value, dict) and 'data_generation_set' in mapped_value:
-                self.informed_by = mapped_value['data_generation_set']
+                if self.trigger_id in mapped_value['data_generation_set']:
+                    self.informed_by = mapped_value['data_generation_set']
 
         
                 
@@ -147,7 +148,7 @@ class Scheduler:
             # If manifest is not empty, then this is a data generation stored in the WorkflowProcessNode
             # Note: Currently only support one manifest per workflowprocessnode/datagen
             #
-            if len(next_act.manifest) == 1:
+            if len(next_act.manifest) == 1 and job.trigger_id in manifest_map[next_act.manifest[0]]['data_generation_set']:
 
                 # Find the data objects associated with the manifest using manifest_map
                 for data_object in manifest_map[next_act.manifest[0]]['data_object_set']:
@@ -351,36 +352,41 @@ class Scheduler:
                     self._messages.append(msg)
                 continue
             
+            #
+            # This check is only for wfp_nodes that are data_generation_set records to avoid duplicate scheduling
+            # 
             # If current wfp_node.id is not in existing jobs, see if this has a manifest record,
             # then check for other associated data generation records jobs that exist for this wf
             found_existing_manifest_job = False
             associated_wfp_node_id = None
             if len(wfp_node.manifest) == 1:
-                for dgns_id in manifest_map[wfp_node.manifest[0]]['data_generation_set']:
-                    # Only need to check for others dgns since already checked itself above
-                    if dgns_id != wfp_node.id:
-                        if dgns_id in self.get_existing_jobs(wf):
-                            found_existing_manifest_job = True
-                            associated_wfp_node_id = dgns_id
-                            break
-                
-                # If not found, also check if it was just added to list of all jobs 
-                if not found_existing_manifest_job:
-                    for new_job in all_jobs:
-                        if new_job.manifest:
-                            if new_job.manifest == wfp_node.manifest[0]:
-                                if new_job.workflow.name == wf.name:
-                                    found_existing_manifest_job = True
-                                    associated_wfp_node_id = new_job.trigger_id
-                                    break
+                if wfp_node.id in manifest_map[wfp_node.manifest[0]]['data_generation_set']:
+
+                    for dgns_id in manifest_map[wfp_node.manifest[0]]['data_generation_set']:
+                        # Only need to check for others dgns since already checked itself above
+                        if dgns_id != wfp_node.id:
+                            if dgns_id in self.get_existing_jobs(wf):
+                                found_existing_manifest_job = True
+                                associated_wfp_node_id = dgns_id
+                                break
+                    
+                    # If not found, also check if it was just added to list of all jobs 
+                    if not found_existing_manifest_job:
+                        for new_job in all_jobs:
+                            if new_job.manifest:
+                                if new_job.manifest == wfp_node.manifest[0]:
+                                    if new_job.workflow.name == wf.name:
+                                        found_existing_manifest_job = True
+                                        associated_wfp_node_id = new_job.trigger_id
+                                        break
 
 
-            if found_existing_manifest_job:
-                msg = f"Skipping existing job due to associated data generation record {associated_wfp_node_id} for {wfp_node.id} {wf.name}:{wf.version}"
-                if msg not in self._messages:
-                    logger.info(msg)
-                    self._messages.append(msg)
-                continue
+                    if found_existing_manifest_job:
+                        msg = f"Skipping existing job due to associated data generation record {associated_wfp_node_id} for {wfp_node.id} {wf.name}:{wf.version}"
+                        if msg not in self._messages:
+                            logger.info(msg)
+                            self._messages.append(msg)
+                        continue
 
 
                 
