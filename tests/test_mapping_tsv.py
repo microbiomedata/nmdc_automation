@@ -5,6 +5,7 @@ from typing import Any, Callable
 import mongomock
 import pandas as pd
 import pytest
+import shutil
 from unittest.mock import patch, MagicMock
 
 from tests.fixtures import db_utils
@@ -77,7 +78,7 @@ def test_get_gold_analysis_project_multiple_metag(mock_get_request, fixtures_dir
 @patch('nmdc_automation.jgi_file_staging.mapping_tsv.get_access_token')
 @mongomock.patch(servers=(('localhost', 27017),))
 def test_create_mapping_tsv(mock_get_access_token, mock_get_request, mock_seq_project, fixtures_dir: Any, 
-                            site_config: SiteConfig, staging_config: StagingConfig, metag_df, metag_tsv_df, metat_df, metat_tsv_df):
+                            site_config: SiteConfig, staging_config: StagingConfig, metag_df, metag_tsv_df, metat_df, metat_tsv_df, staged_files_dir):
     class _StagingConfig(StagingConfig):
         staging_dir = Path(fixtures_dir / "staged_files")
     staging_config.__class__ = _StagingConfig
@@ -120,9 +121,10 @@ def test_create_mapping_tsv(mock_get_access_token, mock_get_request, mock_seq_pr
     finally:
         metag_file.unlink() if metag_file.exists() else None
         metat_file.unlink() if metat_file.exists() else None
+        shutil.rmtree(staged_files_dir.parent, ignore_errors=True)
 
 
-def test_create_metag_tsv(fixtures_dir: str, metag_tsv_df, metag_df):
+def test_create_metag_tsv(fixtures_dir: str, metag_tsv_df, metag_df, staged_files_dir):
     """ test creation of metag and metat tsv files """
     #metag file
     
@@ -138,10 +140,11 @@ def test_create_metag_tsv(fixtures_dir: str, metag_tsv_df, metag_df):
         # pd.testing.assert_frame_equal(metag_tsv_df, metag_tsv)
     finally:
         metag_file.unlink() if metag_file.exists() else None
+        shutil.rmtree(staged_files_dir.parent, ignore_errors=True)
 
-    #metat file
 
-def test_create_metat_tsv(fixtures_dir: str,  metat_tsv_df, metat_df):
+
+def test_create_metat_tsv(fixtures_dir: str,  metat_tsv_df, metat_df, staged_files_dir):
     mapping_file_path = fixtures_dir / "staged_files" / 'bioscales'
     metat_file = fixtures_dir  / "staged_files" / 'bioscales' / 'bioscales.metat.map.tsv'
     try:
@@ -153,4 +156,5 @@ def test_create_metat_tsv(fixtures_dir: str,  metat_tsv_df, metat_df):
         assert str(metat_tsv_df.loc[1, 'project_path']) == metat_tsv.loc[1, 'project_path']
     finally:
         metat_file.unlink() if metat_file.exists() else None
+        shutil.rmtree(staged_files_dir.parent, ignore_errors=True)
     

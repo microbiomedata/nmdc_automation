@@ -697,3 +697,7 @@ def project_config(base_test_dir):
     config_file = base_test_dir / "project_config_test.toml"
     return ProjectConfig(config_file)
 
+@fixture
+def staged_files_dir(fixtures_dir):
+    os.makedirs(fixtures_dir / "staged_files" / "bioscales", exist_ok=True)
+    return fixtures_dir / "staged_files" / "bioscales"

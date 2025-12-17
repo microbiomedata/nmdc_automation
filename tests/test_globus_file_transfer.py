@@ -68,7 +68,7 @@ def test_get_project_globus_manifests(mock_sample_api, monkeypatch, grow_analysi
     assert mock_manifest.mock_calls[1].args[0] == 201547
 
 @patch('nmdc_automation.jgi_file_staging.globus_file_transfer.JGISampleSearchAPI')
-def test_create_globus_df(mock_sample_api,  monkeypatch,grow_analysis_df, staging_config, site_config, fixtures_dir):
+def test_create_globus_df(mock_sample_api,  monkeypatch,grow_analysis_df, staging_config, site_config):
     class _StagingConfig(StagingConfig):
         staging_dir = Path(Path(__file__).parent / "fixtures").resolve()
 
@@ -107,7 +107,8 @@ def test_create_globus_df(mock_sample_api,  monkeypatch,grow_analysis_df, stagin
 
 @patch('nmdc_automation.jgi_file_staging.file_restoration.JGISampleSearchAPI')
 @patch('nmdc_automation.jgi_file_staging.globus_file_transfer.JGISampleSearchAPI')
-def test_create_globus_batch_file(mock_sample_api, mock_sample_restore, monkeypatch, grow_analysis_df, tmp_path, staging_config, site_config):
+def test_create_globus_batch_file(mock_sample_api, mock_sample_restore, monkeypatch, grow_analysis_df, 
+                                  tmp_path, staging_config, site_config):
     import os
     class _StagingConfig(StagingConfig):
         staging_dir = Path(Path(__file__).parent / "fixtures").resolve()
