@@ -1,0 +1,15 @@
+[staging]
+staging_dir = "/path/to/stage/dir"
+temp_dir = "/path/to/temp/dir"
+
+[JDP]
+max_restore_request = 1e13
+remove_files = ['img_nr.last.blasttab', 'domtblout']
+restore_batch_size = 750
+
+[Globus]
+globus_user_name = "user@example.com"
+globus_mailto = "test@example.com"
+jgi_globus_id = "ae777bc6-e080-11ec-990f-3b4cfda38030"
+nersc_globus_id = "65fa2422-bf84-11ed-9917-cb2cff506ca5"
+globus_root_dir = "90125"

@@ -147,3 +147,48 @@ class SiteConfig:
 
         # Return the results
         return enabled_workflows
+
+class StagingConfig:
+    def __init__(self, path: Union[str, Path]):
+        with open(path, "rb") as file:
+            self.config_data = tomli.load(file)
+
+    @property
+    def staging_dir(self):
+        return self.config_data["staging"]["staging_dir"]
+
+    @property
+    def temp_dir(self):
+        return self.config_data["staging"]["temp_dir"]
+    
+    @property
+    def max_restore_request(self):
+        return self.config_data["JDP"]["max_restore_request"]
+    
+    @property
+    def remove_files(self):
+        return self.config_data["JDP"]["remove_files"]  
+    
+    @property
+    def restore_batch_size(self):
+        return self.config_data["JDP"].get("restore_batch_size", 500)
+    
+    @property
+    def globus_user_name(self):
+        return self.config_data["Globus"]["globus_user_name"]
+    
+    @property
+    def globus_mailto(self):
+        return self.config_data["Globus"]["globus_mailto"]
+    
+    @property
+    def jgi_globus_id(self):
+        return self.config_data["Globus"]["jgi_globus_id"]
+    
+    @property
+    def nersc_globus_id(self):
+        return self.config_data["Globus"]["nersc_globus_id"]
+    
+    @property
+    def globus_root_dir(self):
+        return self.config_data["Globus"]["globus_root_dir"]

@@ -51,7 +51,7 @@ tenacity = "^9.0.0"
 jaws-client = {version = "2.9.0", source = "jgi"}
 regex = "^2024.11.6"
 testfixtures = "^8.3.0"
-
+nmdc-api-utilities = "^0.6.0"
 [[tool.poetry.source]]
 name = "jgi"
 url = "https://code.jgi.doe.gov/api/v4/projects/312/packages/pypi/simple"
