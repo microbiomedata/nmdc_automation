@@ -22,16 +22,12 @@ def test_load_workflow_process_nodes(test_db, test_client, workflow_file, workfl
     """
     Test loading workflow process nodes from the database.
     """
-    metatranscriptome = False
-    if workflow_file == "workflows-mt.yaml":
-        metatranscriptome = True
-
     reset_db(test_db)
     load_fixture(test_db, "data_object_set.json")
     load_fixture(test_db, "data_generation_set.json")
     load_fixture(test_db, "read_qc_analysis.json", "workflow_execution_set")
 
-    workflow_configs = load_workflow_configs(workflows_config_dir / workflow_file)
+    workflow_configs = load_workflow_configs(workflows_config_dir / "workflows.yaml")
 
    # sanity checking these - they are used in the next step
     data_objs_by_id = get_required_data_objects_map(test_client, workflow_configs)
@@ -43,7 +39,7 @@ def test_load_workflow_process_nodes(test_db, test_client, workflow_file, workfl
 
     # sanity check
     assert workflow_process_nodes
-    assert len(workflow_process_nodes) == 2
+    assert len(workflow_process_nodes) == 4 # 2 for each analyte category
 
     # Omics and RQC share data_object_type for metagenome and metatranscriptome
     # they can be distinguished by analyte category so we expect 1 of each
@@ -171,25 +167,21 @@ def test_load_workflows(workflows_config_dir, workflow_file):
     """
     Test Workflow object creation
     """
-    metatranscriptome = False
-    if workflow_file == "workflows-mt.yaml":
-        metatranscriptome = True
-
     shared_wf_names = ["Sequencing Noninterleaved", "Sequencing Interleaved"]
-    if metatranscriptome:
-        exp_num_workflow_config = 9
-        exp_wf_names = ["Metatranscriptome Reads QC", "Metatranscriptome Reads QC Interleave",
-                        "Metatranscriptome Assembly", "Metatranscriptome Annotation", "Expression Analysis Antisense",
-                        "Expression Analysis Sense", "Expression Analysis Nonstranded", ]
-    else:
-        exp_num_workflow_config = 8
-        exp_wf_names = ["Reads QC", "Reads QC Interleave", "Metagenome Assembly", "Metagenome Annotation", "MAGs",
-                        "Readbased Analysis", ]
+    # metatranscriptome:
+    exp_num_workflow_config = 9
+    exp_wf_names = ["Metatranscriptome Reads QC", "Metatranscriptome Reads QC Interleave",
+                    "Metatranscriptome Assembly", "Metatranscriptome Annotation", "Expression Analysis Antisense",
+                    "Expression Analysis Sense", "Expression Analysis Nonstranded", ]
+    # metagenome
+    exp_num_workflow_config += 8
+    exp_wf_names += ["Reads QC", "Reads QC Interleave", "Metagenome Assembly", "Metagenome Annotation", "MAGs",
+                     "Readbased Analysis", ]
 
-    workflow_config = load_workflow_configs(workflows_config_dir / workflow_file)
+    workflow_config = load_workflow_configs(workflows_config_dir / "workflows.yaml")
     assert workflow_config
     wfm = {}
-    assert len(workflow_config) == len(exp_wf_names) + len(shared_wf_names)
+    assert len(workflow_config) == exp_num_workflow_config
     for wf in workflow_config:
         wfm[wf.name] = wf
     for wf_name in exp_wf_names:
@@ -212,16 +204,16 @@ def test_get_required_data_objects_by_id(test_db, test_client, workflows_config_
     Test get_required_data_objects_by_id
     """
     # non-comprehensive list of expected data object types
-    if workflow_file == "workflows.yaml":
-        exp_do_types = ["Metagenome Raw Read 1", "Metagenome Raw Read 2", "Filtered Sequencing Reads"]
-    else:
-        exp_do_types = ["Metatranscriptome Raw Read 1", "Metatranscriptome Raw Read 2", "Filtered Sequencing Reads"]
+    # metagenome
+    exp_do_types = ["Metagenome Raw Read 1", "Metagenome Raw Read 2", "Filtered Sequencing Reads"]
+    # metatranscriptome
+    exp_do_types += ["Metatranscriptome Raw Read 1", "Metatranscriptome Raw Read 2", "Filtered Sequencing Reads"]
 
     # TODO: add workflow specific data objects
     reset_db(test_db)
     load_fixture(test_db, "data_object_set.json")
 
-    workflow_config = load_workflow_configs(workflows_config_dir / workflow_file)
+    workflow_config = load_workflow_configs(workflows_config_dir / "workflows.yaml")
 
     required_data_object_map = get_required_data_objects_map(test_client, workflow_config)
     assert required_data_object_map
