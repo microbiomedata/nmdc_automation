@@ -195,7 +195,7 @@ def get_current_workflow_process_nodes(
                         # Else this has one manifest ID associated with the data object
                         else:
                             if current_manifest not in manifest_map:
-                                logging.info(f"Manifest ID found: {current_manifest}. Processing associated data objects...")
+                                logging.debug(f"Manifest ID found: {current_manifest}. Processing associated data objects...")
                                 # Do we want to save manifest set IDs encountered from the DOs that do not match poolable_replicates?
                                 manifest_map[current_manifest] = {}
                                 
@@ -432,7 +432,7 @@ def _map_manifest_to_data_objects(api, manifest_id, manifest_to_data_objects: Di
     # 3. Execute the aggregation pipeline and get the results
     logging.debug(f"AGG:{manifest_agg}")
     resp = api.run_query(manifest_agg)
-    logging.info(f"queries:run response: {resp}")
+    logging.debug(f"queries:run response: {resp}")
 
     # If an empty result was return, aggregation did not work
     if len(resp) == 0:

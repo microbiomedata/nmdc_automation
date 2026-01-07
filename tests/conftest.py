@@ -17,7 +17,8 @@ import logging
 from typing import Callable
 
 
-from nmdc_automation.config import SiteConfig
+from nmdc_automation.config import SiteConfig, StagingConfig
+from nmdc_automation.config.projectconfig import ProjectConfig
 from nmdc_automation.models.workflow import WorkflowConfig
 from tests.fixtures import db_utils
 from nmdc_automation.workflow_automation.wfutils import WorkflowJob
@@ -597,20 +598,20 @@ def mock_nmdc_runtime_api():
 @fixture
 def grow_analysis_df(fixtures_dir):
     grow_analysis_df = pd.read_csv(fixtures_dir / "grow_analysis_projects.csv")
-    grow_analysis_df.columns = [
-        "apGoldId",
-        "studyId",
-        "itsApId",
-        "project_name",
-        "biosample_id",
-        "seq_id",
-        "file_name",
-        "file_status",
-        "file_size",
-        "jdp_file_id",
-        "md5sum",
-        "analysis_project_id",
-    ]
+    # grow_analysis_df.columns = [
+    #     "apGoldId",
+    #     "studyId",
+    #     "itsApId",
+    #     "project_name",
+    #     "biosample_id",
+    #     "seq_id",
+    #     "file_name",
+    #     "file_status",
+    #     "file_size",
+    #     "jdp_file_id",
+    #     "md5sum",
+    #     "analysis_project_id",
+    # ]
     grow_analysis_df = grow_analysis_df[
         [
             "apGoldId",
@@ -627,8 +628,53 @@ def grow_analysis_df(fixtures_dir):
             "analysis_project_id",
         ]
     ]
+    grow_analysis_df.columns = [
+            "ap_gold_id",
+            "gold_study_id",
+            "its_ap_id",
+            "sequencing_project_name",
+            "gold_biosample_id",
+            "gold_seq_id",
+            "file_name",
+            "jdp_file_status",
+            "jdp_file_size",
+            "jdp_file_id",
+            "md5sum",
+            "jgi_ap_id",
+        ]
+    grow_analysis_df["create_date"] = pd.to_datetime("2023-10-01T12:00:00Z")
+    grow_analysis_df["update_date"] = pd.to_datetime("2023-10-02T12:00:00Z")
+    grow_analysis_df["request_id"] = 1  
+    grow_analysis_df["globus_file_status"] = "ACTIVE"
+    grow_analysis_df["its_ap_id"] = grow_analysis_df["its_ap_id"].astype(str)
     # grow_analysis_df["project_name"] = grow_analysis_df["project_name"].apply(ast.literal_eval)
     return grow_analysis_df
+
+@fixture
+def metag_df(fixtures_dir):
+    study_df = pd.DataFrame([{'id':'nmdc:omprc-11-2eh5g273',	'gold_analysis_project': 'Ga0268315'}])
+    return study_df
+
+@fixture
+def metag_tsv_df(fixtures_dir):
+    study_df = pd.DataFrame([{'nucleotide_sequencing_id':'nmdc:omprc-11-2eh5g273',	'project_id': 'Ga0268315'}])
+    study_df['project_path'] = Path(fixtures_dir, 'staged_files/bioscales/analysis_files/Ga0268315')
+    return study_df
+
+@fixture
+def metat_df(fixtures_dir):
+    study_df = pd.DataFrame([{'id': 'nmdc:omprc-11-qaf2qr08', 'gold_analysis_project': 'Ga0222738'},
+                              {'id': 'nmdc:omprc-11-qaf2qr08', 'gold_analysis_project': 'Ga0224388', }])
+    return study_df
+
+@fixture
+def metat_tsv_df(fixtures_dir):
+    study_df = pd.DataFrame([{'nucleotide_sequencing_id': 'nmdc:omprc-11-qaf2qr08', 'project_id': 'Ga0222738', 
+                              'project_path': Path(fixtures_dir / 'staged_files/bioscales/analysis_files/Ga0222738')},
+                              {'nucleotide_sequencing_id': 'nmdc:omprc-11-qaf2qr08', 'project_id': 'Ga0224388', 
+                               'project_path': Path(fixtures_dir / 'staged_files/bioscales/analysis_files/Ga0224388')}])
+    return study_df
+
 
 @fixture
 def jgi_staging_config(fixtures_dir, tmp_path):
@@ -640,3 +686,18 @@ def jgi_staging_config(fixtures_dir, tmp_path):
     # set Globus root dir to tmp_path
     config["GLOBUS"]["globus_root_dir"] = str(tmp_path)
     return config
+
+@fixture
+def staging_config(base_test_dir):
+    config_file = base_test_dir / "staging_configuration_test.toml"
+    return StagingConfig(config_file)
+
+@fixture
+def project_config(base_test_dir):
+    config_file = base_test_dir / "project_config_test.toml"
+    return ProjectConfig(config_file)
+
+@fixture
+def staged_files_dir(fixtures_dir):
+    os.makedirs(fixtures_dir / "staged_files" / "bioscales", exist_ok=True)
+    return fixtures_dir / "staged_files" / "bioscales"

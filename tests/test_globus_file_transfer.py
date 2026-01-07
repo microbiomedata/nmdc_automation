@@ -1,7 +1,7 @@
 """Test the globus_file_transfer module."""
 import ast
 import os
-from unittest.mock import patch, Mock
+from unittest.mock import patch, Mock, MagicMock
 import pandas as pd
 from pathlib import Path
 from testfixtures import Replace, mock_datetime
@@ -13,9 +13,9 @@ from nmdc_automation.jgi_file_staging.globus_file_transfer import (
     get_project_globus_manifests
 )
 from nmdc_automation.jgi_file_staging.jgi_file_metadata import sample_records_to_sample_objects
+from nmdc_automation.config.siteconfig import StagingConfig, SiteConfig
 
-
-def test_get_globus_manifests(monkeypatch, jgi_staging_config):
+def test_get_globus_manifests(monkeypatch, staging_config):
     mock_run = Mock()
     process_mocks = []
     side_effects = [
@@ -34,13 +34,13 @@ def test_get_globus_manifests(monkeypatch, jgi_staging_config):
     mock_run.side_effect = process_mocks
     monkeypatch.setattr("nmdc_automation.jgi_file_staging.globus_file_transfer.subprocess.run", mock_run)
 
-    get_globus_manifest(201670, config=jgi_staging_config)
+    get_globus_manifest(201670, 'grow_project', staging_config)
     assert mock_run.call_count == 2
-    expected_path = f"65fa2422-e080-11ec-990f-3b4cfda38030:{jgi_staging_config['GLOBUS']['globus_root_dir']}/R201670"
+    expected_path = f"ae777bc6-e080-11ec-990f-3b4cfda38030:/{staging_config.globus_root_dir}/R201670"
     assert mock_run.mock_calls[0].args[0][2] == expected_path
 
-
-def test_get_project_globus_manifests(monkeypatch, fixtures_dir, jgi_staging_config, test_db):
+@patch('nmdc_automation.jgi_file_staging.globus_file_transfer.JGISampleSearchAPI')
+def test_get_project_globus_manifests(mock_sample_api, monkeypatch, grow_analysis_df, site_config, staging_config):
     mock_manifest = Mock(side_effect=[
         "Globus_Download_201545_File_Manifest.csv",
         "Globus_Download_201547_File_Manifest.csv",
@@ -48,36 +48,42 @@ def test_get_project_globus_manifests(monkeypatch, fixtures_dir, jgi_staging_con
     ])
     monkeypatch.setattr("nmdc_automation.jgi_file_staging.globus_file_transfer.get_globus_manifest", mock_manifest)
 
-    grow_analysis_df = pd.read_csv(os.path.join(fixtures_dir, "grow_analysis_projects.csv"))
+    
     # grow_analysis_df['projects'] = grow_analysis_df['projects'].apply(ast.literal_eval)
-    grow_analysis_df['analysis_project_id'] = grow_analysis_df['analysis_project_id'].apply(str)
-    grow_analysis_df.loc[:5, 'file_status'] = 'in transit'
+    grow_analysis_df.loc[:5, 'jdp_file_status'] = 'in transit'
     grow_analysis_df.loc[:5, 'request_id'] = 201545
     grow_analysis_df.loc[5:8, 'request_id'] = 201547
     grow_analysis_df.loc[9, 'request_id'] = 201572
 
     sample_objects = sample_records_to_sample_objects(grow_analysis_df.to_dict("records"))
+    
+    mock_sample_api_instance = MagicMock(env='test', client_id='test_id', client_secret='test_secret')
+    mock_sample_api_instance.get_jgi_samples.return_value = sample_objects
+    mock_sample_api.return_value = mock_sample_api_instance
+    
+    get_project_globus_manifests("grow_project", site_config, staging_config) 
 
-    test_db.samples.insert_many(sample_objects)
+    assert mock_manifest.call_count == 3
+    assert mock_manifest.mock_calls[0].args[0] == 201545
+    assert mock_manifest.mock_calls[1].args[0] == 201547
 
-    get_project_globus_manifests("grow_project", test_db, config=jgi_staging_config)
+@patch('nmdc_automation.jgi_file_staging.globus_file_transfer.JGISampleSearchAPI')
+def test_create_globus_df(mock_sample_api,  monkeypatch,grow_analysis_df, staging_config, site_config):
+    class _StagingConfig(StagingConfig):
+        staging_dir = Path(Path(__file__).parent / "fixtures").resolve()
 
-    assert mock_manifest.call_count == 2
-    assert mock_manifest.mock_calls[0].args[0] == 201547
-    assert mock_manifest.mock_calls[1].args[0] == 201572
-
-
-def test_create_globus_df(monkeypatch, fixtures_dir, jgi_staging_config, grow_analysis_df, test_db):
     grow_analysis_df.loc[:5, 'file_status'] = 'in transit'
     grow_analysis_df.loc[:5, 'request_id'] = 201545
     grow_analysis_df.loc[5:8, 'request_id'] = 201547
     grow_analysis_df.loc[9, 'request_id'] = 201572
 
     sample_records = grow_analysis_df.to_dict("records")
-    sample_objects = sample_records_to_sample_objects(sample_records)
+    sample_objects = sample_records_to_sample_objects(grow_analysis_df.to_dict("records"))
+    
+    mock_sample_api_instance = MagicMock(env='test', client_id='test_id', client_secret='test_secret')
+    mock_sample_api_instance.get_jgi_samples.return_value = sample_objects
+    mock_sample_api.return_value = mock_sample_api_instance
     assert len(sample_objects) == 10
-
-    test_db.samples.insert_many(sample_objects)
 
     mock_manifest = Mock(side_effect=[
         "Globus_Download_201545_File_Manifest.csv",
@@ -85,10 +91,11 @@ def test_create_globus_df(monkeypatch, fixtures_dir, jgi_staging_config, grow_an
         "Globus_Download_201572_File_Manifest.csv",
     ])
     monkeypatch.setattr("nmdc_automation.jgi_file_staging.globus_file_transfer.get_globus_manifest", mock_manifest)
+    staging_config.__class__ = _StagingConfig
 
-    globus_df = create_globus_dataframe("grow_project", jgi_staging_config, test_db)
+    globus_df = create_globus_dataframe("grow_project", staging_config, site_config)
 
-    assert len(globus_df) == 2
+    assert len(globus_df) == 76
     assert globus_df.loc[0, "directory/path"] == "ERLowmetatpilot/IMG_Data"
     assert globus_df.loc[0, "filename"] == "Ga0502004_genes.fna"
     assert globus_df.loc[0, "file_id"] == "6141a2b4cc4ff44f36c8991a"
@@ -98,21 +105,26 @@ def test_create_globus_df(monkeypatch, fixtures_dir, jgi_staging_config, grow_an
     assert globus_df.loc[1, "filename"] == "Table_6_-_Ga0502004_sigs_annotation_parameters.txt"
     assert globus_df.loc[1, "subdir"] == "R201547"
 
-
-
-def test_create_globus_batch_file(monkeypatch, fixtures_dir, jgi_staging_config, test_db, grow_analysis_df, tmp_path):
+@patch('nmdc_automation.jgi_file_staging.file_restoration.JGISampleSearchAPI')
+@patch('nmdc_automation.jgi_file_staging.globus_file_transfer.JGISampleSearchAPI')
+def test_create_globus_batch_file(mock_sample_api, mock_sample_restore, monkeypatch, grow_analysis_df, 
+                                  tmp_path, staging_config, site_config):
     import os
-
+    class _StagingConfig(StagingConfig):
+        staging_dir = Path(Path(__file__).parent / "fixtures").resolve()
+    staging_config.__class__ = _StagingConfig
     mock_manifest = Mock(return_value="Globus_Download_201572_File_Manifest.csv")
     monkeypatch.setattr("nmdc_automation.jgi_file_staging.globus_file_transfer.get_globus_manifest", mock_manifest)
-    grow_analysis_df["file_status"] = "ready"
+    grow_analysis_df["jdp_file_status"] = "ready"
     grow_analysis_df["request_id"] = "201572"
 
     sample_records = grow_analysis_df.to_dict("records")
     sample_objects = sample_records_to_sample_objects(sample_records)
     assert len(sample_objects) == 10
-
-    test_db.samples.insert_many(sample_objects)
+    mock_sample_api_instance = MagicMock(env='test', client_id='test_id', client_secret='test_secret')
+    mock_sample_api_instance.get_jgi_samples.return_value = sample_objects
+    mock_sample_api.return_value = mock_sample_api_instance
+    mock_sample_restore.return_value = mock_sample_api_instance
 
     # Patch where the file gets written to go into tmp_path
     monkeypatch.setattr("nmdc_automation.jgi_file_staging.globus_file_transfer.OUTPUT_DIR", tmp_path)
@@ -121,7 +133,7 @@ def test_create_globus_batch_file(monkeypatch, fixtures_dir, jgi_staging_config,
         "nmdc_automation.jgi_file_staging.globus_file_transfer.datetime",
         mock_datetime(2022, 1, 1, 12, 22, 55, delta=0),
     ):
-        globus_batch_filename, globus_analysis_df = create_globus_batch_file("grow_project", jgi_staging_config, test_db, tmp_path)
+        globus_batch_filename, globus_analysis_df = create_globus_batch_file("grow_project", site_config, staging_config, tmp_path)
 
     assert globus_batch_filename.endswith(".txt")
     assert tmp_path in Path(globus_batch_filename).parents
