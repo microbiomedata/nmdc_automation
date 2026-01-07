@@ -462,14 +462,20 @@ class WorkflowStateManager:
             raise ValueError("opid already set in job state")
         if opid:
             self.cached_state["opid"] = opid
-
+    
     def generate_workflow_inputs(self) -> Dict[str, str]:
         """ Generate inputs for the job runner from the workflow state """
         inputs = {}
         prefix = self.input_prefix
         for input_key, input_val in self.inputs.items():
-            if isinstance(input_val, str) and self.site_config:
-                input_val = self.site_config.map_data_location(input_val)
+            if self.site_config:
+                if isinstance(input_val, str):
+                    input_val = self.site_config.map_data_location(input_val)
+                elif isinstance(input_val, list):
+                    input_val = [
+                        self.site_config.map_data_location(v) if isinstance(v, str) else v
+                        for v in input_val
+                    ]
             inputs[f"{prefix}.{input_key}"] = input_val
         return inputs
 

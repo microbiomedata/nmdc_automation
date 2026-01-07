@@ -155,7 +155,7 @@ class SiteConfig:
         prefix = self.data_url_prefix
         if prefix and value.startswith(prefix) and self.data_results_root:
             rel = value[len(prefix):].lstrip("/")
-            rel = rel.replace("..", "").strip("/")  # hygiene
+            rel = rel.replace("..", "").strip("/")
             return os.path.join(self.data_results_root, rel)
         return value
 
