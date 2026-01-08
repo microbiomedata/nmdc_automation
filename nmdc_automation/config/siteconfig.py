@@ -125,6 +125,40 @@ class SiteConfig:
         return self.config_data.get("local_runtime_mongodb", {})
 
 
+
+    @property
+    def data_path_map(self):
+        """Raw mapping block from TOML (optional)."""
+        return self.config_data.get("data_path_map", {})
+
+    @property
+    def data_url_prefix(self) -> str:
+        """URL prefix to detect; normalized to end with a single '/'."""
+        m = self.data_path_map
+        if not m or "url_prefix" not in m:
+            return ""
+        return m["url_prefix"].rstrip("/") + "/"
+
+    @property
+    def data_results_root(self) -> str:
+        """Filesystem root to substitute; normalized to have no trailing '/'."""
+        m = self.data_path_map
+        return (m.get("results_root", "") or "").rstrip("/")
+
+    def map_data_location(self, value: str) -> str:
+        """
+        If `value` starts with the configured URL prefix, rewrite it to the local
+        results root (keeping the relative tail). Otherwise return `value` unchanged.
+        """
+        if not isinstance(value, str):
+            return value
+        prefix = self.data_url_prefix
+        if prefix and value.startswith(prefix) and self.data_results_root:
+            rel = value[len(prefix):].lstrip("/")
+            rel = rel.replace("..", "").strip("/")
+            return os.path.join(self.data_results_root, rel)
+        return value
+
     @property
     @lru_cache(maxsize=None)
     def allowed_workflows(self):
