@@ -242,7 +242,7 @@ def get_current_workflow_process_nodes(
         if wf.git_repo:
             q = {"git_url": wf.git_repo}
         # override query with allowlist
-        if allowlist:  # TODO test this -jlp 20250718
+        if allowlist: 
             q = {"was_informed_by": {"$in": list(allowlist)}}
 
         #records = db[wf.collection].find(q)
@@ -254,11 +254,20 @@ def get_current_workflow_process_nodes(
                 continue
             if _is_missing_required_input_output(wf, rec, data_objects_by_id):
                 continue
+            
+            # Deprecated
             #Iterate through was_informed_by list and only if all are valid do we add the wpn
-            wib_set_valid = True
+            #wib_set_valid = True
+            #for wib_id in rec["was_informed_by"]:
+            #    if wib_id not in data_generation_ids:
+            #        wib_set_valid = False
+            
+            # For manifest sets, any was_informed_by ID could be in the allow list, which is stored in data_generation_ids
+            # so just check if any exist for the set to be valid. 
+            wib_set_valid = False
             for wib_id in rec["was_informed_by"]:
-                if wib_id not in data_generation_ids:
-                    wib_set_valid = False
+                if wib_id in data_generation_ids:
+                    wib_set_valid = True
             
             if wib_set_valid == True:
                 wfp_node = WorkflowProcessNode(rec, wf)
