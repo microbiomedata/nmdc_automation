@@ -9,6 +9,8 @@ from tests.fixtures.db_utils import init_test, load_fixture, read_json, reset_db
 from unittest.mock import patch, PropertyMock, Mock
 from nmdc_automation.api.nmdcapi import NmdcRuntimeApi
 
+from pathlib import Path
+
 @mark.parametrize("workflow_file", [
     "workflows.yaml",
     "workflows-mt.yaml"
@@ -559,16 +561,8 @@ def test_scheduler_cycle_manifest(test_db, test_client, workflows_config_dir, si
 
 def test_scheduler_cycle_downstream_manifest(test_db, test_client, workflows_config_dir, site_config_file):
     """
-    Test basic job creation for a data generation ID that is in a manifest set.
-    Should return one job scheduled for the one manifest set
-    This currently uses a modified dev site config so that the dev-api gets called to test the
-    aggregations whereas other unit tests mock the api for minting IDs, else it will hang
-    TO DO: replace live dev aggregation call for stability of offline testing 
-    Results: One manifest job is scheduled, a second dgns for the same manifest is skipped, and a
-    non-manifest MAGs:v1.3.16 for nmdc:wfmgan-11-6x59p192.2 is created
-    Note: this used to take in 'site_config_file_dev_api' which was a fixture to use the live dev api (risky)
-    now that we have local endpoint support, reverting back to standard config 20251104 -jlp
-    """
+    This schedules the reads based analysis and assembly downstream jobs after a manifest rqcfilter job is complete.
+     """
     exp_rqc_git_repos = [
         "https://github.com/microbiomedata/ReadbasedAnalysis",
         "https://github.com/microbiomedata/metaAssembly"
@@ -580,10 +574,10 @@ def test_scheduler_cycle_downstream_manifest(test_db, test_client, workflows_con
     load_fixture(test_db, "data_generation_in_manifest.json", "data_generation_set")
     load_fixture(test_db, "manifest_set.json", "manifest_set")
 
-    # Load an existing and completed readsqc job for the manifest dgns
+    # Load an existing and completed ReadsQC job for the manifest dgns
     load_fixture(test_db, "job_manifest_readsqc.json", "jobs")
     # Load the finished readsQC so that assembly will schedule
-    load_fixture(test_db, "workflow_execution_manifest_asm.json", "workflow_execution_set")
+    load_fixture(test_db, "workflow_execution_manifest_readsqc.json", "workflow_execution_set")
 
 
     # Scheduler will find one manifest-related asm job
@@ -637,6 +631,164 @@ def test_scheduler_cycle_manifest_multi(test_db, test_client, workflows_config_d
 
         # All jobs should now be in a submitted state
         resp = jm.cycle()
+        assert len(resp) == exp_num_jobs_cycle_1
+
+
+def test_scheduler_manifest_multicycle(test_db, test_client, workflows_config_dir, site_config_file):
+    """
+    This tests a few cycle runs with manifest set. The manifest job readsQC start, 
+    then fixtures are loaded to make the readsQC look complete to schedule the downstream jobs
+    in the next cycle call.
+    """
+   
+    reset_db(test_db)
+    load_fixture(test_db, "data_objects_in_manifest_3.json", "data_object_set")
+    load_fixture(test_db, "data_generation_in_manifest_3.json", "data_generation_set")
+    load_fixture(test_db, "manifest_set_3.json", "manifest_set")
+
+    
+    # scheduler will find one ReadsQC job
+    exp_num_jobs_initial = 1 
+    # jobs are submitted, no new jobs
+    exp_num_jobs_cycle_1 = 0 
+    # scheduler with find ReadBasedAnalysis and Assembly jobs
+    exp_num_jobs_cycle_2 = 2
+    # jobs are submitted, no new jobs
+    exp_num_jobs_cycle_3 = 0 
+    
+    jm = Scheduler(workflow_yaml=workflows_config_dir / "workflows.yaml",
+                   site_conf=site_config_file, api=test_client)
+    
+    with patch.object(jm.api, 'minter', return_value="mocked-id-123"):
+        resp = jm.cycle()
+        assert len(resp) == exp_num_jobs_initial
+        assert resp[0]["config"]["activity"]["type"] == "nmdc:ReadQcAnalysis"
+
+        # All jobs should now be in a submitted state
+        resp = jm.cycle()
+        assert len(resp) == exp_num_jobs_cycle_1
+
+        #
+        # Now make the ReadsQC job complete
+        #
+        # Load an existing and completed ReadsQC job for the manifest dgns
+        # note: this doesn't update the new ReadQC job record created in cycle1 that the watcher would eventually claim, 
+        # so the testdb will ignore it in this cycle and use the completed job that is loaded below. 
+        load_fixture(test_db, "job_manifest_3_readsqc.json", "jobs")
+        # Load the finished readsQC so that assembly and readbased taxnomy will schedule
+        load_fixture(test_db, "workflow_execution_manifest_3_readsqc.json", "workflow_execution_set")
+
+        # Schedule the next 2 jobs downstream
+        resp = jm.cycle()
+        assert len(resp) == exp_num_jobs_cycle_2
+        
+
+        # All jobs should now be in a submitted state
+        resp = jm.cycle()
+        assert len(resp) == exp_num_jobs_cycle_3
+
+
+def test_scheduler_manifest_multicycle_allow(test_data_dir, test_db, test_client, workflows_config_dir, site_config_file):
+    """
+    Another variation of test_scheduler_manifest_multicycle but using an allow list.
+    This works when testing permutations of data_generation_set IDs for the manifest set
+    in the allow2.lst using nmdc:dgns-11-d4er8763jlp, nmdc:dgns-11-9ss0vs34jlp or both
+    """
+   
+    allowlistfile = Path(test_data_dir) / "allow2.lst"
+    allowlist = set()
+    with open(allowlistfile) as f:
+        for line in f:
+            allowlist.add(line.rstrip())
+    
+
+    reset_db(test_db)
+    load_fixture(test_db, "data_objects_in_manifest_3.json", "data_object_set")
+    load_fixture(test_db, "data_generation_in_manifest_3.json", "data_generation_set")
+    load_fixture(test_db, "manifest_set_3.json", "manifest_set")
+
+
+    # Scheduler cycle expected jobs count
+    exp_num_jobs_initial = 1
+    exp_num_jobs_cycle_1 = 0
+    exp_num_jobs_cycle_2 = 2
+    exp_num_jobs_cycle_3 = 0
+    
+    jm = Scheduler(workflow_yaml=workflows_config_dir / "workflows.yaml",
+                   site_conf=site_config_file, api=test_client)
+    
+    with patch.object(jm.api, 'minter', return_value="mocked-id-123"):
+        resp = jm.cycle(allowlist=allowlist)
+        assert len(resp) == exp_num_jobs_initial
+        assert resp[0]["config"]["activity"]["type"] == "nmdc:ReadQcAnalysis"
+
+        # All jobs should now be in a submitted state
+        resp = jm.cycle(allowlist=allowlist)
+        assert len(resp) == exp_num_jobs_cycle_1
+
+        #
+        # Now make the ReadsQC job complete
+        #
+        # Load an existing and completed ReadsQC job for the manifest dgns
+        # note: this doesn't update the new ReadQC job record created in cycle1 that the watcher would eventually claim, 
+        # so the testdb will ignore it in this cycle and use the completed job that is loaded below. 
+        load_fixture(test_db, "job_manifest_3_readsqc.json", "jobs")
+        # Load the finished readsQC so that assembly and readbased taxnomy will schedule
+        load_fixture(test_db, "workflow_execution_manifest_3_readsqc.json", "workflow_execution_set")
+
+        # Schedule the next 2 jobs downstream
+        resp = jm.cycle(allowlist=allowlist)
+        assert len(resp) == exp_num_jobs_cycle_2
+        
+
+        # All jobs should now be in a submitted state
+        resp = jm.cycle(allowlist=allowlist)
+        assert len(resp) == exp_num_jobs_cycle_3
+
+
+def test_scheduler_allowlist(test_data_dir, test_db, test_client, workflows_config_dir, site_config_file):
+    """
+    Test basic job creation for a data generation nmdc:dgns-11-qmpge038 in the allow list that is in a manifest set.
+    Should return one ReadsQC job scheduled for the manifest set
+    Results: One manifest job is scheduled
+    
+    """
+    allowlistfile = Path(test_data_dir) / "allow.lst"
+    allowlist = set()
+    with open(allowlistfile) as f:
+        for line in f:
+            allowlist.add(line.rstrip())
+    
+
+    exp_rqc_git_repos = [
+        "https://github.com/microbiomedata/ReadsQC",
+    ]
+    
+    
+
+    # Note: Can optionally use this function to test a local db copy + custom allow list by
+    # 1. Modify allow.lst under test_data (or point to a new one)
+    # 3. Optionally change 'test_db' dbname to backup_db (local copy) in conftest 
+    #    commenting out the reset/fixture lines below. Be careful with commits -jlp20260107
+    reset_db(test_db)
+    load_fixture(test_db, "data_objects_in_manifest.json", "data_object_set")
+    load_fixture(test_db, "data_generation_in_manifest.json", "data_generation_set")
+    load_fixture(test_db, "manifest_set.json", "manifest_set")
+    
+
+    # Scheduler will find one manifest job
+    exp_num_jobs_initial = 1
+    exp_num_jobs_cycle_1 = 0
+    jm = Scheduler(workflow_yaml=workflows_config_dir / "workflows.yaml",
+                   site_conf=site_config_file, api=test_client)
+    
+    with patch.object(jm.api, 'minter', return_value="mocked-id-123"):
+        resp = jm.cycle(allowlist=allowlist)
+        assert len(resp) == exp_num_jobs_initial
+        assert resp[0]["config"]["git_repo"] in exp_rqc_git_repos # could change this to config.activity.type = "nmdc:ReadQcAnalysis"
+
+        # All jobs should now be in a submitted state
+        resp = jm.cycle(allowlist=allowlist)
         assert len(resp) == exp_num_jobs_cycle_1
 
 

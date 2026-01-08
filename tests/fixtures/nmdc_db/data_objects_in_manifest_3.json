@@ -1,0 +1,86 @@
+[
+  {
+  "data_object_type": "Metagenome Raw Read 1",
+  "description": "sequencing results for BMI_22A_01_0002_mms_HNFFKBGXN_R1",
+  "id": "nmdc:dobj-11-9eyeq730jlp",
+  "in_manifest": [
+    "nmdc:manif-11-jyrzrd96"
+  ],
+  "name": "BMI_22A_01_0002_mms_HNFFKBGXN_R1.fastq.gz",
+  "type": "nmdc:DataObject",
+  "url": "https://storage.neonscience.org/neon-microbial-raw-seq-files/2023/HNFFKBGXN_R1/BMI_22A_01_0002_mms_HNFFKBGXN_R1.fastq.gz",
+  "data_category": "instrument_data"
+},
+{
+  "data_object_type": "Metagenome Raw Read 2",
+  "description": "sequencing results for BMI_22A_01_0002_R2",
+  "id": "nmdc:dobj-11-cnyvjb30jlp",
+  "in_manifest": [
+    "nmdc:manif-11-jyrzrd96"
+  ],
+  "name": "BMI_22A_01_0002_R2.fastq.gz",
+  "type": "nmdc:DataObject",
+  "url": "https://storage.neonscience.org/neon-microbial-raw-seq-files/2024/HTLW3DSX7_PoolA_R2/BMI_22A_01_0002_R2.fastq.gz",
+  "data_category": "instrument_data"
+},
+{
+  "data_object_type": "Metagenome Raw Read 2",
+  "description": "sequencing results for BMI_22A_01_0002_mms_HNFFKBGXN_R2",
+  "id": "nmdc:dobj-11-dht5bk30jlp",
+  "in_manifest": [
+    "nmdc:manif-11-jyrzrd96"
+  ],
+  "name": "BMI_22A_01_0002_mms_HNFFKBGXN_R2.fastq.gz",
+  "type": "nmdc:DataObject",
+  "url": "https://storage.neonscience.org/neon-microbial-raw-seq-files/2023/HNFFKBGXN_R2/BMI_22A_01_0002_mms_HNFFKBGXN_R2.fastq.gz",
+  "data_category": "instrument_data"
+},
+{
+  "data_object_type": "Metagenome Raw Read 1",
+  "description": "sequencing results for BMI_22A_01_0002_R1",
+  "id": "nmdc:dobj-11-jky4k370jlp",
+  "in_manifest": [
+    "nmdc:manif-11-jyrzrd96"
+  ],
+  "name": "BMI_22A_01_0002_R1.fastq.gz",
+  "type": "nmdc:DataObject",
+  "url": "https://storage.neonscience.org/neon-microbial-raw-seq-files/2024/HTLW3DSX7_PoolA_R1/BMI_22A_01_0002_R1.fastq.gz",
+  "data_category": "instrument_data"
+},
+{
+  "id": "nmdc:dobj-15-35az7w26",
+  "type": "nmdc:DataObject",
+  "name": "nmdc_wfrqc-15-x027k720.1_readsQC.info",
+  "description": "Read filtering info for nmdc:wfrqc-15-x027k720.1",
+  "data_category": "processed_data",
+  "data_object_type": "Read Filtering Info File",
+  "file_size_bytes": 620,
+  "md5_checksum": "436b791048f5c24824d1a29b02e6004b",
+  "url": "https://data.microbiomedata.org/data/dev/nmdc:manif-11-jyrzrd96/nmdc:wfrqc-15-x027k720.1/nmdc_wfrqc-15-x027k720.1_readsQC.info",
+  "was_generated_by": "nmdc:wfrqc-15-x027k720.1"
+},
+{
+  "id": "nmdc:dobj-15-8m16cw57",
+  "type": "nmdc:DataObject",
+  "name": "nmdc_wfrqc-15-x027k720.1_filtered.fastq.gz",
+  "description": "Reads QC for nmdc:wfrqc-15-x027k720.1",
+  "data_category": "processed_data",
+  "data_object_type": "Filtered Sequencing Reads",
+  "file_size_bytes": 462030159,
+  "md5_checksum": "d09b6b265e6564793aead3203f653c83",
+  "url": "https://data.microbiomedata.org/data/dev/nmdc:manif-11-jyrzrd96/nmdc:wfrqc-15-x027k720.1/nmdc_wfrqc-15-x027k720.1_filtered.fastq.gz",
+  "was_generated_by": "nmdc:wfrqc-15-x027k720.1"
+},
+{
+  "id": "nmdc:dobj-15-d29j5y50",
+  "type": "nmdc:DataObject",
+  "name": "nmdc_wfrqc-15-x027k720.1_filterStats.txt",
+  "description": "Reads QC summary for nmdc:wfrqc-15-x027k720.1",
+  "data_category": "processed_data",
+  "data_object_type": "QC Statistics",
+  "file_size_bytes": 287,
+  "md5_checksum": "a970cbeaf7f1028d27988f3017fee0c2",
+  "url": "https://data.microbiomedata.org/data/dev/nmdc:manif-11-jyrzrd96/nmdc:wfrqc-15-x027k720.1/nmdc_wfrqc-15-x027k720.1_filterStats.txt",
+  "was_generated_by": "nmdc:wfrqc-15-x027k720.1"
+}
+]
