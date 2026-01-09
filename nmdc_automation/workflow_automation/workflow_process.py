@@ -516,7 +516,7 @@ def _map_manifest_to_data_generation_set(api, manifest_map):
     }
 
     resp = api.run_query(data_object_agg)
-    logging.info(f"queries:run response: {resp}")
+    logging.debug(f"queries:run response: {resp}")
         
     # Log any issues
     if len(resp) == 0:
