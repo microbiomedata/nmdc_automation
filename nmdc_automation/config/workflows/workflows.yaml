@@ -371,7 +371,7 @@ Workflows:
     Enabled: True
     Analyte Category: Metagenome
     Git_repo: https://github.com/microbiomedata/ReadbasedAnalysis
-    Version: v1.0.10
+    Version: v1.1.0
     WDL: ReadbasedAnalysis.wdl
     Collection: workflow_execution_set
     Predecessors:
@@ -421,6 +421,18 @@ Workflows:
       data_object_type: Kraken2 Krona Plot
       description: Kraken2 Krona for {id}
       name: Kraken2 Krona plot HTML file
+    - output: final_singlem_classification_tsv
+      data_object_type: SingleM Taxonomic Classification
+      description: SingleM Classification for {id}
+      name: SingleM classification file
+    - output: final_singlem_report_tsv
+      data_object_type: SingleM Clustered Report
+      description: SingleM Clustered Report for {id}
+      name: SingleM clustered report file
+    - output: final_singlem_krona_html
+      data_object_type: SingleM Krona Plot
+      description: SingleM Krona for {id}
+      name: SingleM Krona plot HTML file
     - output: info_file
       data_object_type: Read Based Analysis Info File
       description: Read based analysis info for {id}
