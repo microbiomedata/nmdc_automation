@@ -141,7 +141,7 @@ def get_current_workflow_process_nodes(
     Returns a list of WorkflowProcessNode objects.
     """
     workflow_process_nodes = set()
-    analyte_category = _determine_analyte_category(workflows)
+    analyte_categories = _determine_analyte_categories(workflows)
 
     data_generation_ids = set()
     data_generation_workflows = [wf for wf in workflows if wf.collection == "data_generation_set"]
@@ -155,7 +155,7 @@ def get_current_workflow_process_nodes(
     manifest_map = {}
 
     # default query for data_generation_set records filtered by analyte category
-    q = {"analyte_category": analyte_category}
+    q = {"analyte_category": {"$in": list(analyte_categories)}}
     # override query with allowlist
     if allowlist:
         q["id"] = {"$in": list(allowlist)}
@@ -317,14 +317,14 @@ def get_current_workflow_process_nodes(
     return list(workflow_process_nodes), manifest_map
 
 
-def _determine_analyte_category(workflows: List[WorkflowConfig]) -> str:
+def _determine_analyte_categories(workflows: List[WorkflowConfig]) -> list[str]:
     analyte_categories = set([wf.analyte_category for wf in workflows])
-    if len(analyte_categories) > 1:
-        raise ValueError("Multiple analyte categories not supported")
-    elif len(analyte_categories) == 0:
+    if len(analyte_categories) == 0:
         raise ValueError("No analyte category found")
-    analyte_category = analyte_categories.pop()
-    return analyte_category.lower()
+    analyte_categories = list(analyte_categories)
+    analyte_categories = [c.lower() for c in analyte_categories]
+    analyte_categories.sort()
+    return analyte_categories
 
 
 # TODO: Make public, give a better name, add type hints and unit tests.
