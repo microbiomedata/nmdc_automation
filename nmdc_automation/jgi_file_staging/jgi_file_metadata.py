@@ -103,6 +103,13 @@ def get_samples_data(project_name: str, site_configuration, staging_configuratio
 
 
 def get_analysis_files_df(proposal_id: int, files_df: pd.DataFrame, ACCESS_TOKEN: str, remove_files: List[str]) -> pd.DataFrame:
+    """
+    Get analysis files dataframe by merging analysis project data with files dataframe
+    :param proposal_id: proposal id
+    :param files_df: dataframe of sample files
+    :param ACCESS_TOKEN: gold api token
+    :param remove_files: list of file patterns to remove
+    :return: dataframe of analysis files"""
     gold_analysis_data = get_analysis_projects_from_proposal_id(proposal_id, ACCESS_TOKEN)
     gold_analysis_data_df = pd.DataFrame(gold_analysis_data)
     gold_analysis_files_df = pd.merge(gold_analysis_data_df, files_df, left_on='itsApId',
@@ -117,6 +124,7 @@ def get_analysis_files_df(proposal_id: int, files_df: pd.DataFrame, ACCESS_TOKEN
 
 
 def get_access_token() -> str:
+    """Get access token from JGI using offline token stored in environment variable"""
     url = f'https://gold-ws.jgi.doe.gov/exchange?offlineToken={os.environ.get("OFFLINE_TOKEN")}'
     verify = _verify()
 
@@ -142,6 +150,7 @@ def _verify() -> bool:
 
 
 def check_access_token(ACCESS_TOKEN: str) -> str:
+    """Check if the access token is still valid"""
     url = 'https://gold-ws.jgi.doe.gov/api/v1/projects?biosampleGoldId=Gb0291582'
     gold_biosample_response = get_request(url, ACCESS_TOKEN)
     if gold_biosample_response:
@@ -172,6 +181,7 @@ def get_sample_files(proposal_id: int, ACCESS_TOKEN: str) -> pd.DataFrame:
 
 
 def get_biosample_ids(proposal_id: int, ACCESS_TOKEN: str) -> List[str]:
+    """Use the proposal id to get the list of biosample ids from GOLD"""
     url = f'https://gold-ws.jgi.doe.gov/api/v1/biosamples?itsProposalId={proposal_id}'
     response_json = get_request(url, ACCESS_TOKEN)
     biosample_ids = [sample['biosampleGoldId'] for sample in response_json]
