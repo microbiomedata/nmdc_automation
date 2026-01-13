@@ -7,7 +7,7 @@ input_file="agent.state"
 output_file="summary.tsv"
 
 # Write header
-echo -e "workflow_id\twas_informed_by\tactivity_id\tlast_status\tdone\tnmdc_jobid" > "$output_file"
+echo -e "workflow_id\twas_informed_by\tactivity_id\tlast_status\tdone\tjaws_jobid\tnmdc_jobid\tstart" > "$output_file"
 
 # Extract data with jq and append to the file
 # jq -r '.jobs[] | select(.workflow != null) | [.workflow.id, .config.was_informed_by, .config.activity_id, .last_status] | @tsv' "$input_file" >> "$output_file"
@@ -19,7 +19,9 @@ jq -r '
       .config.activity_id,
       .last_status,
       .done,
-      .nmdc_jobid
+      .jaws_jobid,
+      .nmdc_jobid,
+      .start
     ]
   | @tsv
 ' "$input_file" >> "$output_file"
