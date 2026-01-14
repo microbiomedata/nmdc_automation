@@ -4,6 +4,8 @@ from typing import Union
 import yaml
 from pathlib import Path
 import warnings
+import logging
+logger = logging.getLogger(__name__)
 
 WORKFLOWS_DIR = Path(__file__).parent / "workflows"
 
@@ -145,18 +147,39 @@ class SiteConfig:
         m = self.data_path_map
         return (m.get("results_root", "") or "").rstrip("/")
 
+    # def map_data_location(self, value: str) -> str:
+    #     """
+    #     If `value` starts with the configured URL prefix, rewrite it to the local
+    #     results root (keeping the relative tail). Otherwise return `value` unchanged.
+    #     """
+    #     if not isinstance(value, str):
+    #         return value
+    #     prefix = self.data_url_prefix
+    #     if prefix and value.startswith(prefix) and self.data_results_root:
+    #         rel = value[len(prefix):].lstrip("/")
+    #         rel = rel.replace("..", "").strip("/")
+    #         return os.path.join(self.data_results_root, rel)
+    #     return value
+    
     def map_data_location(self, value: str) -> str:
-        """
-        If `value` starts with the configured URL prefix, rewrite it to the local
-        results root (keeping the relative tail). Otherwise return `value` unchanged.
-        """
         if not isinstance(value, str):
             return value
+
         prefix = self.data_url_prefix
-        if prefix and value.startswith(prefix) and self.data_results_root:
+        root = self.data_results_root
+
+        logger.info(f"map_data_location: checking value = {value}")
+        logger.info(f"map_data_location: prefix = {prefix}")
+        logger.info(f"map_data_location: root = {root}")
+
+        if prefix and value.startswith(prefix) and root:
             rel = value[len(prefix):].lstrip("/")
             rel = rel.replace("..", "").strip("/")
-            return os.path.join(self.data_results_root, rel)
+            mapped = os.path.join(root, rel)
+            logger.info(f"map_data_location: MAPPED to {mapped}")
+            return mapped
+
+        logger.info(f"map_data_location: NO MAPPING DONE")
         return value
 
     @property
