@@ -469,6 +469,8 @@ class WorkflowStateManager:
         prefix = self.input_prefix
         for input_key, input_val in self.inputs.items():
             if self.site_config:
+                #debugging
+                logger.info(f"Mapping input: {input_val}")
                 if isinstance(input_val, str):
                     input_val = self.site_config.map_data_location(input_val)
                 elif isinstance(input_val, list):
