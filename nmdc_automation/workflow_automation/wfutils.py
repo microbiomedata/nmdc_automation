@@ -467,8 +467,8 @@ class WorkflowStateManager:
         """ Generate inputs for the job runner from the workflow state """
         inputs = {}
         prefix = self.input_prefix
-        url_root = self.url_root.rstrip("/") + "/"
-        results_root = self.results_root
+        url_root = self.url_root.rstrip("/") + "/" if self.site_config else ""
+        results_root = self.results_root if self.site_config else ""
         
         def map_value(v):
             if isinstance(v, str) and v.startswith(url_root):
