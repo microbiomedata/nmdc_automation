@@ -467,18 +467,27 @@ class WorkflowStateManager:
         """ Generate inputs for the job runner from the workflow state """
         inputs = {}
         prefix = self.input_prefix
+        url_root = self.url_root.rstrip("/") + "/"
+        results_root = self.results_root
+        
+        def map_value(v):
+            if isinstance(v, str) and v.startswith(url_root):
+                rel = v[len(url_root):].lstrip("/")
+                rel = rel.replace("..", "").strip("/")
+                mapped = os.path.join(results_root, rel)
+                logger.info(f"Mapped URL → local path: {v} → {mapped}")
+                return mapped
+            return v
+
         for input_key, input_val in self.inputs.items():
-            if self.site_config:
-                #debugging
+            if isinstance(input_val, str):
+                input_val = map_value(input_val)
                 logger.info(f"Mapping input: {input_val}")
-                if isinstance(input_val, str):
-                    input_val = self.site_config.map_data_location(input_val)
-                elif isinstance(input_val, list):
-                    input_val = [
-                        self.site_config.map_data_location(v) if isinstance(v, str) else v
-                        for v in input_val
-                    ]
+            elif isinstance(input_val, list):
+                input_val = [map_value(v) for v in input_val]
+
             inputs[f"{prefix}.{input_key}"] = input_val
+
         return inputs
 
     def generate_workflow_labels(self) -> Dict[str, str]:
@@ -582,7 +591,6 @@ class WorkflowStateManager:
     def manifest(self) -> Optional[str]:
         return self.config.get("manifest", None)
     
-
     @property
     def wdl(self) -> Optional[str]:
         return self.config.get("wdl", None)
@@ -610,6 +618,18 @@ class WorkflowStateManager:
     @property
     def input_prefix(self) -> Optional[str]:
         return self.config.get("input_prefix", None)
+    
+    # url root
+    @property
+    def url_root(self) -> str:
+        """ Get the URL root """
+        return self.site_config.url_root
+
+    # results root
+    @property
+    def results_root(self) -> str:
+        """ Get the results root if the URL is https://data.microbiomedata.org/data/ """
+        return self.site_config.results_root
 
     @property
     def inputs(self) -> Dict[str, str]:
@@ -782,6 +802,11 @@ class WorkflowJob:
     def url_root(self) -> str:
         """ Get the URL root """
         return self.site_config.url_root
+    
+    @property
+    def results_root(self) -> str:
+        """ Get the results root if the URL is https://data.microbiomedata.org/data/ """
+        return self.site_config.results_root
 
     @property
     def was_informed_by(self) -> list[str]:
