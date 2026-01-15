@@ -462,31 +462,35 @@ class WorkflowStateManager:
             raise ValueError("opid already set in job state")
         if opid:
             self.cached_state["opid"] = opid
+
+    # mapping function for url to path
+    def map_value(self, input_file:str) -> str:
+        """ fix it """
+        url_root = self.url_root.rstrip("/") if self.site_config else ""
+        results_root = self.results_root if self.site_config else ""
+        mapped = input_file
+
+        if input_file.startswith(url_root):
+            rel = input_file[len(url_root):].lstrip("/")
+            # rel = rel.replace("..", "").strip("/")
+            mapped = os.path.join(results_root, rel)
+            logger.info(f"Mapped URL → local path: {input_file} → {mapped}")
+        return mapped
     
     def generate_workflow_inputs(self) -> Dict[str, str]:
         """ Generate inputs for the job runner from the workflow state """
         inputs = {}
         prefix = self.input_prefix
-        url_root = self.url_root.rstrip("/") + "/" if self.site_config else ""
-        results_root = self.results_root if self.site_config else ""
-        
-        def map_value(v):
-            if isinstance(v, str) and v.startswith(url_root):
-                rel = v[len(url_root):].lstrip("/")
-                rel = rel.replace("..", "").strip("/")
-                mapped = os.path.join(results_root, rel)
-                logger.info(f"Mapped URL → local path: {v} → {mapped}")
-                return mapped
-            return v
 
         for input_key, input_val in self.inputs.items():
-            if isinstance(input_val, str):
-                input_val = map_value(input_val)
-                logger.info(f"Mapping input: {input_val}")
+            final_val = input_val
+            if input_key.endswith("file") or input_key.endswith("files"):
+                final_val = self.map_value(input_val)
+                logger.info(f"Mapping input: {final_val}")
             elif isinstance(input_val, list):
-                input_val = [map_value(v) for v in input_val]
+                final_val = [self.map_value(v) for v in input_val]
 
-            inputs[f"{prefix}.{input_key}"] = input_val
+            inputs[f"{prefix}.{input_key}"] = final_val
 
         return inputs
 
@@ -598,7 +602,6 @@ class WorkflowStateManager:
     @property
     def release(self) -> Optional[str]:
         return self.config.get("release", None)
-
 
     @property
     def workflow_execution_type(self) -> Optional[str]:
