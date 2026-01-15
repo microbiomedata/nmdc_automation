@@ -463,19 +463,17 @@ class WorkflowStateManager:
         if opid:
             self.cached_state["opid"] = opid
 
-    # mapping function for url to path
     def map_value(self, input_file:str) -> str:
-        """ fix it """
-        url_root = self.url_root.rstrip("/") if self.site_config else ""
-        results_root = self.results_root if self.site_config else ""
+        """ Maps the input file/files to the results path, /global/cfs/cdirs/m3408/results/,
+        if the URL is from https://data.microbiomedata.org/data/ """
+
+        results_url = self.results_url.rstrip("/") if self.site_config else ""
+        results_path = self.results_path if self.site_config else ""
         mapped = input_file
 
-        logger.info(f"url root: {url_root}")
-        logger.info(f"results root: {results_root}")
-
-        if input_file.startswith(url_root):
-            rel = input_file[len(url_root):].lstrip("/")
-            mapped = os.path.join(results_root, rel)
+        if input_file.startswith(results_url):
+            rel = input_file[len(results_url):].lstrip("/")
+            mapped = os.path.join(results_path, rel)
             logger.info(f"Mapped URL → local path: {input_file} → {mapped}")
         return mapped
     
@@ -484,29 +482,17 @@ class WorkflowStateManager:
         inputs = {}
         prefix = self.input_prefix
 
-        # for input_key, input_val in self.inputs.items():
-        #     logger.info(f"input_key: {input_key}")
-        #     logger.info(f"input_val: {input_val}")
-
-        #     final_val = input_val
-        #     if isinstance(input_val, list):
-        #         final_val = [self.map_value(v) for v in input_val]
-        #     elif input_key.endswith("file") or input_key.endswith("files"):
-        #         final_val = self.map_value(input_val)
-        #         logger.info(f"Mapping input: {final_val}")
-
-        #     inputs[f"{prefix}.{input_key}"] = final_val
-
-        # return inputs
-        file_check = ("file", "files")
         for input_key, input_val in self.inputs.items():
+            logger.info(f"input_key: {input_key}")
+            logger.info(f"input_val: {input_val}")
+
             final_val = input_val
-            if input_key.endswith(file_check): 
-                if isinstance(input_val, list):
-                    final_val = [self.map_value(v) for v in input_val]
-                else:
-                    final_val = self.map_value(input_val)
-                    logger.info(f"Mapping input: {final_val}")
+            if isinstance(input_val, list):
+                final_val = [self.map_value(v) for v in input_val]
+            elif input_key.endswith("file") or input_key.endswith("files"):
+                final_val = self.map_value(input_val)
+                logger.info(f"Mapping input: {final_val}")
+
             inputs[f"{prefix}.{input_key}"] = final_val
 
         return inputs
@@ -641,15 +627,15 @@ class WorkflowStateManager:
     
     # url root
     @property
-    def url_root(self) -> str:
-        """ Get the URL root """
-        return self.site_config.url_root
+    def results_url(self) -> str:
+        """ Get the NMDC URL root: https://data.microbiomedata.org/data/ """
+        return self.site_config.results_url
 
     # results root
     @property
-    def results_root(self) -> str:
-        """ Get the results root if the URL is https://data.microbiomedata.org/data/ """
-        return self.site_config.results_root
+    def results_path(self) -> str:
+        """ Get the results path if the URL is https://data.microbiomedata.org/data/ """
+        return self.site_config.results_path
 
     @property
     def inputs(self) -> Dict[str, str]:
@@ -823,11 +809,6 @@ class WorkflowJob:
         """ Get the URL root """
         return self.site_config.url_root
     
-    @property
-    def results_root(self) -> str:
-        """ Get the results root if the URL is https://data.microbiomedata.org/data/ """
-        return self.site_config.results_root
-
     @property
     def was_informed_by(self) -> list[str]:
         """ get the was_informed_by ID value """

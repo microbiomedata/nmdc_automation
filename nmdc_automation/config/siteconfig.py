@@ -77,8 +77,12 @@ class SiteConfig:
         return self.config_data["nmdc"]["api_url"]
     
     @property
-    def results_root(self):
-        return self.config_data["data_path_map"]["results_root"]
+    def results_path(self):
+        return self.config_data["data_path_map"]["results_path"]
+    
+    @property
+    def results_url(self):
+        return self.config_data["data_path_map"]["results_url"]
 
     @property
     def watch_state(self):
