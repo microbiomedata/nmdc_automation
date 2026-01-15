@@ -60,3 +60,21 @@ def test_workflow_inputs_and_wdl(site_config, fixtures_dir, fixture):
     logger.info(f"Validating WDL: {wdl_file}")
     logger.info(f"Command: {wdl_validate_cmd}")
     os.system(wdl_validate_cmd)
+
+def test_workflow_inputs_url_to_path(fixtures_dir):
+    """
+    Test that when making a set of inputs, given a input file with URL,
+    replace URL (based on whether it's NMDC or not) with specified results 
+    directory
+    site config gives URL and directory for string search and replace
+    """
+    job_state = json.load(open(fixtures_dir / "mags_workflow_state.json"))
+    workflow = WorkflowStateManager(job_state)
+    # step to replace URL in values with file path
+    inputs = workflow.generate_workflow_inputs()
+    assert inputs
+    # we expect the inputs to be a key-value dict with file paths as values
+    for key, value in inputs.items():
+        if key.endswith("file"):
+            assert not value.startswith("https")
+    pass

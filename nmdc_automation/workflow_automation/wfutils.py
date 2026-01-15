@@ -470,9 +470,11 @@ class WorkflowStateManager:
         results_root = self.results_root if self.site_config else ""
         mapped = input_file
 
+        logger.info(f"url root: {url_root}")
+        logger.info(f"results root: {results_root}")
+
         if input_file.startswith(url_root):
             rel = input_file[len(url_root):].lstrip("/")
-            # rel = rel.replace("..", "").strip("/")
             mapped = os.path.join(results_root, rel)
             logger.info(f"Mapped URL → local path: {input_file} → {mapped}")
         return mapped
@@ -482,14 +484,29 @@ class WorkflowStateManager:
         inputs = {}
         prefix = self.input_prefix
 
+        # for input_key, input_val in self.inputs.items():
+        #     logger.info(f"input_key: {input_key}")
+        #     logger.info(f"input_val: {input_val}")
+
+        #     final_val = input_val
+        #     if isinstance(input_val, list):
+        #         final_val = [self.map_value(v) for v in input_val]
+        #     elif input_key.endswith("file") or input_key.endswith("files"):
+        #         final_val = self.map_value(input_val)
+        #         logger.info(f"Mapping input: {final_val}")
+
+        #     inputs[f"{prefix}.{input_key}"] = final_val
+
+        # return inputs
+        file_check = ("file", "files")
         for input_key, input_val in self.inputs.items():
             final_val = input_val
-            if input_key.endswith("file") or input_key.endswith("files"):
-                final_val = self.map_value(input_val)
-                logger.info(f"Mapping input: {final_val}")
-            elif isinstance(input_val, list):
-                final_val = [self.map_value(v) for v in input_val]
-
+            if input_key.endswith(file_check): 
+                if isinstance(input_val, list):
+                    final_val = [self.map_value(v) for v in input_val]
+                else:
+                    final_val = self.map_value(input_val)
+                    logger.info(f"Mapping input: {final_val}")
             inputs[f"{prefix}.{input_key}"] = final_val
 
         return inputs
