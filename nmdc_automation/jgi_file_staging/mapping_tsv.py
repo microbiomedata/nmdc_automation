@@ -126,4 +126,4 @@ if __name__ == '__main__':
     staging_configuration = StagingConfig(args['staging_config_file'])
     # Create the mapping TSV file
 
-    create_mapping_tsv(args['project_name'],  args['file_path'], site_configuration, staging_configuration)
+    create_mapping_tsv(args['project_name'], site_configuration, staging_configuration,  args['file_path'])
