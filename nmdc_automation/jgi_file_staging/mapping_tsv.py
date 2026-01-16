@@ -32,7 +32,7 @@ def create_mapping_tsv(project_name: str, site_configuration: SiteConfig, stagin
                                           auth=NMDCAuth(client_id=site_configuration.client_id, 
                                                         client_secret=site_configuration.client_secret, 
                                                         env=site_configuration.env)
-                                          ).get_jgi_sequencing_project(project_name)
+                                          ).get_jgi_sequencing_project_by_name(project_name)
     study_df = get_gold_ids(seq_project['nmdc_study_id'], ACCESS_TOKEN)
     study_df['gold_project'] = study_df.gold_sequencing_project_identifiers.apply(lambda x: x[0].split(':')[1])
     study_df = study_df.apply(
