@@ -16,7 +16,7 @@ from pydantic import ValidationError
 
 from nmdc_automation.models.wfe_file_stages import JGISample, JGISequencingProject
 from nmdc_api_utilities.data_staging import JGISampleSearchAPI, JGISequencingProjectAPI
-from nmdc_automation.config import SiteConfig, ProjectConfig
+from nmdc_automation.config import SiteConfig, ProjectConfig, StagingConfig
 
 logging.basicConfig(filename='file_staging.log',
                     format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s',
@@ -367,6 +367,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('project_name')
     parser.add_argument('site_config_file')
+    parser.add_argument('staging_config_file')
     parser.add_argument('-i', '--insert_project', action='store_true',
                         help='insert new project into mongodb',
                         default=False)
@@ -375,13 +376,13 @@ if __name__ == '__main__':
     args = vars((parser.parse_args()))
 
     project_name = args['project_name']
-    config_file = args['config_file']
     insert_project = args['insert_project']
     file = args['file']
     site_configuration = SiteConfig(args['site_config_file'])
+    staging_configuration = StagingConfig(args['staging_config_file'])
     if insert_project:
         project_configuration = ProjectConfig(args['project_config_file'])
         insert_new_project_into_mongodb(project_configuration, site_configuration)
     else:
-        get_samples_data(project_name, config_file, site_configuration, file)
+        get_samples_data(project_name, site_configuration, file)
         print("Sample metadata inserted into mongodb")
