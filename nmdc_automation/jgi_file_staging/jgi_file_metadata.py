@@ -17,6 +17,7 @@ from pydantic import ValidationError
 from nmdc_automation.models.wfe_file_stages import JGISample, JGISequencingProject
 from nmdc_api_utilities.data_staging import JGISampleSearchAPI, JGISequencingProjectAPI
 from nmdc_automation.config import SiteConfig, ProjectConfig, StagingConfig
+from nmdc_api_utilities.auth import NMDCAuth
 
 logging.basicConfig(filename='file_staging.log',
                     format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s',
@@ -359,8 +360,11 @@ def insert_new_project_into_mongodb(project_configuration: ProjectConfig, site_c
                    'nmdc_study_id': nmdc_study_id, 'sequencing_project_description': project_configuration.sequencing_project_description}
     insert_object = JGISequencingProject(**insert_dict)
     
-    jgi_sequencing_project = JGISequencingProjectAPI()
-    jgi_sequencing_project.create_jgi_sequencing_project(insert_object.model_dump(), site_configuration.client_id, site_configuration.client_secret)
+    JGISequencingProjectAPI(env=site_configuration.env,
+                            auth=NMDCAuth(
+                                client_id=site_configuration.client_id, 
+                                client_secret=site_configuration.client_secret, 
+                                env=site_configuration.env)).create_jgi_sequencing_project(insert_object.model_dump())
 
 
 if __name__ == '__main__':
