@@ -8,6 +8,7 @@ from pathlib import Path
 from argparse import ArgumentParser
 
 from nmdc_automation.jgi_file_staging.jgi_file_metadata import get_access_token, get_request
+from nmdc_api_utilities.auth import NMDCAuth
 from nmdc_api_utilities.data_staging import JGISampleSearchAPI, JGISequencingProjectAPI
 from nmdc_automation.config import SiteConfig, ProjectConfig, StagingConfig
 
@@ -28,8 +29,9 @@ def create_mapping_tsv(project_name: str, site_configuration: SiteConfig, stagin
     ACCESS_TOKEN = get_access_token()
     mapping_file_path = Path(staging_configuration.staging_dir, project_name) if not mapping_file_path else mapping_file_path
     seq_project = JGISequencingProjectAPI(env=site_configuration.env, 
-                                          client_id=site_configuration.client_id, 
-                                          client_secret=site_configuration.client_secret
+                                          auth=NMDCAuth(client_id=site_configuration.client_id, 
+                                                        client_secret=site_configuration.client_secret, 
+                                                        env=site_configuration.env)
                                           ).get_jgi_sequencing_project(project_name)
     study_df = get_gold_ids(seq_project['nmdc_study_id'], ACCESS_TOKEN)
     study_df['gold_project'] = study_df.gold_sequencing_project_identifiers.apply(lambda x: x[0].split(':')[1])
