@@ -355,7 +355,7 @@ def insert_new_project_into_mongodb(project_configuration: ProjectConfig, site_c
         project_configuration.jgi_proposal_id, get_access_token()
         ) if not project_configuration.nmdc_study_id else project_configuration.nmdc_study_id
 
-    insert_dict = {'proposal_id': project_configuration.jgi_proposal_id, 'project_name': project_configuration.sequencing_project_name,
+    insert_dict = {'jgi_proposal_id': project_configuration.jgi_proposal_id, 'sequencing_project_name': project_configuration.sequencing_project_name,
                    'nmdc_study_id': nmdc_study_id, 'sequencing_project_description': project_configuration.sequencing_project_description}
     insert_object = JGISequencingProject(**insert_dict)
     
