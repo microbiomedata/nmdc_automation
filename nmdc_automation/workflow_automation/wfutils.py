@@ -495,15 +495,11 @@ class WorkflowStateManager:
         prefix = self.input_prefix
 
         for input_key, input_val in self.inputs.items():
-            logger.info(f"input_key: {input_key}")
-            logger.info(f"input_val: {input_val}")
-
             final_val = input_val
             if isinstance(input_val, list):
                 final_val = [self.map_value(v) for v in input_val]
             elif input_key.endswith("file") or input_key.endswith("files"):
                 final_val = self.map_value(input_val)
-                logger.info(f"Mapping input: {final_val}")
 
             inputs[f"{prefix}.{input_key}"] = final_val
 
