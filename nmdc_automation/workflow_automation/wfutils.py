@@ -486,7 +486,6 @@ class WorkflowStateManager:
         if input_file.startswith(results_url):
             rel = input_file[len(results_url):].lstrip("/")
             mapped = os.path.join(results_path, rel)
-            logger.info(f"Mapped URL → local path: {input_file} → {mapped}")
         return mapped
     
     def generate_workflow_inputs(self) -> Dict[str, str]:
@@ -523,7 +522,6 @@ class WorkflowStateManager:
             # Get file paths
             wdl_file = self.fetch_release_file(self.config["wdl"], suffix=".wdl")
             bundle_file = self.fetch_release_file("bundle.zip", suffix=".zip")
-            # look here
             workflow_inputs_path = _json_tmp(self.generate_workflow_inputs())
             workflow_labels_path = _json_tmp(self.generate_workflow_labels())
 

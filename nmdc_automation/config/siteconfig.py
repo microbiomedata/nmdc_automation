@@ -4,8 +4,6 @@ from typing import Union
 import yaml
 from pathlib import Path
 import warnings
-import logging
-logger = logging.getLogger(__name__)
 
 WORKFLOWS_DIR = Path(__file__).parent / "workflows"
 
