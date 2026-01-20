@@ -464,11 +464,23 @@ class WorkflowStateManager:
             self.cached_state["opid"] = opid
 
     def map_value(self, input_file:str) -> str:
-        """ Maps the input file/files to the results path, /global/cfs/cdirs/m3408/results/,
-        if the URL is from https://data.microbiomedata.org/data/ """
+        """ 
+        Maps the input file/files to the results path, 
+        /global/cfs/cdirs/m3408/results/, if the URL is from 
+        https://data.microbiomedata.org/data/.
 
-        results_url = self.results_url.rstrip("/") if self.site_config else ""
-        results_path = self.results_path if self.site_config else ""
+        If there is no site_config or data_path_map, return the input
+        unchanged.
+        """
+        if not self.site_config:
+            return input_file
+
+        data_path_map = self.site_config.config_data.get("data_path_map")
+        if not data_path_map:
+            return input_file
+
+        results_url = self.results_url.rstrip("/")
+        results_path = self.results_path
         mapped = input_file
 
         if input_file.startswith(results_url):
