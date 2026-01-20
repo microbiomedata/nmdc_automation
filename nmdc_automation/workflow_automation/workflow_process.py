@@ -346,9 +346,11 @@ def _resolve_relationships(current_nodes: List[WorkflowProcessNode], node_data_o
         # Go through its inputs
         for data_object_id in node.has_input:
             if data_object_id not in node_data_object_map:
-                # This really shouldn't happen
+                # Manifest sets will warn for associated data_objects
+                # found nodes that were added to the graph for manifest completeness but
+                # were not explicitly listed in the allow list. 
                 if data_object_id not in warned_objects:
-                    logging.warning(f"Missing data object {data_object_id}")
+                    logging.debug(f"Missing data object {data_object_id}")
                     warned_objects.add(data_object_id)
                 continue
             parent_node = node_data_object_map[data_object_id]
@@ -358,15 +360,19 @@ def _resolve_relationships(current_nodes: List[WorkflowProcessNode], node_data_o
                 logging.warning("Parent node is none")
                 continue
             # Let's make sure these came from the same source
-            # This is just a safeguard
-            if sorted(node.was_informed_by) != sorted(parent_node.was_informed_by):
-                logging.warning(
-                    "Mismatched informed by for "
-                    f"{data_object_id} in {node.id} "
-                    f"{node.was_informed_by} != "
-                    f"{parent_node.was_informed_by}"
-                )
-                continue
+            # This is just a safeguard. 
+            # Update 20260114: manifest workflows would compare a wf containing a was_informed_by list with multiple dgns_ids
+            # to its parent_node - a data_generation_set ID whose was_informed_by would be itself (array of 1) so
+            # this warning is not as useful. Added len comparison and moved logging to debug mode 
+            if len(node.was_informed_by) == len(parent_node.was_informed_by):
+                if sorted(node.was_informed_by) != sorted(parent_node.was_informed_by):
+                    logging.debug(
+                        "Mismatched informed by for "
+                        f"{data_object_id} in {node.id} "
+                        f"{node.was_informed_by} != "
+                        f"{parent_node.was_informed_by}"
+                    )
+                    continue
             # We only want to use it as a parent if it is the right
             # parent workflow. Some inputs may come from ancestors
             # further up
