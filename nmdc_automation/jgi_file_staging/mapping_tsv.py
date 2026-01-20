@@ -19,7 +19,7 @@ def create_mapping_tsv(project_name: str, site_configuration: SiteConfig, stagin
     """
     Creates mapping tsv file(s) for a given project
     :param project_name: Name of the project
-    :param mapping_file_path: path where to save the mapping tsv file
+    :param mapping_file_path: path where to save the mapping tsv file (optional, default is staging_dir/project_name)
     :param site_configuration: SiteConfig object
     :param staging_configuration: StagingConfig object
     Not all studies have an associated proposal id
@@ -109,6 +109,7 @@ def get_gold_analysis_project(row: pd.Series, ACCESS_TOKEN: str) -> pd.Series:
                                          ((analysis_df.apType == mapping_type) &
                                           (analysis_df.referenceApGoldId == ap_gold_id)), 'apGoldId'].values
         elif ap_type == 'Metagenome Analysis' and len(analysis_df[(analysis_df.apType == 'Metagenome Analysis')]) > 1:
+            logging.debug(f"multiple metagenome analysis projects found for {row['gold_project']}, selecting none")
             ap_gold_id = None
         row['gold_analysis_project'] = ap_gold_id
         row['ap_type'] = ap_type
