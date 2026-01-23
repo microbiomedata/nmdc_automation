@@ -83,7 +83,7 @@ def get_samples_data(project_name: str, site_configuration, staging_configuratio
                                           auth=NMDCAuth(client_id=site_configuration.client_id, 
                                                         client_secret=site_configuration.client_secret, 
                                                         env=site_configuration.env)
-                                          ).get_jgi_sequencing_project(project_name)
+                                          ).get_jgi_sequencing_project_by_name(project_name)
     if csv_file is not None:
         gold_analysis_files_df = pd.read_csv(csv_file)
     else:
