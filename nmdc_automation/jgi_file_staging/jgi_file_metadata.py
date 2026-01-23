@@ -80,8 +80,9 @@ def get_samples_data(project_name: str, site_configuration, staging_configuratio
     # check_restore_status()
     ACCESS_TOKEN = get_access_token()
     seq_project = JGISequencingProjectAPI(env=site_configuration.env, 
-                                          client_id=site_configuration.client_id, 
-                                          client_secret=site_configuration.client_secret
+                                          auth=NMDCAuth(client_id=site_configuration.client_id, 
+                                                        client_secret=site_configuration.client_secret, 
+                                                        env=site_configuration.env)
                                           ).get_jgi_sequencing_project(project_name)
     if csv_file is not None:
         gold_analysis_files_df = pd.read_csv(csv_file)
@@ -96,7 +97,10 @@ def get_samples_data(project_name: str, site_configuration, staging_configuratio
 
     sample_objects = sample_records_to_sample_objects(gold_analysis_files_df.to_dict('records'))
     if len(sample_objects) > 0:
-        jgi_sample_api = JGISampleSearchAPI(client_id=site_configuration.client_id, client_secret=site_configuration.client_secret)
+        jgi_sample_api = JGISampleSearchAPI(env=site_configuration.env, 
+                                            auth=NMDCAuth(client_id=site_configuration.client_id, 
+                                                        client_secret=site_configuration.client_secret, 
+                                                        env=site_configuration.env))
         for sample_object in sample_objects:
             logging.debug(f'Inserting sample: {sample_object}')
             jgi_sample_api.insert_jgi_sample(sample_object)
