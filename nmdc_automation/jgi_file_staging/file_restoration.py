@@ -10,7 +10,7 @@ import argparse
 from nmdc_automation.models.wfe_file_stages import JGISample
 from nmdc_automation.config import SiteConfig, StagingConfig
 from nmdc_api_utilities.data_staging import JGISampleSearchAPI
-
+from nmdc_api_utilities.auth import NMDCAuth
 
 logging.basicConfig(filename='file_restore.log',
                     format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s',
@@ -31,9 +31,10 @@ def update_sample_in_mongodb(sample: dict, update_dict: dict, site_configuration
     try:
         sample_update = JGISample(**sample)
         sample_update_dict = sample_update.model_dump()
-        JGISampleSearchAPI(env=site_configuration.env,
-                           client_id=site_configuration.client_id, 
-                           client_secret=site_configuration.client_secret
+        JGISampleSearchAPI(env=site_configuration.env, 
+                           auth=NMDCAuth(client_id=site_configuration.client_id, 
+                                         client_secret=site_configuration.client_secret, 
+                                         env=site_configuration.env)
                            ).update_jgi_sample(sample_update_dict['jdp_file_id'], update_dict)
         return True
     except ValidationError as e:
@@ -66,9 +67,10 @@ def restore_files(project: str, site_configuration: SiteConfig,
         restore_df = pd.read_csv(restore_csv)
     else:
         samples = JGISampleSearchAPI(env= site_configuration.env,
-                                     client_id=site_configuration.client_id,
-                                     client_secret=site_configuration.client_secret
-                                     ).get_jgi_samples({'sequencing_project_name': project,
+                                     auth=NMDCAuth(client_id=site_configuration.client_id, 
+                                                        client_secret=site_configuration.client_secret, 
+                                                        env=site_configuration.env)
+                                     ).list_jgi_samples({'sequencing_project_name': project,
                                                        'jdp_file_status': {'$ne': 'RESTORED'}})
         if not samples:
             return 'No samples to restore'
