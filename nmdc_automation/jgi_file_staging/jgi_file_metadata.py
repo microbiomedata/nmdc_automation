@@ -392,5 +392,5 @@ if __name__ == '__main__':
         project_configuration = ProjectConfig(args['project_config_file'])
         insert_new_project_into_mongodb(project_configuration, site_configuration)
     else:
-        get_samples_data(project_name, site_configuration, file)
+        get_samples_data(project_name, site_configuration, staging_configuration)
         print("Sample metadata inserted into mongodb")
