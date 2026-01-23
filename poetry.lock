@@ -1480,6 +1480,22 @@ rdflib = ">=6.0.0"
 requests = "*"
 
 [[package]]
+name = "markdown"
+version = "3.10.1"
+description = "Python implementation of John Gruber's Markdown."
+optional = false
+python-versions = ">=3.10"
+groups = ["main"]
+files = [
+    {file = "markdown-3.10.1-py3-none-any.whl", hash = "sha256:867d788939fe33e4b736426f5b9f651ad0c0ae0ecf89df0ca5d1176c70812fe3"},
+    {file = "markdown-3.10.1.tar.gz", hash = "sha256:1c19c10bd5c14ac948c53d0d762a04e2fa35a6d58a6b7b1e6bfcbe6fefc0001a"},
+]
+
+[package.extras]
+docs = ["mdx_gh_links (>=0.2)", "mkdocs (>=1.6)", "mkdocs-gen-files", "mkdocs-literate-nav", "mkdocs-nature (>=0.6)", "mkdocs-section-index", "mkdocstrings[python] (>=0.28.3)"]
+testing = ["coverage", "pyyaml"]
+
+[[package]]
 name = "markupsafe"
 version = "3.0.2"
 description = "Safely add untrusted strings to HTML/XML markup."
@@ -1722,14 +1738,14 @@ requests = "*"
 
 [[package]]
 name = "nmdc-schema"
-version = "11.14.0"
+version = "11.15.1"
 description = "Schema resources for the National Microbiome Data Collaborative (NMDC)"
 optional = false
 python-versions = "<4.0,>=3.10"
 groups = ["main"]
 files = [
-    {file = "nmdc_schema-11.14.0-py3-none-any.whl", hash = "sha256:b074c370ddbea55ea4f202038c95a1fab89e420f099255ea3f1b024e9f678d41"},
-    {file = "nmdc_schema-11.14.0.tar.gz", hash = "sha256:97123895ce2f863d909031cff9f31eb2da2e13f8463254c994cc5b21befd15d2"},
+    {file = "nmdc_schema-11.15.1-py3-none-any.whl", hash = "sha256:9873a33f6a3186a0354c7effc0fe4d2d6c0558fddb436fee01647ca5a1913809"},
+    {file = "nmdc_schema-11.15.1.tar.gz", hash = "sha256:5956ebe77d006dfc8d132bb024913b8da3a19075eadee1140c54a24c2ebf3207"},
 ]
 
 [package.dependencies]
@@ -1741,6 +1757,8 @@ jsonasobj2 = ">=1,<2"
 jsonschema = ">=4,<5"
 linkml = ">=1.9.6,<2.0.0"
 linkml-runtime = ">=1.9.5,<2.0.0"
+pyasn1 = ">=0.6.2"
+pymdown-extensions = ">=10.16.1"
 pymongo = ">=4.7.2,<5.0.0"
 python-dotenv = "*"
 pyyaml = ">=6,<7"
@@ -2242,6 +2260,18 @@ dev = ["abi3audit", "black (==24.10.0)", "check-manifest", "coverage", "packagin
 test = ["pytest", "pytest-xdist", "setuptools"]
 
 [[package]]
+name = "pyasn1"
+version = "0.6.2"
+description = "Pure-Python implementation of ASN.1 types and DER/BER/CER codecs (X.208)"
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "pyasn1-0.6.2-py3-none-any.whl", hash = "sha256:1eb26d860996a18e9b6ed05e7aae0e9fc21619fcee6af91cca9bad4fbea224bf"},
+    {file = "pyasn1-0.6.2.tar.gz", hash = "sha256:9b59a2b25ba7e4f8197db7686c09fb33e658b98339fadb826e9512629017833b"},
+]
+
+[[package]]
 name = "pycodestyle"
 version = "2.14.0"
 description = "Python style guide checker"
@@ -2441,6 +2471,25 @@ files = [
 [package.dependencies]
 antlr4-python3-runtime = ">=4.9.3,<4.10.0"
 jsonasobj = ">=1.2.1"
+
+[[package]]
+name = "pymdown-extensions"
+version = "10.20"
+description = "Extension pack for Python Markdown."
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "pymdown_extensions-10.20-py3-none-any.whl", hash = "sha256:ea9e62add865da80a271d00bfa1c0fa085b20d133fb3fc97afdc88e682f60b2f"},
+    {file = "pymdown_extensions-10.20.tar.gz", hash = "sha256:5c73566ab0cf38c6ba084cb7c5ea64a119ae0500cce754ccb682761dfea13a52"},
+]
+
+[package.dependencies]
+markdown = ">=3.6"
+pyyaml = "*"
+
+[package.extras]
+extra = ["pygments (>=2.19.1)"]
 
 [[package]]
 name = "pymongo"
@@ -4203,4 +4252,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.12"
-content-hash = "ba45fea2758f611c31f486b7dd1dcf5a04d9c16d4e8ba04b105f237116d0a201"
+content-hash = "101cf55ee22a2c15c093fb698cdac8d3eb4fa35c65369d15b0045f3c1f746ff2"
