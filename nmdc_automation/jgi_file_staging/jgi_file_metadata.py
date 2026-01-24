@@ -319,7 +319,7 @@ def get_seq_unit_names(analysis_files_df: pd.DataFrame, gold_id: str) -> List[st
     :return: list of seq unit names"""
     seq_unit_names = []
     for idx, row in analysis_files_df.loc[pd.notna(analysis_files_df.seq_unit_name)
-                                          & (analysis_files_df.apGoldId == gold_id)
+                                          & (analysis_files_df.ap_gold_id == gold_id)
                                           & (analysis_files_df.file_type == "['contigs']")].iterrows():
         seq_unit_names.extend(row.seq_unit_name)
 
