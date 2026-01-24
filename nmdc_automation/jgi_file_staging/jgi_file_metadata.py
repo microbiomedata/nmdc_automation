@@ -91,7 +91,6 @@ def get_samples_data(project_name: str, site_configuration, staging_configuratio
         gold_analysis_files_df = get_analysis_files_df(seq_project['jgi_proposal_id'], files_df, ACCESS_TOKEN,
                                                      staging_configuration.remove_files)
 
-    gold_analysis_files_df['project_name'] = project_name
     logging.debug(f'number of samples to insert: {len(gold_analysis_files_df)}')
     logging.debug(gold_analysis_files_df.head().to_dict('records'))
 
@@ -112,11 +111,22 @@ def get_analysis_files_df(proposal_id: int, files_df: pd.DataFrame, ACCESS_TOKEN
     gold_analysis_data_df = pd.DataFrame(gold_analysis_data)
     gold_analysis_files_df = pd.merge(gold_analysis_data_df, files_df, left_on='itsApId',
                                       right_on='analysis_project_id')
-    gold_analysis_files_df['file_type'] = gold_analysis_files_df["file_type"].astype(str)
-    gold_analysis_files_df['analysis_project_id'] = gold_analysis_files_df['analysis_project_id'].astype(str)
-    gold_analysis_files_df['seq_id'] = gold_analysis_files_df['seq_id'].astype(str)
-    gold_analysis_files_df['update_date'] = datetime.now()
+    gold_analysis_files_df = gold_analysis_files_df[['jdp_file_id', 'apGoldId','studyId', 'itsApId', 'project_name', 
+                                                     'biosample_id', 'seq_id', 'file_name', 'file_size', 'md5sum',
+                                                     'analysis_project_id']]
+    
+    gold_analysis_files_df['project_name'] = project_name
+    gold_analysis_files_df.columns = ['jdp_file_id', 'ap_gold_id', 'gold_study_id', 'its_ap_id', 'sequencing_project_name',
+                                      'gold_biosample_id', 'gold_seq_id', 'file_name', 'jdp_file_size', 'md5sum','jgi_ap_id']
+    gold_analysis_files_df['jdp_file_status'] = 'PURGED'
+    gold_analysis_files_df['globus_file_status'] = 'INACTIVE'
+    gold_analysis_files_df['create_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    gold_analysis_files_df['update_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     gold_analysis_files_df['request_id'] = None
+    gold_analysis_files_df['its_ap_id'] = gold_analysis_files_df['its_ap_id'].astype(str)
+    gold_analysis_files_df['jgi_ap_id'] = gold_analysis_files_df['jgi_ap_id'].astype(str)
+    gold_analysis_files_df['gold_seq_id'] = gold_analysis_files_df['gold_seq_id'].astype(str)
+    gold_analysis_files_df['md5sum'] = gold_analysis_files_df['md5sum'].astype(str)
     gold_analysis_files_df = remove_unneeded_files(gold_analysis_files_df, remove_files)
     return gold_analysis_files_df
 
