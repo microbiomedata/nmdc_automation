@@ -6,7 +6,13 @@ This document provides an overview of the NMDC Workflow Automation system, inclu
 
 - [Developer Documentation for NMDC Workflow Automation](#developer-documentation-for-nmdc-workflow-automation)
   - [Table of Contents](#table-of-contents)
-  - [Architecture Overview](#architecture-overview)
+    - [System Architecture \& Components](#system-architecture--components)
+      - [Components](#components)
+        - [Scheduler](#scheduler)
+        - [Workflow Process Node Loader](#workflow-process-node-loader)
+        - [Watcher](#watcher)
+        - [WorkflowJob \& JobRunner](#workflowjob--jobrunner)
+      - [Interactions \& Data Flow](#interactions--data-flow)
   - [Developer Quickstart](#developer-quickstart)
   - [Configuration \& Environment](#configuration--environment)
     - [TOML Site Config](#toml-site-config)
@@ -21,7 +27,7 @@ This document provides an overview of the NMDC Workflow Automation system, inclu
   - [Poetry Environment](#poetry-environment)
   - [NMDC Workflow Scheduler](#nmdc-workflow-scheduler)
     - [Key Classes \& Functions](#key-classes--functions)
-      - [Scheduler](#scheduler)
+      - [Scheduler](#scheduler-1)
       - [SchedulerJob](#schedulerjob)
     - [Environment Variables](#environment-variables-1)
     - [Example](#example)
@@ -33,30 +39,85 @@ This document provides an overview of the NMDC Workflow Automation system, inclu
 
 ---
 
-## Architecture Overview
 
-The NMDC Workflow Automation system automates metagenome workflow executions by discovering upstream activities and scheduling downstream jobs. It utilizes a pipeline orchestration system (Cromwell, WDL), data processing frameworks (ETL, validation), api integration layer (external databases and services), configuration mangement (environments, credentials), monitoring, and reporting. 
+### System Architecture & Components
 
-**Main components:**
+**Overview**
+The NMDC Workflow Automation system automates metagenome workflow executions by discovering upstream activities and creating downstream jobs when input data and version compatibility allow. It builds a graph of workflow activities from provenance data, constructs job definitions, and submits them to a configured runner (e.g., JAWS / Cromwell), while tracking status and processing outputs.
 
-- **Scheduler:** Scans database for upstream workflows, constructs workflow graphs, creates job records. Run on SPIN / Rancher.  
-- **Workflow Process Node Loader:** Builds a DAG of workflow activities from provenance data.  
-- **Watcher:** Claims and runs jobs via JAWS/SLURM, updates job status. Run on NERSC / Perlmutter.
+#### Components
 
-**Interactions:**
+##### Scheduler
+- **Purpose:** Scan MongoDB for upstream workflow activities (DataGeneration / WorkflowExecution) and create downstream job records when requirements are met.
+- **Key behavior:** Loads workflow definitions from `workflows.yaml`, builds `WorkflowProcessNode` graphs (via `load_workflow_process_nodes()`), and schedules jobs when child inputs exist and no child node/job already exists. Key methods include `cycle()`, `find_new_jobs()`, and `create_job_rec()`.
+- **Job creation:** Constructs job records with WDL path, repository/version, input object URLs, execution metadata (`was_informed_by`, iteration, input prefix), and optional pre-minted output IDs (via `NmdcRuntimeApi`). Jobs are written to the MongoDB `jobs` collection (unless `DRYRUN=1`).
+- **Flags & env vars:** `DRYRUN`, `FORCE`, `ALLOWLISTFILE`, `SKIPLISTFILE`, `MOCK_MINT`.
 
-- MongoDB (metadata, jobs)  
-- NMDC Runtime API (mint IDs, metadata updates)  
-- JAWS / Cromwell (workflow execution)  
-- YAML workflow definitions  
-- TOML site configuration files  
+A `Workflow Process Node` is a representation of:
+- `workflow` - the workflow configuration, from `workflows.yaml` (may include `workflow.children`)
+- `process` - the planned process from MongoDB (DataGeneration or WorkflowExecution)
+- `parent` and `children` pointers linking upstream and downstream nodes
 
-**Data flow:**
+<details><summary>Workflow Process Node Mermaid Diagram:</summary>
 
-1. Scheduler queries MongoDB and builds WorkflowProcessNode graph  
-2. Creates job records for runnable workflows  
-3. Watcher claims and runs jobs  
-4. Updates job status and outputs  
+```mermaid
+erDiagram
+    WorkflowProcessNode ||--|| PlannedProcess: "process"
+    PlannedProcess ||-- |{ DataObject: "has_input / has_output"
+    WorkflowProcessNode }|--|| WorkflowConfig: "workflow"
+    WorkflowConfig ||--o{ WorkflowConfig: "children"
+    WorkflowProcessNode |o--o| WorkflowProcessNode: "parent"
+    WorkflowProcessNode |o--o{ WorkflowProcessNode: "children"
+```
+</details>
+
+When a scheduler node meets these criteria it will schedule a child workflow:
+1. The node lists a child workflow in `node.workflow.children`.
+2. The node currently has no corresponding child node in `node.children`.
+3. The required inputs for the child workflow are available in the node's process outputs.
+
+<details><summary>Scheduler Process Mermaid Diagram:</summary>
+
+```mermaid
+erDiagram
+    WPNode_Sequencing ||--|| WPNode_ReadsQC: "children nodes"
+    WPNode_Sequencing ||--|| WConfig_Sequencing: "workflow"
+    WConfig_Sequencing ||--o{ WConfig_ReadsQC: "children workflows"
+    WPNode_Sequencing ||--|| Process_Sequencing: "process"
+    Process_Sequencing ||-- |{ SequencingData: "has_output"
+    WPNode_ReadsQC ||--|| Process_ReadsQC: "process"
+    Process_ReadsQC ||--|{ SequencingData: "has_input"
+    Process_ReadsQC ||-- |{ ReadsQCData: "has_output"
+    WPNode_ReadsQC ||--|| WConfig_ReadsQC: "workflow"
+    WConfig_ReadsQC ||--o{ WConfig_Assembly: "children workflows"
+```
+</details>
+
+##### Workflow Process Node Loader
+- **Purpose:** Build a DAG of `WorkflowProcessNode` objects from DB records, associating nodes with the DataObjects they consume and produce.
+- **Algorithm overview:** 
+   1) Load required DataObjects and build an id→object map; 
+   2) Identify relevant activities by analyte category, input/output filters and version compatibility;  
+   3) Map outputs to producing nodes;  
+   4) Resolve parent/child relationships by shared inputs. Version compatibility relies on major/minor matching (or can be forced).
+
+##### Watcher
+- **Purpose:** Monitor the `jobs` collection, claim unclaimed jobs, and manage execution lifecycle.
+- **Behavior:** For each claimed job the Watcher creates a `WorkflowJob` (containing a `WorkflowStateManager` and a `JobRunner`), submits the job to the runner, polls for status, and processes success/failure. The Watcher records its activity in a state file.
+
+##### WorkflowJob & JobRunner
+- **WorkflowJob:** Combines a state manager and job runner to prepare inputs, submit workflows, and track execution.
+- **JobRunner responsibilities:** Prepare inputs, submit to JAWS / Cromwell (or other runner), handle post-run data and metadata processing, and update job status via `NmdcRuntimeApi`.
+
+#### Interactions & Data Flow
+- **External systems:** MongoDB (metadata & jobs), NMDC Runtime API (ID minting & updates), JAWS / Cromwell (workflow execution), YAML workflow definitions, TOML site configs.
+- **Data flow (summary):**
+  1. Scheduler queries MongoDB and builds a `WorkflowProcessNode` graph.
+  2. Scheduler creates job records for runnable workflows.
+  3. Watcher claims and runs jobs via JAWS or another runner.
+  4. Watcher / JobRunner updates job status and outputs to the API / DB.
+
+> See the **Configuration & Environment** and **Developer Quickstart** sections below for env vars and usage examples.
 
 ---
 
@@ -174,6 +235,7 @@ Example:
     - Inspect `agent.state` file
     - Use `jaws status <id>`
     - Retry with `jaws resubmit <id>`
+      - this will not update the scheduler of a completed run. this will only update in JAWS system.
     - Check system with `jaws health --site nmdc`
 
 - MongoDB Query Examples:
@@ -201,6 +263,7 @@ Example:
 - Unit tests in `tests/`
 - Run via `make test` or `pytest -v`
 - Integration tests require MongoDB and seeded data (documentation TBD)
+- To test a specific file for targetted function testing, use `poetry run pytest tests/[test_file.py]`
 
 ## Algorithm Internals
 Workflow Process Node Loader (`load_workflow_process_nodes`)
@@ -231,7 +294,7 @@ The poetry environment is used to manage dependencies and virtual environments f
 
 ```bash
 poetry install
-poetry shell
+eval $(poetry env activate)
 ```
 
 The `poetry install` command uses the `poetry.lock` file to create a virtual environment with the correct dependencies, ensuring consistency across development setups. [(Documentation)](https://python-poetry.org/docs/basic-usage/#installing-with-poetrylock)
@@ -283,7 +346,7 @@ Package operations: 0 installs, 3 updates, 0 removals
 
 Installing the current project: nmdc-automation (0.1.0)
 
->> poetry shell
+>> eval $(poetry env activate)
 The currently activated Python version 3.13.5 is not supported by the project (>=3.10,<3.12).
 Trying to find and use a compatible version. 
 Using python3.11 (3.11.13)

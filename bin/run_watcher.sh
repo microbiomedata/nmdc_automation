@@ -2,14 +2,12 @@
 set -euo pipefail
 
 # Default values
-WORKSPACE="dev"
-CONF=/global/homes/n/nmdcda/nmdc_automation/$WORKSPACE/site_configuration_nersc.toml
-# prod: CONF=/global/homes/n/nmdcda/nmdc_automation/$WORKSPACE/site_configuration_nersc_$WORKSPACE.toml
+WORKSPACE="prod"
+CONF=/global/homes/n/nmdcda/nmdc_automation/$WORKSPACE/site_configuration_nersc_$WORKSPACE.toml
 HOST=$(hostname)
 LOG_FILE=watcher-$WORKSPACE.log
 PID_FILE=watcher-$WORKSPACE.pid
 HOST_FILE=host-$WORKSPACE.last
-ERROR_ALERTED_FILE="watcher_error_alerted_$WORKSPACE"
 SLACK_WEBHOOK_URL=$(grep 'slack_webhook' "$CONF" | sed 's/.*= *"\(.*\)"/\1/')
 PVENV=/global/cfs/cdirs/m3408/nmdc_automation/$WORKSPACE/nmdc_automation/.venv
 
@@ -23,7 +21,8 @@ OLD_PID=""
 OLD_HOST=""
 TAIL_PID=""
 LAST_ALERT=""
-IGNORE_PATTERN='Error removing directory /tmp: \[Errno 13\] Permission denied: .*/tmp'
+LAST_ERROR=""
+IGNORE_PATTERN="Error removing directory /tmp: \[Errno 13\] Permission denied: .*/tmp|['\"]error['\"]:[[:space:]]*['\"][[:space:]]*['\"]"
 ALERT_PATTERN='Internal Server Error'
 LOG_START_SIZE=$(stat -c%s "$LOG_FILE") 
 
@@ -63,8 +62,8 @@ cleanup() {
         :  # no-op, do nothing
     else
         EXIT_MESSAGE=":x: *Watcher-$WORKSPACE script terminated* on \`$HOST\` at \`$TIMESTAMP\`"
-        NEW_LOG_LINES=$(tail -c +$((LOG_START_SIZE + 1)) "$LOG_FILE")
-        LAST_ERROR=$(echo "$NEW_LOG_LINES" | grep -E 'ERROR|Exception' | grep -v "$IGNORE_PATTERN" | tail -n 1)
+        # NEW_LOG_LINES=$(tail -c +$((LOG_START_SIZE + 1)) "$LOG_FILE")
+        # LAST_ERROR=$(echo "$NEW_LOG_LINES" | grep -i -E "error|exception" | grep -v -E "$IGNORE_PATTERN" | tail -n 1)
         echo "CLEANUP RESTARTING MISMATCH KILL_PID"
         echo $CLEANED_UP $RESTARTING $MISMATCH $KILL_PID
         if [[ -n "$LAST_ERROR" && "$LAST_ERROR" != "$LAST_ALERT" ]]; then
@@ -75,7 +74,7 @@ cleanup() {
         exit 0
     fi
 }
-trap cleanup SIGINT SIGTERM SIGKILL EXIT
+trap cleanup SIGINT SIGTERM EXIT
 
 # Kill existing process only if it's the correct watcher on this host
 
@@ -121,20 +120,20 @@ START_TIME=$(TZ="America/Los_Angeles" date "+%a %b %d %T %Z %Y")
 send_slack_notification ":rocket: *Watcher-$WORKSPACE started* on \`$HOST\` at \`$START_TIME\`"
 echo "[$START_TIME] Watcher script started on $HOST" | tee -a "$LOG_FILE"
 
-# Kill any existing tail processes monitoring the log file
+# Ensure no leftover tail processes are running for this log file
 ps aux | grep nmdcda | grep "tail -F $LOG_FILE" | awk '{print $2}' | xargs -r kill 2>/dev/null || true
 
 # Start monitoring the log file for errors in background
 
-rm -f "$ERROR_ALERTED_FILE"
-tail -F "$LOG_FILE" \
-  | grep --line-buffered -E 'ERROR|Exception' \
-  | grep --line-buffered -v "$IGNORE_PATTERN" \
+# NEW_LOG_LINES=$(tail -c +$((LOG_START_SIZE + 1)) "$LOG_FILE")
+tail -n 0 -F "$LOG_FILE" \
+  | grep -i --line-buffered -E "error|exception" \
+  | grep --line-buffered -v -E "$IGNORE_PATTERN" \
   | while read -r line; do
-    if [[ ! -f "$ERROR_ALERTED_FILE" || "$line" == "$ALERT_PATTERN" ]]; then
+    LAST_ERROR="$line"
+    if [[ "$line" != "$LAST_ALERT" || "$line" == *"$ALERT_PATTERN"* ]]; then
         TIMESTAMP=$(TZ="America/Los_Angeles" date "+%a %b %d %T %Z %Y")
         send_slack_notification ":warning: *Watcher-$WORKSPACE ERROR* on \`$HOST\` at \`$TIMESTAMP\`:\n\`\`\`$line\`\`\`"
-        touch "$ERROR_ALERTED_FILE"
         LAST_ALERT="$line"
     fi
 done &

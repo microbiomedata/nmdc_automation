@@ -19,20 +19,17 @@ available as metadata in the NMDC database, and data objects on the NMDC data po
     - [MongoDB Installation](#mongodb-installation)
     - [Installation](#installation-1)
   - [Overview](#overview)
-    - [System Components](#system-components)
-      - [Scheduler](#scheduler)
-      - [Watcher](#watcher)
-      - [WorkflowJob](#workflowjob)
     - [System Configuration](#system-configuration)
       - [Site Config](#site-config)
-  - [Instructions (for NERSC / Perlmutter environment)](#instructions-for-nersc--perlmutter-environment)
+      - [Workflow Definitions](#workflow-definitions)
+  - [Quick Start](#quick-start)
     - [Running the Scheduler on NERSC Rancher2](#running-the-scheduler-on-nersc-rancher2)
+      - [Watcher Set-Up and Configuration](#watcher-set-up-and-configuration)
     - [Running the Watcher on NERSC Perlmutter](#running-the-watcher-on-nersc-perlmutter)
       - [Check the Watcher Status](#check-the-watcher-status)
-      - [Set-Up and Configuration](#set-up-and-configuration)
       - [Running the Watcher](#running-the-watcher)
       - [Monitoring the Watcher](#monitoring-the-watcher)
-        - [JAWS](#jaws)
+      - [JAWS](#jaws)
         - [NMDC Database](#nmdc-database)
         - [Watcher State File](#watcher-state-file)
       - [Handling Failed Jobs](#handling-failed-jobs)
@@ -95,83 +92,10 @@ brew services start mongodb-community
 
 ## Overview
 
-### System Components
-
-
-#### Scheduler
-The Scheduler polls the NMDC database based upon an `Allowlist` of DataGeneration IDs. Based on an allowed data-generation ID, the scheduler examines WorkflowExecutions and DataObjects that `was_informed_by` by the data generation, and builds a graph of `Workflow Process Nodes`. 
-
-A `Workflow Process Node` is a representation of:
-- `workflow` - the workflow configuration, from workflows.yaml. The "recipe" for the given type of analysis
-  - `workflow.children` - the child workflow recipes that can be run after this workflow
-- `process` - the planned process, from the NMDC database. The "instance" of a workflow execution or data generation from the NMDC database
-- `parent` - the parent workflow process node, if any
-- `children` - the child workflow process nodes, if any
-
-
-<details><summary>Workflow Process Node Mermaid Diagram:</summary>
-
-```mermaid
-erDiagram
-    WorkflowProcessNode ||--|| PlannedProcess: "process"
-    PlannedProcess ||-- |{ DataObject: "has_input / has_output"
-    WorkflowProcessNode }|--|| WorkflowConfig: "workflow"
-    WorkflowConfig ||--o{ WorkflowConfig: "children"
-    WorkflowProcessNode |o--o| WorkflowProcessNode: "parent"
-    WorkflowProcessNode |o--o{ WorkflowProcessNode: "children"
-```
-</details>
-<br>
-
-
-When the Scheduler finds a node where:
-
-1. The node has a workflow configuration in node.workflow.children
-2. The node DOES NOT have a child node in node.children
-3. The required inputs for the child workflow are available in node's process outputs
-
-<details><summary>Scheduler Process Mermaid Diagram:</summary>
-
-```mermaid
-erDiagram
-    WPNode_Sequencing ||--|| WPNode_ReadsQC: "children nodes"
-    WPNode_Sequencing ||--|| WConfig_Sequencing: "workflow"
-    WConfig_Sequencing ||--o{ WConfig_ReadsQC: "children workflows"
-    WPNode_Sequencing ||--|| Process_Sequencing: "process"
-    Process_Sequencing ||-- |{ SequencingData: "has_output"
-    WPNode_ReadsQC ||--|| Process_ReadsQC: "process"
-    Process_ReadsQC ||--|{ SequencingData: "has_input"
-    Process_ReadsQC ||-- |{ ReadsQCData: "has_output"
-    WPNode_ReadsQC ||--|| WConfig_ReadsQC: "workflow"
-    WConfig_ReadsQC ||--o{ WConfig_Assembly: "children workflows"
-```
-</details>
-<br>
-
-In this case the Scheduler will "schedule" a new job by creating a Job configuration from:  
-
-- the workflow configuration from `node.workflow.children`
-- input data from `node.data_objects`
- 
-and writing this to the `jobs` collection in the NMDC database
-
-#### Watcher
-The Watcher "watches" the `jobs` table in the NMDC database looking for unclaimed jobs. If found, the Watcher will create a `WorkflowJob` to manage the analysis job.  The watcher will then periodically poll each workflow job for its status and process successful or failed jobs when they are complete
-
-#### WorkflowJob
-A `WorkflowJob` consists of a `WorkflowStateManager` and a `JobRunner` and is responsible for preparing the 
-required inputs for an analysis job, submitting it to the job running service.
-
-NMDC's job running service is [JAWS](https://ipo.lbl.gov/joint-genome-institute-analysis-workflow-service-jaws-for-complex-computational-pipelines-on-multiple-compute-resources/).
-
-
-The `JobRunner` is also responsible for processing the resulting data and metadata when the job completes.  
-The watcher maintains a record of it's current activity in a `State File`
-
 ### System Configuration
 
 #### Site Config
-Site-specific configuration is provided by a .toml file and defines some parameters that are used
+Site-specific configuration is provided by a `.toml` file and defines some parameters that are used
 across the workflow process including
 
 1. URL and credentials for NMDC API
@@ -179,24 +103,25 @@ across the workflow process including
 3. Job Runner service URLs
 4. Path to the state file
 
-Workflow Definitions
-: Workflow definitions in a .yaml file describing each analysis step, specifying:
+#### Workflow Definitions
+Workflow definitions in a `.yaml` file describing each analysis step, specifying:
 
 1. Name, type, version, WDL and git repository for each workflow
 2. Inputs, Outputs and Workflow Execution steps
 3. Data Object Types, description and name templates for processing workflow output data
 
----
+**Developer details:** For architecture, implementation internals, and an extended developer quickstart (algorithm, classes, version-compatibility rules, and testing), see [developer documention](docs/README_developers.md).
 
-## Instructions (for NERSC / Perlmutter environment)
 
+## Quick Start
 
 ### Running the Scheduler on NERSC Rancher2
 
-The Scheduler is a Dockerized application running on [Rancher](https://rancher2.spin.nersc.gov). 
-To initialize the Scheduler for new DataGeneration IDs, the following steps:
+The Scheduler is a Dockerized application running on [Rancher](https://rancher2.spin.nersc.gov). To initialize the Scheduler for new DataGeneration IDs, the following steps:
 
 1. On Rancher, go to `Deployments`, select `Production` from the clusters list, and find the Scheduler in either `nmdc` or `nmdc-dev`
+   1. Check that the image is running the latest production version for prod or the desired release candidate for testing for dev. 
+   2. Refer to [Release Documentation](https://github.com/microbiomedata/infra-admin/blob/main/releases/nmdc-automation.md) for more information
 2. Click on the Scheduler and select `run shell`
 3. In the shell, `cd /conf`
 4. Update the file `allow.lst` with the Data Generation IDs that you want to schedule
@@ -212,61 +137,20 @@ To initialize the Scheduler for new DataGeneration IDs, the following steps:
 6. Restart the scheduler. In the shell, in `/conf`:  `./run_scheduler.sh`
    1. If running tests on `dev`, make sure to check `./run_scheduler.sh -h` for options. 
 7. Ensure the scheduler is running by checking `sched.log`
+   1. By default, calling `./run_scheduler.sh` will delete `sched.log` and restart the Scheduler. 
 
 
-### Running the Watcher on NERSC Perlmutter
+#### Watcher Set-Up and Configuration
 
-The watcher is a python application which runs on a login node on Perlmutter. 
-The following instructions all assume the user is logged in as user `nmdcda@perlmutter.nersc.gov`
-
-1. Get an ssh key - in your home directory: `./sshproxy.sh -u <your_nersc_username> -c nmdcda`
-2. Log in using the key `ssh -i .ssh/nmdcda nmdcda@perlmutter.nersc.gov`
-
-Watcher code and config files can be found 
-- `/global/homes/n/nmdcda/nmdc_automation/prod`
-- `/global/homes/n/nmdcda/nmdc_automation/dev`
-
-#### Check the Watcher Status
-
-1. Check the last node the watcher was running on
-    ```shell
-    (base) nmdcda@perlmutter:login07:~> cd nmdc_automation/dev
-    (base) nmdcda@perlmutter:login07:~/nmdc_automation/dev> cat host-dev.last
-    login24
-    ```
-2. ssh to that node
-    ```shell
-    (base) nmdcda@perlmutter:login07:~/nmdc_automation/dev> ssh login24
-    ```
-
-3. Check for the watcher process
-    ```shell
-    (base) nmdcda@perlmutter:login24:~> ps aux | grep watcher
-    nmdcda    115825  0.0  0.0   8236   848 pts/94   S+   09:33   0:00 grep watcher
-    nmdcda   2044781  0.4  0.0 146420 113668 ?       S    Mar06   5:42 python -m nmdc_automation.run_process.run_workflows watcher --config /global/homes/n/nmdcda/nmdc_automation/prod/site_configuration_nersc_prod.toml --jaws daemon
-    nmdcda   2044782  0.0  0.0   5504   744 ?        S    Mar06   0:00 tee -a watcher-prod.log
-    ````
-
-4. **IF** we are going to shut down the Watcher (without restarting), we need to kill the existing process
-    ```shell
-    (base) nmdcda@perlmutter:login24:~> kill -9 2044781
-    ```
-> [!NOTE]
-> This will also terminate the `tee` process that is writing to the log file.
-> To restart the Watcher with older versions of the `./run.sh script`, manual termination of the existing process was necessary with `kill -9 2044781`. However, the new `run_watcher.sh` script now handles killing and restarting the Watcher. 
-
-
-#### Set-Up and Configuration
-
-1. Ensure you have the latest `nmdc_automation` code.
+1. Ensure you have the desired version of `nmdc_automation` code.
    1. `cd nmdc_automation`
-   2. `git status` / `git switch main` if not on main branch
-   3. `git fetch origin`
-   4. `git pull`
+   2. `git status` 
+   3. `git fetch --all --prune`
+   4. `git checkout tags/[release-version]`
 2. Setup NMDC automation environment with `conda` and `poetry`. 
    1. load conda: `eval "$__conda_setup"` 
-   3. in the `nmdc_automation` directory, install the nmdc_automation project with `poetry install`
-   4. `eval $(poetry env activate)` to use the environment
+   2. in the `nmdc_automation` directory, install the nmdc_automation project with `poetry install`
+   3. `eval $(poetry env activate)` or `source .venv/bin/activate` to use the environment
 
 
 <details><summary>Example Setup:</summary>
@@ -284,13 +168,64 @@ No dependencies to install or update
 
 Installing the current project: nmdc-automation (0.1.0)
 (base) nmdcda@perlmutter:login06:~/nmdc_automation/dev/nmdc_automation> eval $(poetry env activate)
-(nmdc-automation-py3.11) (base) nmdcda@perlmutter:login06:~/nmdc_automation/dev/nmdc_automation
+(nmdc-automation-py3.11) (base) nmdcda@perlmutter:login06:~/nmdc_automation/dev/nmdc_automation>
 ```
 </details>
 
 
 The `eval $(poetry env activate)` command will activate the environment for the current shell session. 
 Environment `(nmdc-automation-py3.11)` will be displayed in the prompt.
+
+### Running the Watcher on NERSC Perlmutter
+
+The watcher is a python application which runs on a login node on Perlmutter. 
+The following instructions all assume the user is logged in as user `nmdcda@perlmutter.nersc.gov`
+
+1. Get an ssh key - in your home directory: `./sshproxy.sh -u <your_nersc_username> -c nmdcda`
+2. Log in using the key `ssh -i .ssh/nmdcda nmdcda@perlmutter.nersc.gov`
+
+Watcher code and config files can be found in `/global/homes/n/nmdcda/nmdc_automation/[dev/prod]`, respectively.
+
+#### Check the Watcher Status
+
+1. Check the last node the watcher was running on via `host-[dev/prod].last`
+   
+    <details><summary>example</summary>
+
+    ```shell
+    (base) nmdcda@perlmutter:login07:~> cd nmdc_automation/[dev/prod]
+    (base) nmdcda@perlmutter:login07:~/nmdc_automation/[dev/prod]> cat host-[dev/prod].last
+    login24
+    ```
+    </details>
+
+2. ssh to that node
+   
+    <details><summary>example</summary>
+
+    ```shell
+    (base) nmdcda@perlmutter:login07:~/nmdc_automation/[dev/prod]> ssh login24
+    ```
+    </details>
+
+1. Check for the watcher process using `ps aux`
+
+    <details><summary>example</summary>
+    ```shell
+    (base) nmdcda@perlmutter:login24:~> ps aux | grep watcher
+    nmdcda    115825  0.0  0.0   8236   848 pts/94   S+   09:33   0:00 grep watcher
+    nmdcda   2044781  0.4  0.0 146420 113668 ?       S    Mar06   5:42 python -m nmdc_automation.run_process.run_workflows watcher --config /global/homes/n/nmdcda/nmdc_automation/prod/site_configuration_nersc_prod.toml --jaws daemon
+    nmdcda   2044782  0.0  0.0   5504   744 ?        S    Mar06   0:00 tee -a watcher-prod.log
+    ````
+    </details>
+
+2. **IF** we are going to shut down the Watcher (without restarting), we need to kill the existing process
+    ```shell
+    (base) nmdcda@perlmutter:login24:~> ./run_watcher_[dev/prod].sh cleanup
+    ```
+> [!NOTE]
+> This will also terminate the `tee` process that is writing to the log file.
+> To restart the Watcher with older versions of the `./run.sh script`, manual termination of the existing process was necessary with `kill -9 2044781`. However, the new `run_watcher.sh` script now handles killing and restarting the Watcher. 
 
 
 
@@ -310,7 +245,7 @@ names `nohup.out` in addition to being written to the `watcher-[dev/prod].log` f
 
 Same process as as [Checking the Watcher Status](#check-the-watcher-status)
 
-##### JAWS
+#### JAWS
 
 JAWS is a Cromwell-based service that runs jobs on NERSC and other compute resources.
 Documentation can be found [here](https://jaws-docs.readthedocs.io/en/latest/).
@@ -400,15 +335,19 @@ Things to note:
 - `config.was_informed_by` is the DataGeneration ID that is the root of this job
 - `config.trigger_activity` is the WorkflowExecution ID that triggered this job
 - `config.inputs` are the inputs to the job
-- `claims` a list of workers that have claimed the job. If this list is empty, the job is available to be claimed. 
-If the list is not empty, the job is being processed by a worker - example:
-  ```json
-  {
-      "op_id" : "nmdc:sys0z232qf64",
-      "site_id" : "NERSC"
-  }
-  ```
-This refers to the `operation` and `site` that is processing the job.
+- `claims` a list of workers that have claimed the job. If this list is empty, the job is available to be claimed. If the list is not empty, the job is being processed by a worker
+
+  <details><summary>Example Claim</summary>
+
+    ```json
+    {
+        "op_id" : "nmdc:sys0z232qf64",
+        "site_id" : "NERSC"
+    }
+    ```
+  This refers to the `operation` and `site` that is processing the job.
+
+  </details>
 
 
 ##### Watcher State File
