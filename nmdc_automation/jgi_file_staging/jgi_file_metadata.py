@@ -111,11 +111,11 @@ def get_analysis_files_df(proposal_id: int, files_df: pd.DataFrame, ACCESS_TOKEN
     gold_analysis_data_df = pd.DataFrame(gold_analysis_data)
     gold_analysis_files_df = pd.merge(gold_analysis_data_df, files_df, left_on='itsApId',
                                       right_on='analysis_project_id')
+    gold_analysis_files_df['project_name'] = project_name
     gold_analysis_files_df = gold_analysis_files_df[['jdp_file_id', 'apGoldId','studyId', 'itsApId', 'project_name', 
                                                      'biosample_id', 'seq_id', 'file_name', 'file_size', 'md5sum',
                                                      'analysis_project_id']]
     
-    gold_analysis_files_df['project_name'] = project_name
     gold_analysis_files_df.columns = ['jdp_file_id', 'ap_gold_id', 'gold_study_id', 'its_ap_id', 'sequencing_project_name',
                                       'gold_biosample_id', 'gold_seq_id', 'file_name', 'jdp_file_size', 'md5sum','jgi_ap_id']
     gold_analysis_files_df['jdp_file_status'] = 'PURGED'
