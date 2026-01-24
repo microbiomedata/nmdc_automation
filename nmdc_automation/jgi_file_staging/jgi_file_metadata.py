@@ -294,7 +294,7 @@ def remove_duplicate_analysis_files(seq_files_df: pd.DataFrame) -> pd.DataFrame:
     :param seq_files_df:
     :return: DataFrame
     """
-    ap_gold_ids = list(seq_files_df.apGoldId.unique())
+    ap_gold_ids = list(seq_files_df.ap_gold_id.unique())
 
     drop_idx = []
     for gold_id in ap_gold_ids:
