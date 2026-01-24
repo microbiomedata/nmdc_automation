@@ -300,7 +300,7 @@ def remove_duplicate_analysis_files(seq_files_df: pd.DataFrame) -> pd.DataFrame:
     for gold_id in ap_gold_ids:
         print(gold_id)
         seq_unit_names_list = get_seq_unit_names(seq_files_df, gold_id)
-        for idx, row in seq_files_df.loc[(seq_files_df.apGoldId == gold_id) &
+        for idx, row in seq_files_df.loc[(seq_files_df.ap_gold_id == gold_id) &
                                          (seq_files_df.file_name.str.contains('fastq')) &
                                          (seq_files_df.file_name != 'input.corr.fastq.gz'), :].iterrows():
             # find rows with fastq files to remove (fastq file name is not in list of seq_unit_names and is not
