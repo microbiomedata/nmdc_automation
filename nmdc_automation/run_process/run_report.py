@@ -5,7 +5,7 @@ import logging
 from itertools import islice
 import json
 import requests
-
+from typing import List
 import click
 
 from nmdc_automation.config import SiteConfig
@@ -23,7 +23,7 @@ def cli():
 @cli.command()
 @click.argument("config_file", type=click.Path(exists=True))
 @click.argument("study_id")
-def study_report(config_file, study_id):
+def study_report(config_file, study_id, pipeline = None):
     """
     Generate a report for a specific study.
     """
@@ -37,7 +37,143 @@ def study_report(config_file, study_id):
     api_url = site_config.api_url
     headers = {'accept': 'application/json', 'Authorization': f'Basic {username}:{password}'}
 
+    # get default aggregation for a study_id
+    incomplete_runs = run_aggregation(api_url, headers, study_id, pipeline)
+    logger.info(f"Found {len(incomplete_runs)} categories of incomplete runs")
 
+
+
+def run_aggregation(api_url, headers, study_id: str, pipeline: List[dict], aggregate = "data_generation_set",
+                    analyte_category = "metagenome", manifest = False, qc_status_exists = False, 
+                    qc_comment_exists = False, dg_output = True, wf_type = "nmdc:MagsAnalysis", len_wfe = 5):
+    """
+    Submit an aggregation pipeline to the NMDC run_query endpoint.
+
+    :param api_url: Base API URL (e.g. https://api.microbiomedata.org)
+    :param aggregate: Collection name (e.g. 'biosample_set')
+    :param pipeline: MongoDB aggregation pipeline (list of dicts)
+    :return: Parsed JSON response
+    """
+
+    query_url = f"{api_url}queries/run"
+    if not pipeline:
+        pipeline = build_pipeline(study_id, analyte_category, manifest, qc_status_exists, qc_comment_exists, dg_output,wf_type, len_wfe)
+
+    payload = {
+        "aggregate": aggregate,
+        "pipeline": pipeline
+    }
+
+    query_response = requests.post(query_url, headers=headers, json=payload)
+    query_response.raise_for_status()
+
+    return query_response.json()
+
+
+def build_pipeline(study_id: str, analyte_category: str, 
+                      manifest: bool, qc_status_exists: bool, qc_comment_exists: bool, dg_output: bool,
+                      wf_type: str, len_wfe: int) -> List[dict]:
+    """
+    Consolidate the above query stages into list for submission to api
+    """
+    pipeline = sum([study_and_analyte(study_id, analyte_category),
+                lookup_do_wf_job(),
+                manifest_and_qc(manifest, qc_status_exists, qc_comment_exists, dg_output),
+                set_completion_reqs(wf_type, len_wfe),
+                group_results()
+                ], [])
+    
+    return pipeline
+
+def agg_match(field: str, value: str) -> List[dict]:
+    """
+    For personalized match queries
+    
+    :param field: Schema slot
+    :param value: Schema value
+    """
+    return [{"$match": {field: value}}]
+
+def study_and_analyte(study_id: str, analyte_category = "metagenome") -> List[dict]:
+    """
+    Looks up by study ID and analyte type
+    :param study_id: Study ID
+    :param analyte_category: analyte cagetogry, can be metagenome, metatranscriptome, and maybe one day, more options
+    """
+    return [{"$match": {"associated_studies": study_id, "analyte_category": analyte_category}}]
+
+def lookup_do_wf_job() -> List[dict]:
+    """
+    Performs a lookup / join from the data object set (do), workflow execution set (wf), and job collections.
+    DO for checking if in manifest
+    WF for seeing what executions exist
+    JOB for seeing what's been attempted
+    WF and JOB are sorted for easier grouping later on.
+    """
+    return [{"$lookup": {"from": "data_object_set", "localField": "has_output", "foreignField": "id", "as": "data_object_set"}}, 
+            {"$lookup": {"from": "workflow_execution_set", "localField": "id", "foreignField": "was_informed_by", 
+                         "pipeline": [{"$sort": {"type": 1}}], "as": "workflow_execution_set"}}, 
+            {"$lookup": {"from": "jobs", "localField": "id", "foreignField": "config.was_informed_by", 
+                         "pipeline": [{"$sort": {"config.activity.type": 1}}], "as": "jobs"}}]
+
+def manifest_and_qc(manifest = False, qc_status_exists = False, qc_comment_exists = False, dg_output = True) -> List[dict]:
+    """
+    Docstring for manifest_and_qc
+    
+    :param types: Booleans
+    :param manifest: Whether the data object exists in the manifest (pooling). For now we want False (unpooled)
+    :param qc_status_exists: Whether there's qc status Fail or not. We want good QC to submit, so False
+    :param qc_comment_exists: Same as qc_status, just an extra check in case only one exists due to oversight
+    :param dg_output: Whether there's an output from data_generation_set. This is what goes into our RQC workflows. 
+        If there isn't an output, we don't have an input. 
+    """
+    return [{"$match": {"data_object_set.in_manifest": {"$exists": manifest},
+                        "workflow_execution_set.qc_status": {"$exists": qc_status_exists},
+                        "workflow_execution_set.qc_comment": {"$exists": qc_comment_exists},
+                        "has_output": {"$exists": dg_output}}}]
+
+def set_completion_reqs(wf_type = "nmdc:MagsAnalysis", len_wfe = 5) -> List[dict]:
+    """
+    What we define to be "completed"
+    Typically, we look for the 5 workflow types (RQC, Assembly, Annotation, MAGs, and ReadsbasedTaxonomy (RBT/RBA))
+    This is per data generation set ID.
+    :param wf_type: Can be any of the define WorkflowExecution slot https://microbiomedata.github.io/nmdc-schema/WorkflowExecution/
+    :param len_wfe: Whatever number of workflows you're looking for
+    """
+    return[{"$match": {"$or": [{"$expr": {"$lt": [{"$size": "$workflow_execution_set"}, len_wfe]}}, 
+                               {"workflow_execution_set": {"$not": {"$elemMatch": {"type": wf_type}}}}]}}]
+
+def group_results() -> List[dict]:
+    """
+    This grouping allows us to compare what exists in WFE and Jobs with dates of when they were run.
+    Allows us to look at whether there's a specific set of dates where a lot of issues may have occurred.
+    """
+    return [{"$group": {"_id": {"wfex_type": "$workflow_execution_set.type", "job_wfex_type": "$jobs.config.activity.type"}, 
+                        "dgs_count": {"$sum": 1},
+                        "executions": {"$push": {"id": "$id", "wfex_id": "$workflow_execution_set.id", "wfex_end": "$workflow_execution_set.ended_at_time", 
+                                                 "job_id": "$jobs.id", "job_wfid": "$jobs.config.activity_id", "job_start": "$jobs.created_at"}}}}]
+
+
+
+# ----Legacy code-----
+
+@cli.command()
+@click.argument("config_file", type=click.Path(exists=True))
+@click.argument("study_id")
+def study_report_legacy(config_file, study_id):
+    """
+    This is the older version of study_report. Less specific and less customized.
+    Generate a report for a specific study.
+    """
+    logger.info(f"Generating report for study {study_id} from {config_file}")
+    site_config = SiteConfig(config_file)
+
+    username = site_config.username
+    password = site_config.password
+
+    # Set up the API URL
+    api_url = site_config.api_url
+    headers = {'accept': 'application/json', 'Authorization': f'Basic {username}:{password}'}
 
     # Get Un-pooled Data Generation ID for the study
     unpooled_dg_ids = get_unpooled_data_generation_ids(site_config, study_id)
@@ -80,8 +216,6 @@ def study_report(config_file, study_id):
         print(data_generation_id)
 
 
-
-
 def _get_workflow_executions(api_url, data_generation_id, headers):
     """
     Get workflow executions for a specific data generation.
@@ -106,6 +240,12 @@ def batched(iterable, batch_size):
         yield batch
 
 def get_unpooled_data_generation_ids(site_config, study_id):
+    """
+    Pool data is in manifest
+    
+    :param site_config: Description
+    :param study_id: Description
+    """
     headers = {
         'accept': 'application/json',
         'Authorization': f'Basic {site_config.username}:{site_config.password}'

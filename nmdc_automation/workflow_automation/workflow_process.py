@@ -195,7 +195,7 @@ def get_current_workflow_process_nodes(
                         # Else this has one manifest ID associated with the data object
                         else:
                             if current_manifest not in manifest_map:
-                                logging.info(f"Manifest ID found: {current_manifest}. Processing associated data objects...")
+                                logging.debug(f"Manifest ID found: {current_manifest}. Processing associated data objects...")
                                 # Do we want to save manifest set IDs encountered from the DOs that do not match poolable_replicates?
                                 manifest_map[current_manifest] = {}
                                 
@@ -242,7 +242,7 @@ def get_current_workflow_process_nodes(
         if wf.git_repo:
             q = {"git_url": wf.git_repo}
         # override query with allowlist
-        if allowlist:  # TODO test this -jlp 20250718
+        if allowlist: 
             q = {"was_informed_by": {"$in": list(allowlist)}}
 
         #records = db[wf.collection].find(q)
@@ -254,11 +254,20 @@ def get_current_workflow_process_nodes(
                 continue
             if _is_missing_required_input_output(wf, rec, data_objects_by_id):
                 continue
+            
+            # Deprecated
             #Iterate through was_informed_by list and only if all are valid do we add the wpn
-            wib_set_valid = True
+            #wib_set_valid = True
+            #for wib_id in rec["was_informed_by"]:
+            #    if wib_id not in data_generation_ids:
+            #        wib_set_valid = False
+            
+            # For manifest sets, any was_informed_by ID could be in the allow list, which is stored in data_generation_ids
+            # so just check if any exist for the set to be valid. 
+            wib_set_valid = False
             for wib_id in rec["was_informed_by"]:
-                if wib_id not in data_generation_ids:
-                    wib_set_valid = False
+                if wib_id in data_generation_ids:
+                    wib_set_valid = True
             
             if wib_set_valid == True:
                 wfp_node = WorkflowProcessNode(rec, wf)
@@ -432,7 +441,7 @@ def _map_manifest_to_data_objects(api, manifest_id, manifest_to_data_objects: Di
     # 3. Execute the aggregation pipeline and get the results
     logging.debug(f"AGG:{manifest_agg}")
     resp = api.run_query(manifest_agg)
-    logging.info(f"queries:run response: {resp}")
+    logging.debug(f"queries:run response: {resp}")
 
     # If an empty result was return, aggregation did not work
     if len(resp) == 0:
@@ -507,7 +516,7 @@ def _map_manifest_to_data_generation_set(api, manifest_map):
     }
 
     resp = api.run_query(data_object_agg)
-    logging.info(f"queries:run response: {resp}")
+    logging.debug(f"queries:run response: {resp}")
         
     # Log any issues
     if len(resp) == 0:

@@ -1,0 +1,42 @@
+[{
+  "analyte_category": "metagenome",
+  "associated_studies": [
+    "nmdc:sty-11-hht5sb92"
+  ],
+  "has_input": [
+    "nmdc:procsm-12-3a5rx033"
+  ],
+  "has_output": [
+    "nmdc:dobj-11-cnyvjb30jlp",
+    "nmdc:dobj-11-jky4k370jlp"
+  ],
+  "id": "nmdc:dgns-11-9ss0vs34jlp",
+  "instrument_used": [
+    "nmdc:inst-14-xz5tb342"
+  ],
+  "name": "Surface water microbial communities - CRAM.C2.20210809.DNA-DNA1",
+  "ncbi_project_name": "PRJNA406977",
+  "processing_institution": "Battelle",
+  "type": "nmdc:NucleotideSequencing"
+},
+{
+  "analyte_category": "metagenome",
+  "associated_studies": [
+    "nmdc:sty-11-hht5sb92"
+  ],
+  "has_input": [
+    "nmdc:procsm-12-3a5rx033"
+  ],
+  "has_output": [
+    "nmdc:dobj-11-dht5bk30jlp",
+    "nmdc:dobj-11-9eyeq730jlp"
+  ],
+  "id": "nmdc:dgns-11-d4er8763jlp",
+  "instrument_used": [
+    "nmdc:inst-14-xz5tb342"
+  ],
+  "name": "Surface water microbial communities - CRAM.C2.20210809.DNA-DNA1",
+  "ncbi_project_name": "PRJNA406977",
+  "processing_institution": "Battelle",
+  "type": "nmdc:NucleotideSequencing"
+}]

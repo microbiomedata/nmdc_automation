@@ -255,9 +255,9 @@ Example:
   MOCK_MINT=1 ALLOWLISTFILE=allow.lst DRYRUN=1 python -m nmdc_automation.workflow_automation.sched path/to/site_configuration.toml path/to/workflows.yaml
   ```
 - Start up watcher:
-    ```bash
-    python -m nmdc_automation.run_process.run_workflows watcher --config path/to/site_configuration.toml daemon
-    ``` 
+  ```bash
+  python -m nmdc_automation.run_process.run_workflows watcher --config path/to/site_configuration.toml daemon
+  ``` 
 
 ## Testing
 - Unit tests in `tests/`

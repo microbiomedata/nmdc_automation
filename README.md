@@ -149,9 +149,15 @@ The Scheduler is a Dockerized application running on [Rancher](https://rancher2.
    4. `git checkout tags/[release-version]`
 2. Setup NMDC automation environment with `conda` and `poetry`. 
    1. load conda: `eval "$__conda_setup"` 
-   2. in the `nmdc_automation` directory, install the nmdc_automation project with `poetry install`
-   3. `eval $(poetry env activate)` or `source .venv/bin/activate` to use the environment
+   3. in the `nmdc_automation` directory, install the nmdc_automation project with `poetry install`
+   4. `eval $(poetry env activate)` to use the environment
+        <details><summary>Hint</summary>
+            
+        If you can't remember the command for step 4, there's an alias set in the nmdcda `~/.bashrc file` that allows you to just call `poetry-shell`:
 
+            alias poetry-shell='eval $(poetry env activate)'
+
+        </details>
 
 <details><summary>Example Setup:</summary>
 
