@@ -267,7 +267,13 @@ Watcher code and config files can be found
    1. load conda: `eval "$__conda_setup"` 
    3. in the `nmdc_automation` directory, install the nmdc_automation project with `poetry install`
    4. `eval $(poetry env activate)` to use the environment
+        <details><summary>Hint</summary>
+            
+        If you can't remember the command for step 4, there's an alias set in the nmdcda `~/.bashrc file` that allows you to just call `poetry-shell`:
 
+            alias poetry-shell='eval $(poetry env activate)'
+
+        </details>
 
 <details><summary>Example Setup:</summary>
 
