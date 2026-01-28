@@ -70,6 +70,9 @@ def test_workflow_inputs_url_to_path(site_config, fixtures_dir):
     it will be replaced with the path to /global/cfs/cdirs/m3408/results/
 
     """
+    # input types
+    input_types = ("file", "files", "fq1", "fq2", "fastq1", "fastq2")
+
     # Using the mags_workflow_state.json to test inputs
     job_state = json.load(open(fixtures_dir / "mags_workflow_state.json"))
     workflow = WorkflowStateManager(state = job_state, site_config = site_config)
@@ -78,8 +81,23 @@ def test_workflow_inputs_url_to_path(site_config, fixtures_dir):
     inputs = workflow.generate_workflow_inputs()
     assert inputs
 
+    original_inputs = job_state["config"]["inputs"]
+
     # The values are in a key-value dict with file paths as values
     for key, value in inputs.items():
-        if key.endswith("file") or key.endswith("files"):
+        # Only test file inputs
+        if not key.endswith(input_types):
+            continue
+
+        original_key = key.replace(f"{workflow.input_prefix}.", "")
+        original_value = original_inputs.get(original_key)
+
+        if original_value.startswith("https://data.microbiomedata.org/data/"):
+            logger.debug(f"original value: {original_value}")
+            logger.debug(f"mapped value: {value}")
             assert not value.startswith("https")
-    pass
+            assert value.startswith("/global/cfs/cdirs/m3408/results/")
+        else:
+            logger.debug(f"original value: {original_value}")
+            logger.debug(f"mapped value: {value}")
+            assert value == original_value
