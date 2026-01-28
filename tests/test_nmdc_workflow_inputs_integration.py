@@ -92,7 +92,7 @@ def test_workflow_inputs_url_to_path(site_config, fixtures_dir):
         original_key = key.replace(f"{workflow.input_prefix}.", "")
         original_value = original_inputs.get(original_key)
 
-
+        # Check if a list for interleaved files will correctly map
         if isinstance(original_value, list):
             for orig, mapped in zip(original_value, value):
                 if orig.startswith("https://data.microbiomedata.org/data/"):
@@ -104,6 +104,7 @@ def test_workflow_inputs_url_to_path(site_config, fixtures_dir):
                     logger.info(f"original value: {original_value}")
                     logger.info(f"mapped value: {value}")
                     assert mapped == orig
+        # Singular Files
         else:
             if original_value.startswith("https://data.microbiomedata.org/data/"):
                 logger.info(f"original value: {original_value}")
