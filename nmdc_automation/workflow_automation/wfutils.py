@@ -490,7 +490,7 @@ class WorkflowStateManager:
         """ Generate inputs for the job runner from the workflow state """
         inputs = {}
         prefix = self.input_prefix
-        input_types = {"file", "files", "fq1", "fq2", "fastq1", "fastq2"}
+        input_types = ("file", "files", "fq1", "fq2", "fastq1", "fastq2")
 
         for input_key, input_val in self.inputs.items():
             final_val = input_val
