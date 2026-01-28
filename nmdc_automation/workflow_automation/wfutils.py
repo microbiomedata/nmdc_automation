@@ -472,32 +472,31 @@ class WorkflowStateManager:
         If there is no site_config or data_path_map, return the input
         unchanged.
         """
-        if not self.site_config:
-            return input_file
 
-        data_path_map = self.site_config.config_data.get("data_path_map")
-        if not data_path_map:
-            return input_file
-
-        results_url = self.results_url.rstrip("/")
+        results_url = self.results_url
         results_path = self.results_path
         mapped = input_file
+
+        if not results_url or not results_path:
+            return input_file
 
         if input_file.startswith(results_url):
             rel = input_file[len(results_url):].lstrip("/")
             mapped = os.path.join(results_path, rel)
+            logger.debug(f"Mapped URL → local path: {input_file} → {mapped}")
         return mapped
     
     def generate_workflow_inputs(self) -> Dict[str, str]:
         """ Generate inputs for the job runner from the workflow state """
         inputs = {}
         prefix = self.input_prefix
+        input_types = {"file", "files", "fq1", "fq2", "fastq1", "fastq2"}
 
         for input_key, input_val in self.inputs.items():
             final_val = input_val
             if isinstance(input_val, list):
                 final_val = [self.map_value(v) for v in input_val]
-            elif input_key.endswith("file") or input_key.endswith("files"):
+            elif input_key.endswith(input_types):
                 final_val = self.map_value(input_val)
 
             inputs[f"{prefix}.{input_key}"] = final_val

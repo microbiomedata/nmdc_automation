@@ -76,11 +76,11 @@ class SiteConfig:
     
     @property
     def results_path(self):
-        return self.config_data["data_path_map"]["results_path"]
+        return self.config_data.get("data_path_map", {}).get("results_path", None)
     
     @property
     def results_url(self):
-        return self.config_data["data_path_map"]["results_url"]
+        return self.config_data.get("data_path_map", {}).get("results_url", None)
 
     @property
     def watch_state(self):
