@@ -74,7 +74,7 @@ def test_workflow_inputs_url_to_path(site_config, fixtures_dir):
     input_types = ("file", "files", "fq1", "fq2", "fastq1", "fastq2")
 
     # Using the mags_workflow_state.json to test inputs
-    job_state = json.load(open(fixtures_dir / "mags_workflow_state.json"))
+    job_state = json.load(open(fixtures_dir / "manifest_workflow_state_2.json"))
     workflow = WorkflowStateManager(state = job_state, site_config = site_config)
 
     # Function to replace URL with file path
@@ -92,12 +92,25 @@ def test_workflow_inputs_url_to_path(site_config, fixtures_dir):
         original_key = key.replace(f"{workflow.input_prefix}.", "")
         original_value = original_inputs.get(original_key)
 
-        if original_value.startswith("https://data.microbiomedata.org/data/"):
-            logger.debug(f"original value: {original_value}")
-            logger.debug(f"mapped value: {value}")
-            assert not value.startswith("https")
-            assert value.startswith("/global/cfs/cdirs/m3408/results/")
+
+        if isinstance(original_value, list):
+            for orig, mapped in zip(original_value, value):
+                if orig.startswith("https://data.microbiomedata.org/data/"):
+                    logger.info(f"original value: {orig}")
+                    logger.info(f"mapped value: {value}")
+                    assert not mapped.startswith("https")
+                    assert mapped.startswith("/global/cfs/cdirs/m3408/results/")
+                else:
+                    logger.info(f"original value: {original_value}")
+                    logger.info(f"mapped value: {value}")
+                    assert mapped == orig
         else:
-            logger.debug(f"original value: {original_value}")
-            logger.debug(f"mapped value: {value}")
-            assert value == original_value
+            if original_value.startswith("https://data.microbiomedata.org/data/"):
+                logger.info(f"original value: {original_value}")
+                logger.info(f"mapped value: {value}")
+                assert not value.startswith("https")
+                assert value.startswith("/global/cfs/cdirs/m3408/results/")
+            else:
+                logger.info(f"original value: {original_value}")
+                logger.info(f"mapped value: {value}")
+                assert value == original_value
