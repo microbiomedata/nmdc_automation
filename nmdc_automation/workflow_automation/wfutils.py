@@ -472,6 +472,8 @@ class WorkflowStateManager:
         If there is no site_config or data_path_map, return the input
         unchanged.
         """
+        if not self.site_config:
+            return input_file
 
         results_url = self.results_url
         results_path = self.results_path
