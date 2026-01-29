@@ -67,13 +67,15 @@ def test_workflow_inputs_and_wdl(site_config, fixtures_dir, fixture):
 def test_workflow_inputs_url_to_path(site_config, fixtures_dir):
     """
     Test that when given an input file with a URL from https://data.microbiomedata.org/data/,
-    it will be replaced with the path to /global/cfs/cdirs/m3408/results/
+    it will be replaced with the path to /global/cfs/cdirs/m3408/results/. If there's a
+    different URL, remain unchanged.
 
+    This test checks single and list inputs.
     """
-    # input types
+    # possible input type suffixes
     input_types = ("file", "files", "fq1", "fq2", "fastq1", "fastq2")
 
-    # Using the mags_workflow_state.json to test inputs
+    # Load a test json (manifest_workflow_state_2.json, mags_workflow_state.json)
     job_state = json.load(open(fixtures_dir / "manifest_workflow_state_2.json"))
     workflow = WorkflowStateManager(state = job_state, site_config = site_config)
 
@@ -81,6 +83,7 @@ def test_workflow_inputs_url_to_path(site_config, fixtures_dir):
     inputs = workflow.generate_workflow_inputs()
     assert inputs
 
+    # original inputs for checking
     original_inputs = job_state["config"]["inputs"]
 
     # The values are in a key-value dict with file paths as values
@@ -89,28 +92,34 @@ def test_workflow_inputs_url_to_path(site_config, fixtures_dir):
         if not key.endswith(input_types):
             continue
 
+        # remove the workflow input prefix to find only the key name
         original_key = key.replace(f"{workflow.input_prefix}.", "")
         original_value = original_inputs.get(original_key)
 
         # Check if a list for interleaved files will correctly map
         if isinstance(original_value, list):
+            # Check each element of a list for possible input URLs
             for orig, mapped in zip(original_value, value):
+                # Matching URLs will be mapped to path
                 if orig.startswith("https://data.microbiomedata.org/data/"):
                     logger.info(f"original value: {orig}")
                     logger.info(f"mapped value: {value}")
                     assert not mapped.startswith("https")
                     assert mapped.startswith("/global/cfs/cdirs/m3408/results/")
+                # Others will remain unchanged
                 else:
                     logger.info(f"original value: {original_value}")
                     logger.info(f"mapped value: {value}")
                     assert mapped == orig
         # Singular Files
         else:
+            # Matching URLs will be mapped to path
             if original_value.startswith("https://data.microbiomedata.org/data/"):
                 logger.info(f"original value: {original_value}")
                 logger.info(f"mapped value: {value}")
                 assert not value.startswith("https")
                 assert value.startswith("/global/cfs/cdirs/m3408/results/")
+            # Others will remain unchanged
             else:
                 logger.info(f"original value: {original_value}")
                 logger.info(f"mapped value: {value}")
