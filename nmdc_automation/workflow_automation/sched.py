@@ -192,8 +192,12 @@ class Scheduler:
                 
                     if k == "input_files":
                         v = [dobj_list[0]["url"]]
+                    elif k in ["input_fastq1", "input_fastq2"]:  
+                        v = [dobj_list[0]["url"]]
                     else:
                         v = dobj_list[0]["url"]
+                
+                # For multi-input, it goes here to produce []
                 else:
                     v = []
                     for dobj in dobj_list:
