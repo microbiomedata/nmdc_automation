@@ -80,7 +80,7 @@ send_slack_notification() {
 }
 
 get_timestamp() {
-    echo "$(TZ="America/Los_Angeles" date "+%a %b %d %T %Z %Y")"
+    TZ="America/Los_Angeles" date "+%a %b %d %T %Z %Y"
 }
 
 log() {
@@ -118,6 +118,7 @@ cleanup() {
         kill "$KILL_PID" 2>/dev/null
         send_slack_notification ":arrows_counterclockwise: *Scheduler-$WORKSPACE script refresh* at \`$(get_timestamp)\` (replacing PID \`$OLD_PID\`)"
         log "Scheduler script restarted" 
+    # If this cleanup was triggered by a manual kill, kill the old PID and exit
     elif [[ $MANUAL_STOP -eq 1 ]]; then
         send_slack_notification ":x: *Scheduler-$WORKSPACE manually stopped* at \`$(get_timestamp)\`"
         log "Scheduler terminated"
@@ -139,18 +140,28 @@ cleanup() {
 }
 
 # trap 'kill $SCHED_PID; cleanup' SIGINT SIGTERM EXIT
-trap 'MANUAL_STOP=1; RESTARTING=0; MISMATCH=0; HELP=0; kill "$SCHED_PID" 2>/dev/null; cleanup' SIGINT SIGTERM
+# trap 'MANUAL_STOP=1; RESTARTING=0; MISMATCH=0; HELP=0; kill "$SCHED_PID" 2>/dev/null; cleanup' SIGINT SIGTERM
+trap cleanup SIGINT SIGTERM EXIT
 
+# process commands
 if [[ "$COMMAND" == "stop" || "$COMMAND" == "status" ]]; then
     if [[ -f "$PID_FILE" ]]; then
         read -r OLD_PID < "$PID_FILE"
         if ps -p "$OLD_PID" > /dev/null 2>&1; then
-            [[ "$COMMAND" == "stop" ]] && { echo "Stopping scheduler PID $OLD_PID..."; MANUAL_STOP=1; RESTARTING=0; MISMATCH=0; HELP=0; cleanup; } || echo "Scheduler is running (PID $OLD_PID)"
+            if [[ "$COMMAND" == "stop" ]]; then
+                echo "Stopping scheduler PID $OLD_PID..."
+                MANUAL_STOP=1; RESTARTING=0; MISMATCH=0; HELP=0
+                cleanup
+            else
+                echo "Scheduler is running (PID $OLD_PID)"
+            fi
         else
             echo "Scheduler PID $OLD_PID not running"
         fi
     else
-        echo $([[ "$COMMAND" == "stop" ]] && echo "No PID file found; scheduler may not be running" || echo "Scheduler not running")
+        [[ "$COMMAND" == "stop" ]] \
+            && echo "No PID file found; scheduler may not be running" \
+            || echo "Scheduler not running"
     fi
     exit 0
 fi
@@ -214,7 +225,7 @@ tail -n 0 -F "$LOG_FILE" | while IFS= read -r line; do
     # Detect traceback start
     if [[ "$line" == *"Traceback (most recent call last):"* ]]; then
         TRACEBACK_LINES=()
-        while IFS= read -r tb_line; do
+        while IFS= read -r -t 1 tb_line; do
             # Stop if next line looks like a log timestamp
             if [[ "$tb_line" =~ ^\[.*\] ]] || [[ "$tb_line" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2} ]]; then
                 break
@@ -224,10 +235,15 @@ tail -n 0 -F "$LOG_FILE" | while IFS= read -r line; do
 
         # Extract only meaningful error lines
         ERROR_SUMMARY=$(printf "%s\n" "${TRACEBACK_LINES[@]}" \
-        | grep -E "Error:|Exception:" \
+        | grep -E "[A-Za-z]+Error:|Exception:" \
         | sed -E 's/with url: .*//' \
         | sed -E 's/^[^:]+: //' \
-        | sort -u)
+        | sort -u 2>/dev/null )
+
+         # fallback if no summary found
+        if [[ -z "$ERROR_SUMMARY" ]]; then
+            ERROR_SUMMARY="${TRACEBACK_LINES[-1]}"
+        fi
 
         # Only alert if something meaningful matched
         if [[ -n "$ERROR_SUMMARY" && "$ERROR_SUMMARY" != "$LAST_ALERT" ]]; then
@@ -239,15 +255,16 @@ tail -n 0 -F "$LOG_FILE" | while IFS= read -r line; do
     fi
 
     # Detect single-line ERROR logs
-    if echo "$line" | grep -qiE "error|exception"; then
+    shopt -s nocasematch
+    if [[ "$line" =~ error|exception|warning ]]; then
         [[ "$line" =~ $IGNORE_PATTERN ]] && continue
-
         if [[ "$line" != "$LAST_ALERT" || "$line" == *"$ALERT_PATTERN"* ]]; then
             send_slack_notification \
               ":warning: *Scheduler-$WORKSPACE ERROR* at \`$(get_timestamp)\`:\n\`\`\`$line\`\`\`"
             LAST_ALERT="$line"
         fi
     fi
+    shopt -u nocasematch
 done &
 TAIL_PID=$!
 
@@ -258,14 +275,20 @@ log "Scheduler script started"
 
 log_status
 
-ALLOWLISTFILE="$LIST" python -m nmdc_automation.workflow_automation.sched \
-    "$NMDC_SITE_CONF" \
-    "$NMDC_WORKFLOW_YAML_FILE" \
-    2>&1 | tee -a "$LOG_FILE" "$FULL_LOG_FILE" > "$STD_OUT" &
+# DRYRUN=1 \
+# ALLOWLISTFILE="$LIST" python -m nmdc_automation.workflow_automation.sched \
+#     "$NMDC_SITE_CONF" \
+#     "$NMDC_WORKFLOW_YAML_FILE" \
+#     2>&1 | tee -a "$LOG_FILE" "$FULL_LOG_FILE" > "$STD_OUT" &
+
+# python sched.py  2>&1 | tee -a "$LOG_FILE" "$FULL_LOG_FILE" > "$STD_OUT" &
+
+poetry run pytest /Users/kli/Documents/NMDC/nmdc_automation/tests/test_sched.py | tee -a "$LOG_FILE" "$FULL_LOG_FILE" > "$STD_OUT" &
 
 SCHED_PID=$!
 echo "$SCHED_PID" > "$PID_FILE"
 wait "$SCHED_PID"
+sleep 1
 cleanup
 
 # # Only wait and trap cleanup if not detached

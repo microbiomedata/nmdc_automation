@@ -1,3 +1,12 @@
+Onboarding:
+
+I've updated the documentation some amount over the past year, but I've started another PR for anything that comes up when chatting with you. We'll mostly be going over things that are in the main readme, but even that I've made small changes on my branch. Feel free to check both out or just the diff view on the PR.
+I'm sure Alicia mentioned already, but things you'll need to get set up before you're able to run anything are as follows:
+perlmutter access as your personal user and as nmdcda, ideally with use of the [sshproxy script](https://docs.nersc.gov/connect/mfa/#sshproxy)
+access to SPIN / rancher (may need a [training](https://docs.nersc.gov/services/spin/#get-started) if you haven't done it already)
+access to the dev and prod [mongodb](https://docs.google.com/document/d/11h21epiEX2HVM8pUNYPw8dzx_9p0Rx8BkpHcDk62Utc/edit?tab=t.0#heading=h.qyxkoy9mt63k) and runtime api
+lowest priority is a [JAWS token](https://jaws-docs.jgi.doe.gov/en/latest/jaws/jaws_config.html), since we don't expect you to do a lot of trouble shooting from the get-go.
+
 Typical error on scheduler that means the watcher or perlmutter has come down:
 <details>
 

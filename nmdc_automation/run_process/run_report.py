@@ -8,6 +8,7 @@ import requests
 from typing import List
 import click
 
+from nmdc_automation.api import NmdcRuntimeApi
 from nmdc_automation.config import SiteConfig
 
 
@@ -29,9 +30,14 @@ def study_report(config_file, study_id, pipeline = None):
     """
     logger.info(f"Generating report for study {study_id} from {config_file}")
     site_config = SiteConfig(config_file)
-
+    runtime_api = NmdcRuntimeApi(site_config)
     username = site_config.username
     password = site_config.password
+
+    study_status_query = build_query()
+    
+
+    
 
     # Set up the API URL
     api_url = site_config.api_url
@@ -43,7 +49,7 @@ def study_report(config_file, study_id, pipeline = None):
 
 
 
-def run_aggregation(api_url, headers, study_id: str, pipeline: List[dict], aggregate = "data_generation_set",
+def run_aggregation(runtime_api, api_url, headers, study_id: str, pipeline: List[dict], aggregate = "data_generation_set",
                     analyte_category = "metagenome", manifest = False, qc_status_exists = False, 
                     qc_comment_exists = False, dg_output = True, wf_type = "nmdc:MagsAnalysis", len_wfe = 5):
     """
@@ -55,7 +61,7 @@ def run_aggregation(api_url, headers, study_id: str, pipeline: List[dict], aggre
     :return: Parsed JSON response
     """
 
-    query_url = f"{api_url}queries/run"
+    query_url = f"{api_url}/queries:run"
     if not pipeline:
         pipeline = build_pipeline(study_id, analyte_category, manifest, qc_status_exists, qc_comment_exists, dg_output,wf_type, len_wfe)
 
@@ -63,6 +69,7 @@ def run_aggregation(api_url, headers, study_id: str, pipeline: List[dict], aggre
         "aggregate": aggregate,
         "pipeline": pipeline
     }
+    resp = runtime_api.run_query(data_generation_update_query)
 
     query_response = requests.post(query_url, headers=headers, json=payload)
     query_response.raise_for_status()
@@ -72,9 +79,9 @@ def run_aggregation(api_url, headers, study_id: str, pipeline: List[dict], aggre
 
 def build_pipeline(study_id: str, analyte_category: str, 
                       manifest: bool, qc_status_exists: bool, qc_comment_exists: bool, dg_output: bool,
-                      wf_type: str, len_wfe: int) -> List[dict]:
+                      wf_type: str, len_wfe: int) -> dict:
     """
-    Consolidate the above query stages into list for submission to api
+    Consolidate the above query stages into aggregation for submission to api
     """
     pipeline = sum([study_and_analyte(study_id, analyte_category),
                 lookup_do_wf_job(),
@@ -82,7 +89,6 @@ def build_pipeline(study_id: str, analyte_category: str,
                 set_completion_reqs(wf_type, len_wfe),
                 group_results()
                 ], [])
-    
     return pipeline
 
 def agg_match(field: str, value: str) -> List[dict]:
