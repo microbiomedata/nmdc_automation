@@ -290,18 +290,41 @@ log_status
 
 
 
-python -u sched.py 2>&1 | tee -a "$LOG_FILE" "$FULL_LOG_FILE" | while IFS= read -r line; do
-    shopt -s nocasematch
-    if [[ "$line" =~ error|exception|warning ]]; then
-        LAST_ERROR="$line"
-        if [[ "$line" != "$LAST_ALERT" ]]; then
-            send_slack_notification ":warning: *Scheduler-$WORKSPACE ERROR* at \`$(get_timestamp)\`:\n\`\`\`$line\`\`\`"
-            LAST_ALERT="$line"
-        fi
-    fi
-    shopt -u nocasematch
-done
+ALLOWLISTFILE="$LIST" python -u -m nmdc_automation.workflow_automation.sched \
+    "$NMDC_SITE_CONF" \
+    "$NMDC_WORKFLOW_YAML_FILE" \
+    2>&1 | tee -a "$LOG_FILE" "$FULL_LOG_FILE" | while IFS= read -r line; do
 
+    shopt -s nocasematch
+
+    # Skip lines matching ignore pattern
+    [[ -n "$IGNORE_PATTERN" && "$line" =~ $IGNORE_PATTERN ]] && continue
+
+    # Capture all traceback lines (optional, can also just capture exception lines)
+    TRACEBACK_LINES+=("$line")
+
+    # Detect exception lines
+    if [[ "$line" =~ [A-Za-z]+Error:|Exception: ]]; then
+        # Generate a summary from collected traceback lines
+        ERROR_SUMMARY=$(printf "%s\n" "${TRACEBACK_LINES[@]}" \
+            | grep -E "[A-Za-z]+Error:|Exception:" \
+            | sed -E 's/with url: .*//' \
+            | sed -E 's/^[^:]+: //' \
+            | sort -u 2>/dev/null )
+
+        LAST_ERROR="$ERROR_SUMMARY"
+
+        if [[ -n "$ERROR_SUMMARY" && "$ERROR_SUMMARY" != "$LAST_ALERT" ]]; then
+            send_slack_notification ":warning: *Scheduler-$WORKSPACE ERROR* at \`$(get_timestamp)\`:\n\`\`\`\n$ERROR_SUMMARY\n\`\`\`"
+            LAST_ALERT="$ERROR_SUMMARY"
+        fi
+
+        # Reset for the next traceback/error
+        TRACEBACK_LINES=()
+    fi
+
+    shopt -u nocasematch
+done &
 # poetry run pytest /Users/kli/Documents/NMDC/nmdc_automation/tests/test_sched.py \
 #     | tee -a "$LOG_FILE" "$FULL_LOG_FILE" > "$STD_OUT" &
 
