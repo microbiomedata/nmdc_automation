@@ -223,56 +223,56 @@ fi
 [[ -n "${TAIL_PID:-}" ]] && kill "$TAIL_PID" 2>/dev/null || true
 pkill -u "${USER:?USER not set}" -f "tail -n 0 -F $LOG_FILE" 2>/dev/null || true
 
-# start monitoring log file for errors in background
-tail -n 0 -F "$LOG_FILE" | while IFS= read -r line; do
-    # Detect traceback start
-    if [[ "$line" == *Traceback* ]]; then 
-        TRACEBACK_LINES=()
-        log "traceback started"
-        while IFS= read -r -t 1 tb_line; do
-            # Stop if next line looks like a log timestamp or reach the exception line 
-            if [[ "$tb_line" =~ [A-Za-z]+Error:|Exception: ]] || \
-                [[ "$tb_line" =~ ^\[.*\] ]] || \
-                [[ "$tb_line" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2} ]]; then
-                break
-            fi
-            TRACEBACK_LINES+=("$tb_line")
-        done
+# # start monitoring log file for errors in background
+# tail -n 0 -F "$LOG_FILE" | while IFS= read -r line; do
+#     # Detect traceback start
+#     if [[ "$line" == *Traceback* ]]; then 
+#         TRACEBACK_LINES=()
+#         log "traceback started"
+#         while IFS= read -r -t 1 tb_line; do
+#             # Stop if next line looks like a log timestamp or reach the exception line 
+#             if [[ "$tb_line" =~ [A-Za-z]+Error:|Exception: ]] || \
+#                 [[ "$tb_line" =~ ^\[.*\] ]] || \
+#                 [[ "$tb_line" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2} ]]; then
+#                 break
+#             fi
+#             TRACEBACK_LINES+=("$tb_line")
+#         done
 
-        # Extract only meaningful error lines
-        ERROR_SUMMARY=$(printf "%s\n" "${TRACEBACK_LINES[@]}" \
-        | grep -E "[A-Za-z]+Error:|Exception:" \
-        | sed -E 's/with url: .*//' \
-        | sed -E 's/^[^:]+: //' \
-        | sort -u 2>/dev/null )
+#         # Extract only meaningful error lines
+#         ERROR_SUMMARY=$(printf "%s\n" "${TRACEBACK_LINES[@]}" \
+#         | grep -E "[A-Za-z]+Error:|Exception:" \
+#         | sed -E 's/with url: .*//' \
+#         | sed -E 's/^[^:]+: //' \
+#         | sort -u 2>/dev/null )
 
-         # fallback if no summary found
-        if [[ -z "$ERROR_SUMMARY" ]]; then
-            ERROR_SUMMARY="${TRACEBACK_LINES[-1]}"
-        fi
-        LAST_ERROR="$ERROR_SUMMARY"
-        # Only alert if something meaningful matched
-        if [[ -n "$ERROR_SUMMARY" && "$ERROR_SUMMARY" != "$LAST_ALERT" ]]; then
-            send_slack_notification ":warning: *Scheduler-$WORKSPACE ERROR* at \`$(get_timestamp)\`:\n\`\`\`\n$ERROR_SUMMARY\n\`\`\`"
-            LAST_ALERT="$ERROR_SUMMARY"
-        fi
-        continue
-    fi
+#          # fallback if no summary found
+#         if [[ -z "$ERROR_SUMMARY" ]]; then
+#             ERROR_SUMMARY="${TRACEBACK_LINES[-1]}"
+#         fi
+#         LAST_ERROR="$ERROR_SUMMARY"
+#         # Only alert if something meaningful matched
+#         if [[ -n "$ERROR_SUMMARY" && "$ERROR_SUMMARY" != "$LAST_ALERT" ]]; then
+#             send_slack_notification ":warning: *Scheduler-$WORKSPACE ERROR* at \`$(get_timestamp)\`:\n\`\`\`\n$ERROR_SUMMARY\n\`\`\`"
+#             LAST_ALERT="$ERROR_SUMMARY"
+#         fi
+#         continue
+#     fi
 
-    # Detect single-line ERROR logs
-    shopt -s nocasematch
-    if [[ "$line" =~ error|exception|warning ]]; then
-        [[ "$line" =~ $IGNORE_PATTERN ]] && continue
-        LAST_ERROR="$line"
-        if [[ "$line" != "$LAST_ALERT" || "$line" == *"$ALERT_PATTERN"* ]]; then
-            send_slack_notification \
-              ":warning: *Scheduler-$WORKSPACE ERROR* at \`$(get_timestamp)\`:\n\`\`\`$line\`\`\`"
-            LAST_ALERT="$line"
-        fi
-    fi
-    shopt -u nocasematch
-done &
-TAIL_PID=$!
+#     # Detect single-line ERROR logs
+#     shopt -s nocasematch
+#     if [[ "$line" =~ error|exception|warning ]]; then
+#         [[ "$line" =~ $IGNORE_PATTERN ]] && continue
+#         LAST_ERROR="$line"
+#         if [[ "$line" != "$LAST_ALERT" || "$line" == *"$ALERT_PATTERN"* ]]; then
+#             send_slack_notification \
+#               ":warning: *Scheduler-$WORKSPACE ERROR* at \`$(get_timestamp)\`:\n\`\`\`$line\`\`\`"
+#             LAST_ALERT="$line"
+#         fi
+#     fi
+#     shopt -u nocasematch
+# done &
+# TAIL_PID=$!
 
 RESTARTING=0
 CLEANED_UP=0
@@ -286,7 +286,21 @@ log_status
 #     "$NMDC_WORKFLOW_YAML_FILE" \
 #     2>&1 | tee -a "$LOG_FILE" "$FULL_LOG_FILE" > "$STD_OUT" &
 
-python sched.py  2>&1 | tee -a "$LOG_FILE" "$FULL_LOG_FILE" > "$STD_OUT" &
+# python sched.py  2>&1 | tee -a "$LOG_FILE" "$FULL_LOG_FILE" > "$STD_OUT" &
+
+
+
+python -u sched.py 2>&1 | tee -a "$LOG_FILE" "$FULL_LOG_FILE" | while IFS= read -r line; do
+    shopt -s nocasematch
+    if [[ "$line" =~ error|exception|warning ]]; then
+        LAST_ERROR="$line"
+        if [[ "$line" != "$LAST_ALERT" ]]; then
+            send_slack_notification ":warning: *Scheduler-$WORKSPACE ERROR* at \`$(get_timestamp)\`:\n\`\`\`$line\`\`\`"
+            LAST_ALERT="$line"
+        fi
+    fi
+    shopt -u nocasematch
+done
 
 # poetry run pytest /Users/kli/Documents/NMDC/nmdc_automation/tests/test_sched.py \
 #     | tee -a "$LOG_FILE" "$FULL_LOG_FILE" > "$STD_OUT" &
