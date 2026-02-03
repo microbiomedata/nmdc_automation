@@ -172,6 +172,7 @@ if [[ "${COMMAND}" == "stop" || "${COMMAND}" == "status" ]]; then
             && echo "No PID file found; scheduler may not be running" \
             || echo "Scheduler not running"
     fi
+    HELP=1
     exit 0
 fi
 

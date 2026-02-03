@@ -3,15 +3,13 @@ set -euo pipefail
 
 # Default values
 WORKSPACE="prod"
-CONF="./site_configuration.toml"
-# CONF=/global/homes/n/nmdcda/nmdc_automation/$WORKSPACE/site_configuration_nersc_$WORKSPACE.toml
+CONF=/global/homes/n/nmdcda/nmdc_automation/$WORKSPACE/site_configuration_nersc_$WORKSPACE.toml
 HOST=$(hostname)
 LOG_FILE=watcher-$WORKSPACE.log
 PID_FILE=watcher-$WORKSPACE.pid
 HOST_FILE=host-$WORKSPACE.last
 SLACK_WEBHOOK_URL=$(grep 'slack_webhook' "$CONF" | sed 's/.*= *"\(.*\)"/\1/')
-PVENV=/Users/kli/Library/Caches/pypoetry/virtualenvs/nmdc-automation-FtOYRXpA-py3.11
-# PVENV=/global/cfs/cdirs/m3408/nmdc_automation/$WORKSPACE/nmdc_automation/.venv
+PVENV=/global/cfs/cdirs/m3408/nmdc_automation/$WORKSPACE/nmdc_automation/.venv
 COMMAND=""   # default start watcher when script called
 
 # Global state flags
@@ -103,7 +101,7 @@ cleanup() {
     fi
     CLEANED_UP=1
 
-    log_status
+    # 
 
     # If this cleanup was triggered by a restart:
     #   kill the old PID, notify Slack, return so the script can continue
@@ -162,8 +160,9 @@ if [[ "$COMMAND" == "stop" || "$COMMAND" == "status" ]]; then
     else
         [[ "$COMMAND" == "stop" ]] \
             && echo "No PID file found; watcher may not be running" \
-            || echo "Watcher not running"
+            || echo "Watcher not running" 
     fi
+    HELP=1
     exit 0
 fi
 
@@ -216,9 +215,9 @@ log "Watcher script started on $HOST"
 log_status
 PYTHONPATH=$(pwd)/nmdc_automation \
     python -u -m nmdc_automation.run_process.run_workflows watcher --config "$CONF" daemon \
-    > >(tee -a "$LOG_FILE") \
+    # > >(tee -a "$LOG_FILE" ${STD_OUT:+$STD_OUT}) \
     2>&1 | while IFS= read -r line; do
-
+    echo "$line" | tee -a "$LOG_FILE"
     shopt -s nocasematch
 
     # Skip ignored patterns
