@@ -73,6 +73,14 @@ class SiteConfig:
     @property
     def api_url(self):
         return self.config_data["nmdc"]["api_url"]
+    
+    @property
+    def results_path(self):
+        return self.config_data.get("data_path_map", {}).get("results_path", None)
+    
+    @property
+    def results_url(self):
+        return self.config_data.get("data_path_map", {}).get("results_url", None)
 
     @property
     def watch_state(self):
@@ -123,7 +131,6 @@ class SiteConfig:
         """Returns the [local_mongodb] section if it exists, otherwise returns an empty dict.
            This is for local runtime testing, explicitly """
         return self.config_data.get("local_runtime_mongodb", {})
-
 
     @property
     @lru_cache(maxsize=None)

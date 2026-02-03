@@ -453,21 +453,57 @@ class WorkflowStateManager:
     LABEL_SUBMITTER_VALUE = "nmdcda"
     LABEL_PARAMETERS = ["release", "wdl", "git_repo"]
 
-    def __init__(self, state: Dict[str, Any] = None, opid: str = None):
+    def __init__(self, state: Dict[str, Any] = None, opid: str = None, site_config: SiteConfig | None = None):
         if state is None:
             state = {}
         self.cached_state = state
+        self.site_config = site_config
         if opid and "opid" in self.cached_state:
             raise ValueError("opid already set in job state")
         if opid:
             self.cached_state["opid"] = opid
 
+    def map_value(self, input_file:str) -> str:
+        """ 
+        Maps the input file/files to the results path, 
+        /global/cfs/cdirs/m3408/results/, if the URL is from 
+        https://data.microbiomedata.org/data/.
+
+        If there is no site_config or data_path_map, return the input
+        unchanged.
+        """
+        if not self.site_config:
+            return input_file
+
+        results_url = self.results_url
+        results_path = self.results_path
+        mapped = input_file
+
+        if not results_url or not results_path:
+            return input_file
+
+        if input_file.startswith(results_url):
+            rel = input_file[len(results_url):].lstrip("/")
+            mapped = os.path.join(results_path, rel)
+            logger.debug(f"Mapped URL → local path: {input_file} → {mapped}")
+        return mapped
+    
     def generate_workflow_inputs(self) -> Dict[str, str]:
         """ Generate inputs for the job runner from the workflow state """
         inputs = {}
         prefix = self.input_prefix
+        input_types = ("file", "files", "fq1", "fq2", "fastq1", "fastq2") # input file endings
+
         for input_key, input_val in self.inputs.items():
-            inputs[f"{prefix}.{input_key}"] = input_val
+            final_val = input_val
+            if input_key.endswith(input_types):
+                if isinstance(input_val, list):
+                    final_val = [self.map_value(v) for v in input_val]
+                else:
+                    final_val = self.map_value(input_val)
+
+            inputs[f"{prefix}.{input_key}"] = final_val
+
         return inputs
 
     def generate_workflow_labels(self) -> Dict[str, str]:
@@ -570,7 +606,6 @@ class WorkflowStateManager:
     def manifest(self) -> Optional[str]:
         return self.config.get("manifest", None)
     
-
     @property
     def wdl(self) -> Optional[str]:
         return self.config.get("wdl", None)
@@ -578,7 +613,6 @@ class WorkflowStateManager:
     @property
     def release(self) -> Optional[str]:
         return self.config.get("release", None)
-
 
     @property
     def workflow_execution_type(self) -> Optional[str]:
@@ -598,6 +632,18 @@ class WorkflowStateManager:
     @property
     def input_prefix(self) -> Optional[str]:
         return self.config.get("input_prefix", None)
+    
+    # url root
+    @property
+    def results_url(self) -> str:
+        """ Get the NMDC URL root: https://data.microbiomedata.org/data/ """
+        return self.site_config.results_url
+
+    # results root
+    @property
+    def results_path(self) -> str:
+        """ Get the results path if the URL is https://data.microbiomedata.org/data/ """
+        return self.site_config.results_path
 
     @property
     def inputs(self) -> Dict[str, str]:
@@ -686,7 +732,7 @@ class WorkflowJob:
     def __init__(self, site_config: SiteConfig, workflow_state: Dict[str, Any] = None,
                  job_metadata: Dict['str', Any] = None, opid: str = None, jaws_api: jaws_api.JawsApi = None, dry_run: bool = False) -> None:
         self.site_config = site_config
-        self.workflow = WorkflowStateManager(workflow_state, opid)
+        self.workflow = WorkflowStateManager(workflow_state, opid, site_config,)
         
         self.dry_run = dry_run
         # Use JawsRunner if jaws_api is provided, otherwise use CromwellRunner
@@ -770,7 +816,7 @@ class WorkflowJob:
     def url_root(self) -> str:
         """ Get the URL root """
         return self.site_config.url_root
-
+    
     @property
     def was_informed_by(self) -> list[str]:
         """ get the was_informed_by ID value """
