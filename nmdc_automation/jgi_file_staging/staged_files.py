@@ -9,6 +9,8 @@ from WDL.Type import Boolean
 
 from nmdc_api_utilities.data_staging import JGISampleSearchAPI
 from nmdc_automation.config import SiteConfig, StagingConfig
+from nmdc_api_utilities.auth import NMDCAuth
+
 
 logging.basicConfig(
     filename="file_staging.log",
@@ -18,7 +20,7 @@ logging.basicConfig(
 )
 
 
-def get_list_staged_files(project: str, staged_data_dir: Path, save_file_list: Boolean = None) -> pd.DataFrame:
+def get_list_staged_files(project: str, staged_data_dir: str, save_file_list: Boolean = None) -> pd.DataFrame:
     """
     Get list of files that have been staged to filesystem
     :param project: name of the project
@@ -26,7 +28,7 @@ def get_list_staged_files(project: str, staged_data_dir: Path, save_file_list: B
     :param save_file_list: Save list of staged files
     """
     # project root based on current file location
-    base_dir = Path(staged_data_dir/ project / f"analysis_files")
+    base_dir = Path(staged_data_dir, project, "analysis_files")
 
 
     proj_list = []
@@ -59,9 +61,10 @@ def get_list_missing_staged_files(
     )
     samples_df = pd.DataFrame(
         JGISampleSearchAPI(env=site_configuration.env, 
-                           client_id=site_configuration.client_id, 
-                           client_secret=site_configuration.client_secret
-                           ).get_jgi_samples({'sequencing_project_name':project_name}))
+                           auth=NMDCAuth(client_id=site_configuration.client_id, 
+                                         client_secret=site_configuration.client_secret, 
+                                         env=site_configuration.env)
+                           ).list_jgi_samples({'sequencing_project_name':project_name}, all_pages=True, max_page_size=100))
     samples_df["file_key"] = samples_df.apply(
         lambda x: f"{x.ap_gold_id}-{x.file_name}", axis=1
     )
