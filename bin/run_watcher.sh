@@ -3,7 +3,8 @@ set -euo pipefail
 
 # Default values
 WORKSPACE="prod"
-CONF=/global/homes/n/nmdcda/nmdc_automation/$WORKSPACE/site_configuration_nersc_$WORKSPACE.toml
+CONF=/Users/kli/Documents/NMDC/nmdc_automation/bin/site_configuration.toml
+# CONF=/global/homes/n/nmdcda/nmdc_automation/$WORKSPACE/site_configuration_nersc_$WORKSPACE.toml
 HOST=$(hostname)
 LOG_FILE=watcher-$WORKSPACE.log
 PID_FILE=watcher-$WORKSPACE.pid
@@ -28,6 +29,7 @@ IGNORE_PATTERN="Error removing directory /tmp: \[Errno 13\] Permission denied: .
 ALERT_PATTERN='Internal Server Error'
 TRACEBACK_LINES=()
 ERROR_SUMMARY=""
+STD_OUT=/dev/stdout
 
 # Help message
 show_help() {
@@ -101,8 +103,6 @@ cleanup() {
     fi
     CLEANED_UP=1
 
-    # 
-
     # If this cleanup was triggered by a restart:
     #   kill the old PID, notify Slack, return so the script can continue
     if [[ ${RESTARTING:-0} -eq 1 && -n "${KILL_PID:-}" ]]; then
@@ -174,11 +174,11 @@ if ! check_host_match; then
     exit 1
 fi
 
-if [[ "${VIRTUAL_ENV:0}" != "$PVENV" ]]; then
-    log "Incorrect poetry environment. Aborting."
-    MISMATCH=1
-    exit 1
-fi
+# if [[ "${VIRTUAL_ENV:0}" != "$PVENV" ]]; then
+#     log "Incorrect poetry environment. Aborting."
+#     MISMATCH=1
+#     exit 1
+# fi
 
 # Look for an existing watcher process
 if [[ -f "$PID_FILE" ]] && read -r OLD_PID < "$PID_FILE" && ps -p "$OLD_PID" > /dev/null 2>&1; then
@@ -215,9 +215,11 @@ log "Watcher script started on $HOST"
 log_status
 PYTHONPATH=$(pwd)/nmdc_automation \
     python -u -m nmdc_automation.run_process.run_workflows watcher --config "$CONF" daemon \
-    # > >(tee -a "$LOG_FILE" ${STD_OUT:+$STD_OUT}) \
-    2>&1 | while IFS= read -r line; do
-    echo "$line" | tee -a "$LOG_FILE"
+    2>&1 | sed -n '1,200p' | while IFS= read -r line; do
+# python -u watcher.py \
+    # 2>&1 | while IFS= read -r line; do
+    echo "$line" 
+    echo "$line" >> "$LOG_FILE"
     shopt -s nocasematch
 
     # Skip ignored patterns
@@ -232,15 +234,22 @@ PYTHONPATH=$(pwd)/nmdc_automation \
 
     if [[ ${TRACEBACK_ACTIVE:-0} -eq 1 ]]; then
         TRACEBACK_LINES+=("$line")
-
+        
         # Only send on the **final exception line**
-        if [[ "$line" =~ [A-Za-z]+Error:|Exception: ]]; then
+        if [[ "$line" =~ ^[A-Za-z_.]+:[[:space:]]+ ]]; then
             ERROR_SUMMARY=$(printf "%s\n" "${TRACEBACK_LINES[@]}" \
                 | grep -E "[A-Za-z]+Error:|Exception:" \
                 | tail -n1 \
-                | sed -E 's/with url: .*//' \
-                | sed -E 's/^[^:]+: //' )
+                | sed -E 's/with url: .*/[URL]/' ) 
+                # \
+            # | sed -E 's/^[^:]+: //' )
+            # grep for _Error: or Exception:
+            # last matching expression line
+            # remove noisy URL
+            # remove exception type prefix, this mattered more when we didn't cut off the traceback
             
+            ERROR_SUMMARY=${ERROR_SUMMARY:-"Unknown error"}
+
             LAST_ERROR="$ERROR_SUMMARY"
             
             if [[ -n "$ERROR_SUMMARY" && "$ERROR_SUMMARY" != "$LAST_ALERT" ]]; then
@@ -255,8 +264,10 @@ PYTHONPATH=$(pwd)/nmdc_automation \
     fi
 
     # ---- Single-line log error detection (outside tracebacks) ----
-    if [[ "$line" =~ ERROR:|WARNING: ]]; then
-        ERROR_LINE=$(echo "$line" | sed -E 's/with url: .*//')
+    if [[ "$line" =~ (ERROR|WARNING|Exception|syntax\ error|command\ substitution) ]]; then
+
+    # if [[ "$line" =~ ERROR|WARNING ]]; then
+        ERROR_LINE=$(echo "$line" | sed -E 's/ url: .*/[URL]/')
         LAST_ERROR="$ERROR_LINE"
 
         if [[ "$ERROR_LINE" != "$LAST_ALERT" || "$line" == *"$ALERT_PATTERN"* ]]; then
@@ -264,12 +275,12 @@ PYTHONPATH=$(pwd)/nmdc_automation \
             LAST_ALERT="$ERROR_LINE"
         fi
     fi
-
     shopt -u nocasematch
 done &
 
 
 WATCHER_PID=$!
+echo "$WATCHER_PID"
 echo "$WATCHER_PID" > "$PID_FILE"
 echo "$HOST" > "$HOST_FILE"
 wait "$WATCHER_PID"

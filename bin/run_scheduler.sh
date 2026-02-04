@@ -34,7 +34,7 @@ KILL_PID="NA"
 LAST_ALERT=""
 LAST_ERROR=""
 IGNORE_PATTERN=""
-STD_OUT=/dev/null
+STD_OUT=/dev/stdout #/dev/null
 COMMAND=""   # default start scheduler when script called
 TRACEBACK_LINES=()
 ERROR_SUMMARY=""
@@ -110,14 +110,6 @@ cleanup() {
     log "Cleanup triggered."
     CLEANED_UP=1
     log_status
-        
-    # # Always clean up tail process if it exists    
-    # if [[ -n "${TAIL_PID:-}" ]]; then
-    #     kill "$TAIL_PID" 2>/dev/null || true 
-    #     pkill -P "$TAIL_PID" 2>/dev/null || true
-    # fi
-    # # Best-effort cleanup for any stray tail processes
-    # pkill -u "${USER:?USER not set}" -f "tail -n 0 -F $LOG_FILE" 2>/dev/null || true
         
     # If this cleanup was triggered by a restart, kill the old PID
     if [[ ${RESTARTING:-0} -eq 1 && -n "${KILL_PID:-}" ]]; then
@@ -219,11 +211,6 @@ if EXISTING_PID=$(pgrep -u "$USER" -f "python.*sched" 2>/dev/null); then
     done
 fi
 
-# # clean up logging
-# [[ -n "${TAIL_PID:-}" ]] && kill "$TAIL_PID" 2>/dev/null || true
-# pkill -u "${USER:?USER not set}" -f "tail -n 0 -F $LOG_FILE" 2>/dev/null || true
-
-
 RESTARTING=0
 CLEANED_UP=0
 send_slack_notification ":rocket: *Scheduler-$WORKSPACE started* at \`$(get_timestamp)\`"
@@ -245,7 +232,7 @@ log_status
 #     "$NMDC_WORKFLOW_YAML_FILE" \
 python -u sched.py \
     2>&1 | tee -a "$LOG_FILE" "$FULL_LOG_FILE" | while IFS= read -r line; do
-
+    echo "$line"
     shopt -s nocasematch
 
     # Skip ignored patterns
@@ -268,7 +255,7 @@ python -u sched.py \
                 | tail -n1 \
                 | sed -E 's/with url: .*//' \
                 | sed -E 's/^[^:]+: //' )
-            
+            ERROR_SUMMARY=${ERROR_SUMMARY:-"Unknown error"}
             LAST_ERROR="$ERROR_SUMMARY"
 
             if [[ -n "$ERROR_SUMMARY" && "$ERROR_SUMMARY" != "$LAST_ALERT" ]]; then
@@ -295,12 +282,8 @@ python -u sched.py \
 
     shopt -u nocasematch
 done &
-# poetry run pytest /Users/kli/Documents/NMDC/nmdc_automation/tests/test_sched.py \
-#     | tee -a "$LOG_FILE" "$FULL_LOG_FILE" > "$STD_OUT" &
 
 SCHED_PID=$!
 echo "$SCHED_PID" > "$PID_FILE"
 wait "$SCHED_PID"
-# sleep 2
-# kill "$TAIL_PID" 2>/dev/null || true
 cleanup
