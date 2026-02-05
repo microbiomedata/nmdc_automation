@@ -10,6 +10,7 @@ import argparse
 from typing import List, Optional, Union
 from nmdc_automation.jgi_file_staging.file_restoration import update_sample_in_mongodb, update_file_statuses
 from nmdc_automation.config import SiteConfig, StagingConfig
+from nmdc_api_utilities.auth import NMDCAuth
 from nmdc_api_utilities.data_staging import JGISampleSearchAPI, GlobusTaskAPI
 
 logging.basicConfig(filename='file_staging.log',
@@ -28,8 +29,9 @@ def get_project_globus_manifests(project_name: str, site_configuration: SiteConf
     :return: list of manifest file names
     """
     jgi_sample_api = JGISampleSearchAPI(env=site_configuration.env,
-                                       client_id=site_configuration.client_id,
-                                       client_secret=site_configuration.client_secret
+                                       auth=NMDCAuth(client_id=site_configuration.client_id,
+                                                      client_secret=site_configuration.client_secret,
+                                                      env=site_configuration.env)
                                        )
     # Get all samples for the project that we would like to be restored (are not PURGED or EXPIRED)
     query_dict = {'sequencing_project_name': project_name, 'file_status': {'$nin': ['PURGED', 'EXPIRED']}}
@@ -126,8 +128,9 @@ def create_globus_batch_file(project: str, site_configuration: SiteConfig, stagi
 
     update_file_statuses(project=project, site_configuration=site_configuration)
     samples_list = JGISampleSearchAPI(env=site_configuration.env,
-                                       client_id=site_configuration.client_id,
-                                       client_secret=site_configuration.client_secret
+                                       auth=NMDCAuth(client_id=site_configuration.client_id,
+                                                      client_secret=site_configuration.client_secret,
+                                                      env=site_configuration.env)
                                        ).get_jgi_samples({'jgi_sequencing_project': project, 'jdp_file_status': 'ready'})
     samples_df = pd.DataFrame(samples_list)
     if samples_df.empty:
@@ -188,8 +191,10 @@ def insert_globus_status_into_mongodb(task_id: str, task_status: str, site_confi
     :param task_id: globus task id
     :param task_status: task status"""
     globus_api = GlobusTaskAPI(env=site_configuration.env,
-                              client_id=site_configuration.client_id, 
-                              client_secret=site_configuration.client_secret)
+                              auth=NMDCAuth(client_id=site_configuration.client_id,
+                                             client_secret=site_configuration.client_secret,
+                                             env=site_configuration.env)
+                              )
     globus_api.create_globus_task({'task_id': task_id, 'task_status':task_status})
 
 
@@ -209,8 +214,9 @@ def update_globus_task_status(task_id: str, task_status: str, site_configuration
     :param task_status: new task status
     :param site_configuration: Site configuration object"""
     globus_api = GlobusTaskAPI(env=site_configuration.env,
-                              client_id=site_configuration.client_id, 
-                              client_secret=site_configuration.client_secret
+                              auth=NMDCAuth(client_id=site_configuration.client_id,
+                                             client_secret=site_configuration.client_secret,
+                                             env=site_configuration.env)
                               ).update_globus_task(task_id, {'task_status': task_status})
 
 def update_globus_statuses(site_configuration: SiteConfig):
@@ -218,8 +224,9 @@ def update_globus_statuses(site_configuration: SiteConfig):
     Get all Globus tasks that are not in the 'SUCCEEDED' status and update their status
     """
     tasks = GlobusTaskAPI(env=site_configuration.env,
-                              client_id=site_configuration.client_id, 
-                              client_secret=site_configuration.client_secret
+                              auth=NMDCAuth(client_id=site_configuration.client_id, 
+                                            client_secret=site_configuration.client_secret, 
+                                            env=site_configuration.env)
                               ).get_globus_tasks({'task_status': {'$ne': 'SUCCEEDED'}})
     for task in tasks:
         task_status = get_globus_task_status(task['task_id'])
