@@ -1,10 +1,10 @@
 #!/bin/bash
 set -euo pipefail
+# CONF=/Users/kli/Documents/NMDC/nmdc_automation/bin/site_configuration.toml
 
 # Default values
 WORKSPACE="prod"
-CONF=/Users/kli/Documents/NMDC/nmdc_automation/bin/site_configuration.toml
-# CONF=/global/homes/n/nmdcda/nmdc_automation/$WORKSPACE/site_configuration_nersc_$WORKSPACE.toml
+CONF=/global/homes/n/nmdcda/nmdc_automation/$WORKSPACE/site_configuration_nersc_$WORKSPACE.toml
 HOST=$(hostname)
 LOG_FILE=watcher-$WORKSPACE.log
 PID_FILE=watcher-$WORKSPACE.pid
@@ -23,13 +23,13 @@ KILL_PID=""
 WATCHER_PID=""
 OLD_PID=""
 OLD_HOST=""
+TAIL_PID=""
 LAST_ALERT=""
 LAST_ERROR=""
 IGNORE_PATTERN="Error removing directory /tmp: \[Errno 13\] Permission denied: .*/tmp|['\"]error['\"]:[[:space:]]*['\"][[:space:]]*['\"]"
 ALERT_PATTERN='Internal Server Error'
 TRACEBACK_LINES=()
 ERROR_SUMMARY=""
-STD_OUT=/dev/stdout
 
 # Help message
 show_help() {
@@ -102,9 +102,15 @@ cleanup() {
         return
     fi
     CLEANED_UP=1
+    
+    # Always clean up tail process if it exists    
+    if [[ -n "${TAIL_PID:-}" ]]; then
+        kill "$TAIL_PID" 2>/dev/null || true 
+        pkill -P "$TAIL_PID" 2>/dev/null || true
+    fi
+    pkill -u "$USER" -f "tail -n 0 -F $LOG_FILE" 2>/dev/null || true
 
-    # If this cleanup was triggered by a restart:
-    #   kill the old PID, notify Slack, return so the script can continue
+    # If this cleanup was triggered by a restart, kill the old PID, notify Slack, return so the script can continue
     if [[ ${RESTARTING:-0} -eq 1 && -n "${KILL_PID:-}" ]]; then
         kill "$KILL_PID" 2>/dev/null || true
         log "Watcher script restarted"
@@ -127,7 +133,7 @@ cleanup() {
     # NORMAL TERMINATION: Send termination notification, include last error if present.
     EXIT_MESSAGE=":x: *Watcher-$WORKSPACE script terminated* on \`$HOST\` at \`$(get_timestamp)\`"
     if [[ -n "${LAST_ERROR:-}" && "${LAST_ERROR:-}" != "${LAST_ALERT:-}" ]]; then
-        EXIT_MESSAGE+=".\nLatest error:\n\`\`\`${LAST_ERROR}\`\`\`"
+        EXIT_MESSAGE+="\nLatest error:\n\`\`\`${LAST_ERROR}\`\`\`"
     fi
     send_slack_notification "$EXIT_MESSAGE"
     log "Watcher script terminated"
@@ -174,11 +180,11 @@ if ! check_host_match; then
     exit 1
 fi
 
-# if [[ "${VIRTUAL_ENV:0}" != "$PVENV" ]]; then
-#     log "Incorrect poetry environment. Aborting."
-#     MISMATCH=1
-#     exit 1
-# fi
+if [[ "${VIRTUAL_ENV:0}" != "$PVENV" ]]; then
+    log "Incorrect poetry environment. Aborting."
+    MISMATCH=1
+    exit 1
+fi
 
 # Look for an existing watcher process
 if [[ -f "$PID_FILE" ]] && read -r OLD_PID < "$PID_FILE" && ps -p "$OLD_PID" > /dev/null 2>&1; then
@@ -192,7 +198,6 @@ if [[ -f "$PID_FILE" ]] && read -r OLD_PID < "$PID_FILE" && ps -p "$OLD_PID" > /
             RESTARTING=1
             KILL_PID="$OLD_PID"
             cleanup
-            # sleep 2
         else
             log "Process $PROC_CMD does not match watcher or host mismatch."
             MISMATCH=1
@@ -207,51 +212,33 @@ else
     log "No active process found for PID $OLD_PID"
 fi
 
+# Ensure no leftover tail processes are running for full log file
+pkill -u "$USER" -f "tail -n 0 -F $LOG_FILE" 2>/dev/null || true
 
-RESTARTING=0
-CLEANED_UP=0
-send_slack_notification ":rocket: *Watcher-$WORKSPACE started* on \`$HOST\` at \`$(get_timestamp)\`"
-log "Watcher script started on $HOST"
-log_status
-PYTHONPATH=$(pwd)/nmdc_automation \
-    python -u -m nmdc_automation.run_process.run_workflows watcher --config "$CONF" daemon \
-    2>&1 | sed -n '1,200p' | while IFS= read -r line; do
-# python -u watcher.py \
-    # 2>&1 | while IFS= read -r line; do
-    echo "$line" 
-    echo "$line" >> "$LOG_FILE"
-    shopt -s nocasematch
-
-    # Skip ignored patterns
+# Start monitoring the log file for errors in background
+tail -n 0 -F "$LOG_FILE" | while IFS= read -r line; do
+    # skip known patterns
     [[ -n "$IGNORE_PATTERN" && "$line" =~ $IGNORE_PATTERN ]] && continue
-
-    # ---- Traceback detection ----
+    
+    # begin python traceback
     if [[ "$line" == *"Traceback (most recent call last):"* ]]; then
         TRACEBACK_LINES=("$line")
         TRACEBACK_ACTIVE=1
         continue
     fi
-
     if [[ ${TRACEBACK_ACTIVE:-0} -eq 1 ]]; then
         TRACEBACK_LINES+=("$line")
-        
+
         # Only send on the **final exception line**
-        if [[ "$line" =~ ^[A-Za-z_.]+:[[:space:]]+ ]]; then
+        if [[ "$line" =~ [A-Za-z]+Error:|Exception: ]]; then
             ERROR_SUMMARY=$(printf "%s\n" "${TRACEBACK_LINES[@]}" \
                 | grep -E "[A-Za-z]+Error:|Exception:" \
                 | tail -n1 \
-                | sed -E 's/with url: .*/[URL]/' ) 
-                # \
-            # | sed -E 's/^[^:]+: //' )
-            # grep for _Error: or Exception:
-            # last matching expression line
-            # remove noisy URL
-            # remove exception type prefix, this mattered more when we didn't cut off the traceback
-            
+                | sed -E 's/with url: .*//' \
+                | sed -E 's/^[^:]+: //' )
             ERROR_SUMMARY=${ERROR_SUMMARY:-"Unknown error"}
-
             LAST_ERROR="$ERROR_SUMMARY"
-            
+
             if [[ -n "$ERROR_SUMMARY" && "$ERROR_SUMMARY" != "$LAST_ALERT" ]]; then
                 send_slack_notification ":warning: *Watcher-$WORKSPACE ERROR* on \`$HOST\` at \`$(get_timestamp)\`:\n\`\`\`$ERROR_SUMMARY\`\`\`"
                 LAST_ALERT="$ERROR_SUMMARY"
@@ -263,24 +250,30 @@ PYTHONPATH=$(pwd)/nmdc_automation \
         continue
     fi
 
-    # ---- Single-line log error detection (outside tracebacks) ----
-    if [[ "$line" =~ (ERROR|WARNING|Exception|syntax\ error|command\ substitution) ]]; then
-
-    # if [[ "$line" =~ ERROR|WARNING ]]; then
-        ERROR_LINE=$(echo "$line" | sed -E 's/ url: .*/[URL]/')
-        LAST_ERROR="$ERROR_LINE"
-
-        if [[ "$ERROR_LINE" != "$LAST_ALERT" || "$line" == *"$ALERT_PATTERN"* ]]; then
-            send_slack_notification ":warning: *Watcher-$WORKSPACE ERROR* on \`$HOST\` at \`$(get_timestamp)\`:\n\`\`\`$ERROR_LINE\`\`\`"
-            LAST_ALERT="$ERROR_LINE"
+    # single line error detection
+    shopt -s nocasematch
+    if [[ "$line" =~ error|exception ]]; then
+        [[ "$line" =~ $IGNORE_PATTERN ]] && continue
+        LAST_ERROR="$line"
+        if [[ "$line" != "$LAST_ALERT" || "$line" == *"$ALERT_PATTERN"* ]]; then
+            send_slack_notification ":warning: *Watcher-$WORKSPACE ERROR* on \`$HOST\` at \`$(get_timestamp)\`:\n\`\`\`$line\`\`\`"
+            LAST_ALERT="$line"
         fi
     fi
     shopt -u nocasematch
 done &
+TAIL_PID=$!
 
+RESTARTING=0
+CLEANED_UP=0
+send_slack_notification ":rocket: *Watcher-$WORKSPACE started* on \`$HOST\` at \`$(get_timestamp)\`"
+log "Watcher script started on $HOST"
+log_status
+PYTHONPATH=$(pwd)/nmdc_automation \
+    python -u -m nmdc_automation.run_process.run_workflows watcher --config "$CONF" daemon \
+    > >(tee -a "$LOG_FILE") 2>&1 &
 
 WATCHER_PID=$!
-echo "$WATCHER_PID"
 echo "$WATCHER_PID" > "$PID_FILE"
 echo "$HOST" > "$HOST_FILE"
 wait "$WATCHER_PID"
