@@ -26,16 +26,16 @@ def update_sample_in_mongodb(sample: dict, update_dict: dict, site_configuration
     :param site_configuration: SiteConfig object with site configuration.
     :return: True if update is successful, False otherwise.
     """
-    update_dict.update({'update_date': datetime.now()})
-    sample.update(update_dict)
     try:
         sample_update = JGISample(**sample)
         sample_update_dict = sample_update.model_dump()
+        sample_update_dict.update({'update_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S')})
+        sample_update_dict['create_date'] = sample_update_dict['create_date'].strftime('%Y-%m-%d %H:%M:%S')
         JGISampleSearchAPI(env=site_configuration.env, 
                            auth=NMDCAuth(client_id=site_configuration.client_id, 
                                          client_secret=site_configuration.client_secret, 
                                          env=site_configuration.env)
-                           ).update_jgi_sample(sample_update_dict['jdp_file_id'], update_dict)
+                           ).update_jgi_sample(sample_update_dict['jdp_file_id'], sample_update_dict)
         return True
     except ValidationError as e:
         logging.error(f'Validation error when updating Sample: {sample.get("jdp_file_id")} Error Details: {e}')
@@ -58,7 +58,7 @@ def restore_files(project: str, site_configuration: SiteConfig,
     """
     
     # Update statuses first
-    # update_file_statuses(project, site_configuration, config_file)
+    update_file_statuses(project, site_configuration)
     JDP_TOKEN = os.environ.get('JDP_TOKEN')
     if not JDP_TOKEN:
         sys.exit('JDP_TOKEN environment variable not set')
@@ -66,17 +66,17 @@ def restore_files(project: str, site_configuration: SiteConfig,
     if restore_csv:
         restore_df = pd.read_csv(restore_csv)
     else:
+        query = {"sequencing_project_name":project, "$or":[{"jdp_file_status": {"$ne":"pending"}},{"jdp_file_status":{"$ne":"RESTORED"}}]}
         samples = JGISampleSearchAPI(env= site_configuration.env,
                                      auth=NMDCAuth(client_id=site_configuration.client_id, 
                                                         client_secret=site_configuration.client_secret, 
                                                         env=site_configuration.env)
-                                     ).list_jgi_samples({'sequencing_project_name': project,
-                                                       'jdp_file_status': {'$ne': 'RESTORED'}})
+                                     ).list_jgi_samples(query, all_pages=True, max_page_size=100)
         if not samples:
             return 'No samples to restore'
         restore_df = pd.DataFrame(samples)
 
-
+    
     
     headers = {'Authorization': JDP_TOKEN, "accept": "application/json"}
     url = 'https://files.jgi.doe.gov/download_files/'
@@ -91,6 +91,11 @@ def restore_files(project: str, site_configuration: SiteConfig,
         end_idx = begin_idx + batch_size
         sum_files, count = send_restore_request(begin_idx, end_idx, restore_df, url, headers, staging_configuration, sum_files, count)
         begin_idx = end_idx
+
+    restore_df['request_id'] = restore_df['request_id'].astype(int)
+    restore_df['its_ap_id'] = restore_df['its_ap_id'].astype(str)
+    restore_df['gold_seq_id'] = restore_df['gold_seq_id'].astype(str)
+    restore_df['jgi_ap_id'] = restore_df['jgi_ap_id'].astype(str)
     restore_df.apply(lambda x: update_sample_in_mongodb(x, {'request_id': x['request_id'],
                                                             'jdp_file_status': x['jdp_file_status']}, site_configuration), axis=1)
     return f"requested restoration of {count} files"
@@ -170,9 +175,10 @@ def update_file_statuses(project: str, site_configuration: SiteConfig):
 
     # get all samples for sequencing project
     samples_list = JGISampleSearchAPI(env=site_configuration.env, 
-                                      client_id=site_configuration.client_id, 
-                                      client_secret=site_configuration.client_secret
-                                      ).get_jgi_samples({'sequencing_project_name': project})
+                                      auth=NMDCAuth(client_id=site_configuration.client_id, 
+                                                     client_secret=site_configuration.client_secret, 
+                                                     env=site_configuration.env)
+                                      ).list_jgi_samples({'sequencing_project_name': project})
     if not samples_list:
         logging.debug(f"no samples to update for {project}")
         return
