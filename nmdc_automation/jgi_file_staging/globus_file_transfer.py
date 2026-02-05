@@ -28,14 +28,15 @@ def get_project_globus_manifests(project_name: str, site_configuration: SiteConf
    
     :return: list of manifest file names
     """
-    jgi_sample_api = JGISampleSearchAPI(env=site_configuration.env,
+    query_dict = {'sequencing_project_name': project_name, 'file_status': {'$nin': ['PURGED', 'EXPIRED']}}
+    samples_list = JGISampleSearchAPI(env=site_configuration.env,
                                        auth=NMDCAuth(client_id=site_configuration.client_id,
                                                       client_secret=site_configuration.client_secret,
                                                       env=site_configuration.env)
-                                       )
+                                       ).list_jgi_samples(query_dict)
     # Get all samples for the project that we would like to be restored (are not PURGED or EXPIRED)
-    query_dict = {'sequencing_project_name': project_name, 'file_status': {'$nin': ['PURGED', 'EXPIRED']}}
-    samples_df = pd.DataFrame(jgi_sample_api.get_jgi_samples(query_dict))
+    
+    samples_df = pd.DataFrame(samples_list)
     samples_df = samples_df[pd.notna(samples_df.request_id)]
     samples_df['request_id'] = samples_df['request_id'].astype(int)
     manifests_list = []
@@ -131,7 +132,7 @@ def create_globus_batch_file(project: str, site_configuration: SiteConfig, stagi
                                        auth=NMDCAuth(client_id=site_configuration.client_id,
                                                       client_secret=site_configuration.client_secret,
                                                       env=site_configuration.env)
-                                       ).get_jgi_samples({'jgi_sequencing_project': project, 'jdp_file_status': 'ready'})
+                                       ).list_jgi_samples({'jgi_sequencing_project': project, 'jdp_file_status': 'ready'})
     samples_df = pd.DataFrame(samples_list)
     if samples_df.empty:
         logging.debug(f"no samples ready to transfer")
