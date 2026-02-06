@@ -20,7 +20,8 @@ _WF_YAML_ENV = "NMDC_WORKFLOW_YAML_FILE"
 
 
 # configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO,
+                    format="%(asctime)s %(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 

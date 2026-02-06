@@ -12,7 +12,9 @@ from nmdc_automation.api import NmdcRuntimeApi
 from nmdc_automation.config import SiteConfig
 
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO,
+    format="%(asctime)s %(levelname)s: %(message)s"
+                    )
 logger = logging.getLogger(__name__)
 
 

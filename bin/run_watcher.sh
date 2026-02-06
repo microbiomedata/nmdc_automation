@@ -1,10 +1,10 @@
 #!/bin/bash
 set -euo pipefail
-# CONF=/Users/kli/Documents/NMDC/nmdc_automation/bin/site_configuration.toml
+CONF=/Users/kli/Documents/NMDC/nmdc_automation/bin/site_configuration.toml
 
 # Default values
 WORKSPACE="prod"
-CONF=/global/homes/n/nmdcda/nmdc_automation/$WORKSPACE/site_configuration_nersc_$WORKSPACE.toml
+# CONF=/global/homes/n/nmdcda/nmdc_automation/$WORKSPACE/site_configuration_nersc_$WORKSPACE.toml
 HOST=$(hostname)
 LOG_FILE=watcher-$WORKSPACE.log
 PID_FILE=watcher-$WORKSPACE.pid
@@ -159,6 +159,9 @@ if [[ "$COMMAND" == "stop" || "$COMMAND" == "status" ]]; then
                 cleanup
             else
                 echo "Watcher is running (PID $OLD_PID)"
+                ps aux | grep "$USER" | grep watcher
+                echo "Checking JAWS jobs going back 1 day"
+                jaws history | awk '/status/ { count[$0]++ } END { for (k in count) print count[k], k }' | sort -n || true
             fi
         else
             echo "Watcher PID $OLD_PID not running"
@@ -188,23 +191,17 @@ fi
 
 # Look for an existing watcher process
 if [[ -f "$PID_FILE" ]] && read -r OLD_PID < "$PID_FILE" && ps -p "$OLD_PID" > /dev/null 2>&1; then
-    CMD_NAME=$(ps -p "$OLD_PID" -o comm=)
-    # Check command name (comm) includes 'python'
-    if [[ "$CMD_NAME" == *python* ]]; then
-        PROC_CMD=$(ps -p "$OLD_PID" -o args=)
-        # Check full command line includes 'watcher'
-        if [[ "$PROC_CMD" == *"watcher"* ]] && [[ "$OLD_HOST" == "$HOST" ]]; then
-            # This is the correct watcher process on the right host
-            RESTARTING=1
-            KILL_PID="$OLD_PID"
-            cleanup
-        else
-            log "Process $PROC_CMD does not match watcher or host mismatch."
-            MISMATCH=1
-            exit 1
-        fi
+    # check for PID process
+    COMMAND_NAME=$(ps -p "$OLD_PID" -o comm=)
+    PROC_COMMAND=$(ps -p "$OLD_PID" -o args=)
+    # check command name and command process include python and watcher
+    if [[ "$COMMAND_NAME" == *python* && "$PROC_COMMAND" == *watcher* ]]; then
+        log "Found running scheduler process $OLD_PID: $COMMAND_NAME"
+        RESTARTING=1
+        KILL_PID="$OLD_PID"
+        cleanup
     else
-        log "Process with PID $OLD_PID is not a python process."
+        log "Process with PID $OLD_PID is not the watcher, skipping kill"
         MISMATCH=1
         exit 1
     fi

@@ -1,58 +1,60 @@
+# LIST="./allow.lst"
+# TOML="./site_configuration.toml"
+# PID_FILE="./test.sched.pid"
+# LOG_FILE="./test.sched.log"
+# FULL_LOG_FILE="./test.sched_full.log"
+# YAML="/Users/kli/Documents/NMDC/nmdc_automation/nmdc_automation/config/workflows/workflows.yaml"
 #!/bin/bash
 set -euo pipefail
-# enable job control
-# set -m
 
 # Default values
-# LIST="/conf/allow.lst"
-# TOML="/conf/site_configuration.toml"
-# PID_FILE="/conf/test.sched.pid"
-# LOG_FILE="/conf/test.sched.log"
-# YAML=$(grep 'workflows_config' "$TOML" | sed 's/.*= *"\(.*\)"/\1/')
-set -euo pipefail
+LIST="/conf/allow.lst"
+TOML="/conf/site_configuration.toml"
+PID_FILE="/conf/test.sched.pid"
+LOG_FILE="/conf/test.sched.log"
+YAML=$(grep 'workflows_config' "$TOML" | sed 's/.*= *"\(.*\)"/\1/')
 WORKSPACE="dev"
-LIST="./allow.lst"
-TOML="./site_configuration.toml"
 PORT="27017"
-PID_FILE="./test.sched.pid"
-LOG_FILE="./test.sched.log"
-FULL_LOG_FILE="./test.sched_full.log"
 SLACK_WEBHOOK_URL=$(grep 'slack_webhook' "$TOML" | sed 's/.*= *"\(.*\)"/\1/')
-YAML="/Users/kli/Documents/NMDC/nmdc_automation/nmdc_automation/config/workflows/workflows.yaml"
+SKIP=""
 
 # Global state flags
 DEBUG=0
+DRYRUN=0
 CLEANED_UP=0
 RESTARTING=0
 MISMATCH=0
 HELP=0
 MANUAL_STOP=0
 SCHED_PID=""
-# TAIL_PID=""
+TAIL_PID=""
 OLD_PID=""
-KILL_PID="NA"
+KILL_PID=""
 LAST_ALERT=""
 LAST_ERROR=""
 IGNORE_PATTERN=""
-STD_OUT=/dev/stdout #/dev/null
+# STD_OUT=/dev/null # no longer needed because of nohup
 COMMAND=""   # default start scheduler when script called
 TRACEBACK_LINES=()
 ERROR_SUMMARY=""
 
 # Help message
 show_help() {
-  echo "Usage: ./run_scheduler.sh [COMMAND] [--yaml PATH] [--allowlist PATH] [--toml PATH] [--port PORT]"
+  echo "Usage: ./run_scheduler.sh [COMMAND] [--allowlist PATH] [--yaml PATH] [--toml PATH] [--port PORT]"
   echo
   echo "Commands:"
   echo "  stop                  Stop the running scheduler"
   echo "  status                Show scheduler status"
+  echo "  By default, if no command is called, scheduler will start"
   echo
   echo "Options:"
-  echo "  -y, --yaml PATH        Path to workflow YAML file (default: $YAML)"
   echo "  -a, --allowlist PATH   Path to allowlist file     (default: $LIST)"
+  echo "  -y, --yaml PATH        Path to workflow YAML file (default: $YAML)"
   echo "  -t, --toml PATH        Path to site config TOML   (default: $TOML)"
   echo "  -p, --port PORT        MongoDB port number        (default: $PORT)"
+  echo "  -s, --skiplist PATH    Path to skiplist file      (default: $SKIP)" 
   echo "  -d, --debug            Enable debug mode (outputs to stdout)"
+  echo "  -n, --dryrun           Enable dryrun mode, startup only." 
   echo "  -h, --help             Show this help message"
   HELP=1
 }
@@ -65,12 +67,13 @@ while [[ $# -gt 0 ]]; do
         -a|--allowlist) LIST="$2"; shift 2 ;;
         -t|--toml)      TOML="$2"; shift 2 ;;
         -p|--port)      PORT="$2"; shift 2 ;;
+        -S|--skiplist)  SKIP="$2"; shift 2 ;;
         -d|--debug)     DEBUG=1; shift ;;
+        -n|--dryrun)    DRYRUN=1; shift ;;
         -h|--help)      show_help; exit 0 ;;
         *)              echo "Unknown option: $1"; show_help; exit 1 ;;
     esac
 done
-
 
 # ----------- Functions ----------- 
 send_slack_notification() {
@@ -87,11 +90,11 @@ get_timestamp() {
 log() {
     if [ -n "$1" ]; then
         # Direct message
-        printf '[%s] %s\n' "$(get_timestamp)" "$1" | tee -a "$LOG_FILE" "$FULL_LOG_FILE" > "$STD_OUT"
+        printf '[%s] %s\n' "$(get_timestamp)" "$1" | tee -a "$LOG_FILE" "$FULL_LOG_FILE" #> "$STD_OUT"
     else
         # Read from stdin (for piped input)
         while IFS= read -r line; do
-            printf '[%s] %s\n' "$(get_timestamp)" "$line" | tee -a "$LOG_FILE" "$FULL_LOG_FILE" > "$STD_OUT"
+            printf '[%s] %s\n' "$(get_timestamp)" "$line" | tee -a "$LOG_FILE" "$FULL_LOG_FILE" #> "$STD_OUT"
         done
     fi
 }
@@ -107,15 +110,20 @@ cleanup() {
     if [[ $CLEANED_UP -eq 1 ]]; then 
         return
     fi
-    log "Cleanup triggered."
     CLEANED_UP=1
-    log_status
-        
+
+    # Always clean up tail process if it exists    
+    if [[ -n "${TAIL_PID:-}" ]]; then
+        kill "$TAIL_PID" 2>/dev/null || true 
+        pkill -P "$TAIL_PID" 2>/dev/null || true
+    fi
+    pkill -u "$USER" -f "tail -n 0 -F $LOG_FILE" 2>/dev/null || true
+
     # If this cleanup was triggered by a restart, kill the old PID
     if [[ ${RESTARTING:-0} -eq 1 && -n "${KILL_PID:-}" ]]; then
-        kill "$KILL_PID" 2>/dev/null
-        send_slack_notification ":arrows_counterclockwise: *Scheduler-$WORKSPACE script refresh* at \`$(get_timestamp)\` (replacing PID \`$OLD_PID\`)"
+        kill "$KILL_PID" 2>/dev/null || true
         log "Scheduler script restarted" 
+        send_slack_notification ":arrows_counterclockwise: *Scheduler-$WORKSPACE script refresh* at \`$(get_timestamp)\` (replacing PID \`$OLD_PID\`)"
         return
     fi
 
@@ -134,7 +142,7 @@ cleanup() {
     # normal termination
     EXIT_MESSAGE=":x: *Scheduler-$WORKSPACE script terminated* at \`$(get_timestamp)\`"
     if [[ -n "${LAST_ERROR:-}" && "${LAST_ERROR:-}" != "${LAST_ALERT:-}" ]]; then
-        EXIT_MESSAGE+=".\nLatest error:\n\`\`\`${LAST_ERROR}\`\`\`"
+        EXIT_MESSAGE+="\nLatest error:\n\`\`\`${LAST_ERROR}\`\`\`"
     fi
     send_slack_notification "$EXIT_MESSAGE"
     log "Scheduler script terminated" 
@@ -173,11 +181,12 @@ export MONGO_PORT="$PORT"
 export NMDC_WORKFLOW_YAML_FILE="$YAML"
 export NMDC_SITE_CONF="$TOML"
 export NMDC_LOG_LEVEL=INFO # info by default every time. 
+export DRYRUN="$DRYRUN"
 rm "$LOG_FILE"
 
 if [[ ${DEBUG:-0} -eq 1 ]]; then
     export NMDC_LOG_LEVEL=DEBUG
-    [[ "$DEBUG" == "1" ]] && STD_OUT=/dev/stdout
+    # STD_OUT=/dev/stdout # no longer needed due to nohup
     log "Debug mode enabled."
 fi
 
@@ -195,11 +204,11 @@ if [[ -f "$PID_FILE" ]] && read -r OLD_PID < "$PID_FILE" && ps -p "$OLD_PID" > /
     else
         log "PID $OLD_PID is not the scheduler, skipping kill"
         MISMATCH=1
+        exit 1
     fi
 else
     log "PID $OLD_PID not running"
 fi
-
 
 # Look for orphaned scheduler processes outside of PID file
 if EXISTING_PID=$(pgrep -u "$USER" -f "python.*sched" 2>/dev/null); then
@@ -211,44 +220,24 @@ if EXISTING_PID=$(pgrep -u "$USER" -f "python.*sched" 2>/dev/null); then
     done
 fi
 
-RESTARTING=0
-CLEANED_UP=0
-send_slack_notification ":rocket: *Scheduler-$WORKSPACE started* at \`$(get_timestamp)\`"
-log "Scheduler script started" 
-log_status
+# Ensure no leftover tail processes are running for full log file
+pkill -u "$USER" -f "tail -n 0 -F $LOG_FILE" 2>/dev/null || true
 
-# DRYRUN=1 \
-# ALLOWLISTFILE="$LIST" python -m nmdc_automation.workflow_automation.sched \
-#     "$NMDC_SITE_CONF" \
-#     "$NMDC_WORKFLOW_YAML_FILE" \
-#     2>&1 | tee -a "$LOG_FILE" "$FULL_LOG_FILE" > "$STD_OUT" &
-
-# python sched.py  2>&1 | tee -a "$LOG_FILE" "$FULL_LOG_FILE" > "$STD_OUT" &
-
-
-
-# ALLOWLISTFILE="$LIST" python -u -m nmdc_automation.workflow_automation.sched \
-#     "$NMDC_SITE_CONF" \
-#     "$NMDC_WORKFLOW_YAML_FILE" \
-python -u sched.py \
-    2>&1 | tee -a "$LOG_FILE" "$FULL_LOG_FILE" | while IFS= read -r line; do
-    echo "$line"
-    shopt -s nocasematch
-
-    # Skip ignored patterns
+# Start monitoring the log file for errors in background
+tail -n 0 -F "$LOG_FILE" | while IFS= read -r line; do
+    # skip known patterns
     [[ -n "$IGNORE_PATTERN" && "$line" =~ $IGNORE_PATTERN ]] && continue
-
-    # ---- Traceback detection ----
+    
+    # begin python traceback
     if [[ "$line" == *"Traceback (most recent call last):"* ]]; then
         TRACEBACK_LINES=("$line")
         TRACEBACK_ACTIVE=1
         continue
     fi
-
     if [[ ${TRACEBACK_ACTIVE:-0} -eq 1 ]]; then
         TRACEBACK_LINES+=("$line")
 
-        # Only send on the **final exception line**
+        # End traceback and send on "final exception line"
         if [[ "$line" =~ [A-Za-z]+Error:|Exception: ]]; then
             ERROR_SUMMARY=$(printf "%s\n" "${TRACEBACK_LINES[@]}" \
                 | grep -E "[A-Za-z]+Error:|Exception:" \
@@ -269,19 +258,35 @@ python -u sched.py \
         continue
     fi
 
-    # ---- Single-line log error detection (outside tracebacks) ----
-    if [[ "$line" =~ ERROR:|WARNING: ]]; then
-        ERROR_LINE=$(echo "$line" | sed -E 's/with url: .*//')
-        LAST_ERROR="$ERROR_LINE"
-
-        if [[ "$ERROR_LINE" != "$LAST_ALERT" ]]; then
-            send_slack_notification ":warning: *Scheduler-$WORKSPACE ERROR* at \`$(get_timestamp)\`:\n\`\`\`$ERROR_LINE\`\`\`"
-            LAST_ALERT="$ERROR_LINE"
+    # single line error detection
+    shopt -s nocasematch
+    if [[ "$line" =~ error|exception ]]; then
+        # [[ "$line" =~ $IGNORE_PATTERN ]] && continue # taken care of above
+        LAST_ERROR="$line"
+        if [[ "$line" != "$LAST_ALERT" || "$line" == *"$ALERT_PATTERN"* ]]; then
+            send_slack_notification ":warning: *Scheduler-$WORKSPACE ERROR* at \`$(get_timestamp)\`:\n\`\`\`$line\`\`\`"
+            LAST_ALERT="$line"
         fi
     fi
-
     shopt -u nocasematch
 done &
+TAIL_PID=$!
+
+RESTARTING=0
+CLEANED_UP=0
+send_slack_notification ":rocket: *Scheduler-$WORKSPACE started* at \`$(get_timestamp)\`"
+log "Scheduler script started" 
+log_status
+
+cd /src
+
+ALLOWLISTFILE="$LIST" python -u -m nmdc_automation.workflow_automation.sched \
+    "$NMDC_SITE_CONF" \
+    "$NMDC_WORKFLOW_YAML_FILE" \
+    2>&1 \
+    | tee -a "$LOG_FILE" \
+    "$FULL_LOG_FILE" \
+    &
 
 SCHED_PID=$!
 echo "$SCHED_PID" > "$PID_FILE"
