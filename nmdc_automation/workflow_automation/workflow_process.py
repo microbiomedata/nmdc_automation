@@ -8,7 +8,9 @@ from semver.version import Version
 from nmdc_automation.models.nmdc import DataObject
 from nmdc_automation.models.workflow import WorkflowConfig, WorkflowProcessNode
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO,
+    format="%(asctime)s %(levelname)s: %(message)s"
+                    )
 logger = logging.getLogger(__name__)
 
 
