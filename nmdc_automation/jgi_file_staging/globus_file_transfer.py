@@ -250,7 +250,7 @@ if __name__ == '__main__':
     site_configuration = SiteConfig(args['site_config_file'])
     
     if args['request_id']:
-        get_globus_manifest(args['request_id'], staging_configuration)
+        get_globus_manifest(args['request_id'], args['project_name'], staging_configuration)
     elif args['update_globus_statuses']:
         update_globus_statuses(site_configuration)
     elif args['get_project_manifests']:
