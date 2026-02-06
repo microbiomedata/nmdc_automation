@@ -151,11 +151,7 @@ def get_file_statuses(samples_df: pd.DataFrame) -> pd.DataFrame:
     """
     jdp_response_df = pd.DataFrame()
     for request_id in samples_df[pd.notna(samples_df.request_id)].request_id.unique():
-        JDP_TOKEN = os.environ.get('JDP_TOKEN')
-        headers = {'Authorization': JDP_TOKEN, "accept": "application/json"}
-        url = f"https://files.jgi.doe.gov/request_archived_files/requests/{request_id}?api_version=1"
-        r = requests.get(url, headers=headers)
-        response_json = r.json()
+        response_json = check_restore_status(request_id)
         file_status_list = [response_json['status'] for _ in response_json['file_ids']]
         jdp_response_df = pd.concat([jdp_response_df, pd.DataFrame({'jdp_file_id': response_json['file_ids'],
                                                                     'file_status': file_status_list})])
