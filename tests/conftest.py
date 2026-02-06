@@ -181,7 +181,7 @@ def configured_api_mock(session_monkeypatch, test_db, test_data_dir):
     # (This allows the function to query fixtures loaded into test_db)
     mock_api.client = test_db.client
 
-    def mock_list_from_collection_side_effect(collection_name, query_filter=None, projection_fields=None):
+    def mock_list_from_collection_side_effect(collection_name, query_filter=None, projection_fields=None, max=None):
         projection = None
         if projection_fields:
             # Create a dictionary for MongoDB projection: {'field': 1, 'another_field': 1}
