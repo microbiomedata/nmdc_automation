@@ -58,6 +58,7 @@ def get_globus_manifest(request_id: int, project_name: str, staging_configuratio
     jgi_globus_id = staging_configuration.jgi_globus_id
     nersc_globus_id = staging_configuration.nersc_globus_id
     nersc_manifests_directory = Path(staging_configuration.staging_dir, project_name, 'globus_manifests')
+    nersc_manifests_directory.mkdir(parents=True, exist_ok=True) if not nersc_manifests_directory.exists() else None
     globus_root_dir = staging_configuration.globus_root_dir.strip('/')
 
     globus_path = PurePosixPath(globus_root_dir) / f"R{request_id}"
