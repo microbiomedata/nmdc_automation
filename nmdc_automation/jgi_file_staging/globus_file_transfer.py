@@ -237,7 +237,8 @@ def update_globus_statuses(site_configuration: SiteConfig):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('project_name')
-    parser.add_argument('config_file')
+    parser.add_argument('staging_config_file', help='path to staging configuration file with globus parameters')
+    parser.add_argument('site_config_file', help='path to site configuration file with globus parameters')
     parser.add_argument('-r', '--request_id', help='Globus request id (from file restoration api)')
     parser.add_argument('-u', '--update_globus_statuses', action='store_true',
                         help='update globus task statuses', default=False)
@@ -245,15 +246,15 @@ if __name__ == '__main__':
                         help='get all globus project manifests', default=False)
 
     args = vars((parser.parse_args()))
-    config_file = args['config_file']
+    staging_configuration = StagingConfig(args['staging_config_file'])
     site_configuration = SiteConfig(args['site_config_file'])
     
     if args['request_id']:
-        get_globus_manifest(args['request_id'], config_file=config_file)
+        get_globus_manifest(args['request_id'], staging_configuration)
     elif args['update_globus_statuses']:
         update_globus_statuses(site_configuration)
     elif args['get_project_manifests']:
-        get_project_globus_manifests(args['project_name'], site_configuration, config_file)
+        get_project_globus_manifests(args['project_name'], site_configuration, staging_configuration)
     else:
-        submit_globus_batch_file(args['project_name'], args['config_file'], site_configuration)
+        submit_globus_batch_file(args['project_name'], staging_configuration, site_configuration)
 
