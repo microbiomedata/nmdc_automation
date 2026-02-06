@@ -186,6 +186,7 @@ def update_file_statuses(project: str, site_configuration: SiteConfig):
 
     # get file statuses from JGI Data Portal
     try:
+        #TODO: not working on NERSC
         restore_response_df = get_file_statuses(samples_df)
     except Exception as e:
         logging.error(f"Error getting file statuses: {e}")
