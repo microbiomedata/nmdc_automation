@@ -143,11 +143,6 @@ cleanup() {
         return
     fi
     CLEANED_UP=1
-
-    # HELP or MISMATCH intentionally terminate without Slack noise.
-    if [[ ${HELP:-0} -eq 1 || ${MISMATCH:-0} -eq 1 ]]; then
-        exit 0
-    fi
  
     # If this process is being replaced, exit quietly
     if [[ -f "$RESTART_FLAG" ]]; then
@@ -162,14 +157,17 @@ cleanup() {
         exit 0
     fi
 
+    # HELP or MISMATCH intentionally terminate without Slack noise.
+    if [[ ${HELP:-0} -eq 1 || ${MISMATCH:-0} -eq 1 ]]; then
+        exit 0
+    fi
+
     # Always clean up tail process if it exists    
     if [[ -n "${TAIL_PID:-}" ]]; then
         kill "$TAIL_PID" 2>/dev/null || true 
         pkill -P "$TAIL_PID" 2>/dev/null || true
     fi
     kill_tails
-
-
 
     # NORMAL TERMINATION: Send termination notification, include last error if present.
     kill "$WATCHER_PID" 2>/dev/null || true
@@ -220,8 +218,6 @@ if [[ "$COMMAND" == "stop" || "$COMMAND" == "status" ]]; then
     HELP=1
     exit 0
 fi
-
-
 
 # Kill existing process only if it's the correct watcher on this host
 if ! check_host_match; then
