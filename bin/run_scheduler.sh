@@ -12,6 +12,7 @@ LIST="/conf/allow.lst"
 TOML="/conf/site_configuration.toml"
 PID_FILE="/conf/test.sched.pid"
 LOG_FILE="/conf/test.sched.log"
+FULL_LOG_FILE="/conf/test.sched_full.log"
 YAML=$(grep 'workflows_config' "$TOML" | sed 's/.*= *"\(.*\)"/\1/')
 WORKSPACE="dev"
 PORT="27017"
@@ -35,7 +36,6 @@ LAST_ERROR=""
 IGNORE_PATTERN=""
 # STD_OUT=/dev/null # no longer needed because of nohup
 COMMAND=""   # default start scheduler when script called
-TRACEBACK_LINES=()
 ERROR_SUMMARY=""
 
 # Help message
@@ -53,8 +53,8 @@ show_help() {
   echo "  -t, --toml PATH        Path to site config TOML   (default: $TOML)"
   echo "  -p, --port PORT        MongoDB port number        (default: $PORT)"
   echo "  -s, --skiplist PATH    Path to skiplist file      (default: $SKIP)" 
-  echo "  -d, --debug            Enable debug mode (outputs to stdout)"
-  echo "  -n, --dryrun           Enable dryrun mode, startup only." 
+  echo "  -d, --debug            Enable debug mode          (increases logging)"
+  echo "  -n, --dryrun           Enable dryrun mode         (nothing schedules)" 
   echo "  -h, --help             Show this help message"
   HELP=1
 }
@@ -117,7 +117,9 @@ cleanup() {
         kill "$TAIL_PID" 2>/dev/null || true 
         pkill -P "$TAIL_PID" 2>/dev/null || true
     fi
-    pkill -u "$USER" -f "tail -n 0 -F $LOG_FILE" 2>/dev/null || true
+    # scheduler instance on spin only has root user
+    # pkill -u "$USER" -f "tail -n 0 -F $LOG_FILE" 2>/dev/null || true
+    pkill -f "tail -n 0 -F $LOG_FILE" 2>/dev/null || true
 
     # If this cleanup was triggered by a restart, kill the old PID
     if [[ ${RESTARTING:-0} -eq 1 && -n "${KILL_PID:-}" ]]; then
@@ -163,6 +165,7 @@ if [[ "${COMMAND}" == "stop" || "${COMMAND}" == "status" ]]; then
                 cleanup
             else
                 echo "Scheduler is running (PID $OLD_PID)"
+                ps aux | grep sched
             fi
         else
             echo "Scheduler PID $OLD_PID not running"
@@ -182,7 +185,9 @@ export NMDC_WORKFLOW_YAML_FILE="$YAML"
 export NMDC_SITE_CONF="$TOML"
 export NMDC_LOG_LEVEL=INFO # info by default every time. 
 export DRYRUN="$DRYRUN"
-rm "$LOG_FILE"
+export DRYRUN="$DRYRUN"
+export ALLOWLISTFILE="$LIST"
+rm "$LOG_FILE" || true
 
 if [[ ${DEBUG:-0} -eq 1 ]]; then
     export NMDC_LOG_LEVEL=DEBUG
@@ -211,7 +216,7 @@ else
 fi
 
 # Look for orphaned scheduler processes outside of PID file
-if EXISTING_PID=$(pgrep -u "$USER" -f "python.*sched" 2>/dev/null); then
+if EXISTING_PID=$(pgrep -f "python.*sched" 2>/dev/null); then
     for PID in $EXISTING_PID; do
         [[ "$PID" == "$OLD_PID" ]] && continue
         PROC_COMMAND=$(ps -p "$PID" -o args= 2>/dev/null || echo "(unknown)")
@@ -221,7 +226,7 @@ if EXISTING_PID=$(pgrep -u "$USER" -f "python.*sched" 2>/dev/null); then
 fi
 
 # Ensure no leftover tail processes are running for full log file
-pkill -u "$USER" -f "tail -n 0 -F $LOG_FILE" 2>/dev/null || true
+pkill -f "tail -n 0 -F $LOG_FILE" 2>/dev/null || true
 
 # Start monitoring the log file for errors in background
 tail -n 0 -F "$LOG_FILE" | while IFS= read -r line; do
@@ -280,13 +285,21 @@ log_status
 
 cd /src
 
-ALLOWLISTFILE="$LIST" python -u -m nmdc_automation.workflow_automation.sched \
-    "$NMDC_SITE_CONF" \
-    "$NMDC_WORKFLOW_YAML_FILE" \
-    2>&1 \
-    | tee -a "$LOG_FILE" \
-    "$FULL_LOG_FILE" \
-    &
+# ALLOWLISTFILE="$LIST" python -u -m nmdc_automation.workflow_automation.sched \
+#     "$NMDC_SITE_CONF" \
+#     "$NMDC_WORKFLOW_YAML_FILE" \
+#     2>&1 \
+#     | tee -a "$LOG_FILE" \
+#     "$FULL_LOG_FILE" \
+#     &
+
+(
+  exec python -u -m nmdc_automation.workflow_automation.sched \
+      "$NMDC_SITE_CONF" \
+      "$NMDC_WORKFLOW_YAML_FILE" \
+      2>&1 \
+    | tee -a "$LOG_FILE" "$FULL_LOG_FILE"
+) &
 
 SCHED_PID=$!
 echo "$SCHED_PID" > "$PID_FILE"

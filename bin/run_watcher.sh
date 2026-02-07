@@ -9,6 +9,8 @@ HOST=$(hostname)
 LOG_FILE=watcher-$WORKSPACE.log
 PID_FILE=watcher-$WORKSPACE.pid
 HOST_FILE=host-$WORKSPACE.last
+RESTART_FLAG="/tmp/watcher_${WORKSPACE}_restarting"
+KILL_FLAG="/tmp/watcher_${WORKSPACE}_kill"
 SLACK_WEBHOOK_URL=$(grep 'slack_webhook' "$CONF" | sed 's/.*= *"\(.*\)"/\1/')
 PVENV=/global/cfs/cdirs/m3408/nmdc_automation/$WORKSPACE/nmdc_automation/.venv
 COMMAND=""   # default start watcher when script called
@@ -56,6 +58,12 @@ while [[ $# -gt 0 ]]; do
 done
 
 # ----------- Functions ----------- 
+jaws() {
+        JAWS_USER_CONFIG=~/jaws.conf \
+        JAWS_CLIENT_CONFIG=/global/cfs/cdirs/m3408/jaws-install/jaws-client/nmdc-prod/jaws-prod.conf \
+        shifter --image=doejgi/jaws-client:latest jaws "$@"
+    }
+
 send_slack_notification() {
     local message="$1"
     curl -s -X POST -H 'Content-type: application/json' \
@@ -95,35 +103,37 @@ check_host_match() {
     return 0
 }
 
+kill_tails() {
+    # Ensure no leftover tail processes are running for full log file
+    pkill -u "$USER" -f "tail -n 0 -F $LOG_FILE" 2>/dev/null || true
+}
+
 cleanup() {
-    # cleanup() may be invoked multiple times (signals, errors, exits).
-    # This ensures side effects only run once.
+    # cleanup() may be invoked multiple times (signals, errors, exits). Ensures side effects only run once.
     if [[ ${CLEANED_UP:-0} -eq 1 ]]; then
         return
     fi
     CLEANED_UP=1
+ 
+    # If this process is being replaced, exit quietly
+    if [[ -f "$RESTART_FLAG" ]]; then
+        log "Watcher exiting due to restart"
+        rm -f "$RESTART_FLAG"
+        exit 0
+    fi
     
+    # Manual stop is a hard termination with notification.
+    if [[ -f "$KILL_FLAG" ]]; then
+        rm -f "$KILL_FLAG"
+        exit 0
+    fi
+
     # Always clean up tail process if it exists    
     if [[ -n "${TAIL_PID:-}" ]]; then
         kill "$TAIL_PID" 2>/dev/null || true 
         pkill -P "$TAIL_PID" 2>/dev/null || true
     fi
-    pkill -u "$USER" -f "tail -n 0 -F $LOG_FILE" 2>/dev/null || true
-
-    # If this cleanup was triggered by a restart, kill the old PID, notify Slack, return so the script can continue
-    if [[ ${RESTARTING:-0} -eq 1 && -n "${KILL_PID:-}" ]]; then
-        kill "$KILL_PID" 2>/dev/null || true
-        log "Watcher script restarted"
-        send_slack_notification ":arrows_counterclockwise: *Watcher-$WORKSPACE script refresh* on \`$HOST\` at \`$(get_timestamp)\` (replacing PID \`$OLD_PID\`)"
-        return
-    fi
-
-    # Manual stop is a hard termination with notification.
-    if [[ ${MANUAL_STOP:-0} -eq 1 ]]; then
-        send_slack_notification ":x: *Watcher-$WORKSPACE manually stopped* on \`$HOST\` at \`$(get_timestamp)\`"
-        log "Watcher script manually terminated"
-        exit 0
-    fi
+    kill_tails
 
     # HELP or MISMATCH intentionally terminate without Slack noise.
     if [[ ${HELP:-0} -eq 1 || ${MISMATCH:-0} -eq 1 ]]; then
@@ -146,7 +156,8 @@ trap cleanup SIGINT SIGTERM EXIT
 # process commands
 if [[ "$COMMAND" == "stop" || "$COMMAND" == "status" ]]; then
     if ! check_host_match; then
-        echo "Refusing to $COMMAND watcher from a different host."
+        echo "Can't $COMMAND watcher from a different host."
+        MISMATCH=1
         exit 1
     fi
 
@@ -155,11 +166,14 @@ if [[ "$COMMAND" == "stop" || "$COMMAND" == "status" ]]; then
         if ps -p "$OLD_PID" > /dev/null 2>&1; then
             if [[ "$COMMAND" == "stop" ]]; then
                 echo "Stopping watcher PID $OLD_PID..."
-                MANUAL_STOP=1; RESTARTING=0; MISMATCH=0; HELP=0
-                cleanup
+                KILL_PID="$OLD_PID"; touch "$KILL_FLAG"
+                send_slack_notification ":octagonal_sign: *Watcher-$WORKSPACE manually stopped* on \`$HOST\` at \`$(get_timestamp)\`"
+                log "Watcher script manually terminated"
+                kill "$KILL_PID" 2>/dev/null || true
+                kill_tails
             else
                 echo "Watcher is running (PID $OLD_PID)"
-                ps aux | grep "$USER" | grep watcher
+                ps -u "$USER" -o pid,user,etime,command | awk 'NR==1 || (/watcher/ && !/awk/)'
                 echo "Checking JAWS jobs going back 1 day"
                 jaws history | awk '/status/ { count[$0]++ } END { for (k in count) print count[k], k }' | sort -n || true
             fi
@@ -183,11 +197,11 @@ if ! check_host_match; then
     exit 1
 fi
 
-if [[ "${VIRTUAL_ENV:0}" != "$PVENV" ]]; then
-    log "Incorrect poetry environment. Aborting."
-    MISMATCH=1
-    exit 1
-fi
+# if [[ "${VIRTUAL_ENV:0}" != "$PVENV" ]]; then
+#     log "Incorrect poetry environment. Aborting."
+#     MISMATCH=1
+#     exit 1
+# fi
 
 # Look for an existing watcher process
 if [[ -f "$PID_FILE" ]] && read -r OLD_PID < "$PID_FILE" && ps -p "$OLD_PID" > /dev/null 2>&1; then
@@ -196,10 +210,12 @@ if [[ -f "$PID_FILE" ]] && read -r OLD_PID < "$PID_FILE" && ps -p "$OLD_PID" > /
     PROC_COMMAND=$(ps -p "$OLD_PID" -o args=)
     # check command name and command process include python and watcher
     if [[ "$COMMAND_NAME" == *python* && "$PROC_COMMAND" == *watcher* ]]; then
-        log "Found running scheduler process $OLD_PID: $COMMAND_NAME"
+        log "Found running watcher process $OLD_PID: $COMMAND_NAME"
         RESTARTING=1
+        touch "$RESTART_FLAG"
+        send_slack_notification ":arrows_counterclockwise: *Watcher-$WORKSPACE script refresh* on \`$HOST\` at \`$(get_timestamp)\` (replacing PID \`$OLD_PID\`)"
         KILL_PID="$OLD_PID"
-        cleanup
+        kill "$KILL_PID" 2>/dev/null || true
     else
         log "Process with PID $OLD_PID is not the watcher, skipping kill"
         MISMATCH=1
@@ -209,8 +225,8 @@ else
     log "No active process found for PID $OLD_PID"
 fi
 
-# Ensure no leftover tail processes are running for full log file
-pkill -u "$USER" -f "tail -n 0 -F $LOG_FILE" 2>/dev/null || true
+
+kill_tails
 
 # Start monitoring the log file for errors in background
 tail -n 0 -F "$LOG_FILE" | while IFS= read -r line; do
@@ -261,11 +277,14 @@ tail -n 0 -F "$LOG_FILE" | while IFS= read -r line; do
 done &
 TAIL_PID=$!
 
-RESTARTING=0
-CLEANED_UP=0
-send_slack_notification ":rocket: *Watcher-$WORKSPACE started* on \`$HOST\` at \`$(get_timestamp)\`"
+if [[ ${RESTARTING:-0} -eq 0 ]]; then 
+    send_slack_notification ":rocket: *Watcher-$WORKSPACE started* on \`$HOST\` at \`$(get_timestamp)\`"
+fi
 log "Watcher script started on $HOST"
 log_status
+RESTARTING=0
+CLEANED_UP=0
+
 PYTHONPATH=$(pwd)/nmdc_automation \
     python -u -m nmdc_automation.run_process.run_workflows watcher --config "$CONF" daemon \
     > >(tee -a "$LOG_FILE") 2>&1 &
