@@ -4,7 +4,6 @@ set -euo pipefail
 # Default values
 LIST="/conf/allow.lst"
 CONF="/conf/site_configuration.toml"
-YAML="/src/nmdc_automation/config/workflows/workflows.yaml"
 WORKSPACE="dev"
 PID_FILE="/conf/sched-${WORKSPACE}.pid"
 LOG_FILE="/conf/sched-${WORKSPACE}.log"
@@ -13,6 +12,9 @@ RESTART_FLAG="/tmp/scheduler_${WORKSPACE}_restarting"
 KILL_FLAG="/tmp/scheduler_${WORKSPACE}_kill"
 SKIP=""
 PORT="27017"
+
+SLACK_WEBHOOK_URL=$(grep 'slack_webhook' "$CONF" | sed 's/.*= *"\(.*\)"/\1/' || true)
+YAML=$(grep 'workflows_config' "$CONF" | sed 's/.*= *"\(.*\)"/\1/' || true)
 
 # Global state flags
 DEBUG=0
@@ -53,6 +55,9 @@ show_help() {
   echo "  -c, --config PATH      Path to site config CONF   (default: $CONF)"
   echo "  -p, --port PORT        MongoDB port number        (default: $PORT)"
   echo "  -s, --skiplist PATH    Path to skiplist file      (default: $SKIP)" 
+  echo "  -i, --pidfile PATH     Path to PID file           (default: $PID_FILE)" 
+  echo "  -l, --logfile PATH     Path to log file           (default: $LOG_FILE)" 
+  echo "  -L, --logfull PATH     Path to full log file      (default: $FULL_LOG_FILE)" 
   echo "  -d, --debug            Enable debug mode          (increases logging)"
   echo "  -n, --dryrun           Enable dryrun mode         (nothing schedules)" 
   echo "  -m, --mute             Silence Slack notifs" 
@@ -71,6 +76,9 @@ while [[ $# -gt 0 ]]; do
         -c|--conf)      CONF="$2"; shift 2 ;;
         -p|--port)      PORT="$2"; shift 2 ;;
         -s|--skiplist)  SKIP="$2"; shift 2 ;;
+        -i|--pidfile)   PID_FILE="$2"; shift 2 ;;
+        -l|--logfile)   LOG_FILE="$2"; shift 2 ;;
+        -L|--logfull)   FULL_LOG_FILE="$2"; shift 2 ;;
         -d|--debug)     DEBUG=1; shift ;;
         -n|--dryrun)    DRYRUN=1; shift ;;
         -m|--mute)      MUTE=1; shift ;;
@@ -90,6 +98,7 @@ if [[ ${TEST:-0} -eq 1 ]]; then
     LOG_FILE="./test.sched.log"
     FULL_LOG_FILE="./test.sched_full.log"
     YAML="../nmdc_automation/config/workflows/workflows.yaml"
+    SLACK_WEBHOOK_URL=$(grep 'slack_webhook' "$CONF" | sed 's/.*= *"\(.*\)"/\1/' || true)
     SCHED_CMD=(python -u sched.py)
 fi
 
@@ -101,7 +110,6 @@ export NMDC_LOG_LEVEL=INFO # info by default every time.
 export DRYRUN="$DRYRUN"
 export SKIPLISTFILE="$SKIP"
 export ALLOWLISTFILE="$LIST"
-SLACK_WEBHOOK_URL=$(grep 'slack_webhook' "$CONF" | sed 's/.*= *"\(.*\)"/\1/')
 
 if [[ ${TEST:-0} -eq 0 || ${ACTUAL:-0} -eq 1 ]]; then
     SCHED_CMD=(python -u -m nmdc_automation.workflow_automation.sched \

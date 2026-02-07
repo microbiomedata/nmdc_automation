@@ -14,6 +14,8 @@ KILL_FLAG="/tmp/watcher_${WORKSPACE}_kill"
 PVENV="/global/cfs/cdirs/m3408/nmdc_automation/${WORKSPACE}/nmdc_automation/.venv"
 COMMAND=""   # default start/restart watcher when script called
 
+SLACK_WEBHOOK_URL=$(grep 'slack_webhook' "$CONF" | sed 's/.*= *"\(.*\)"/\1/' || true)
+
 # Global state flags
 CLEANED_UP=0
 RESTARTING=0
@@ -46,9 +48,13 @@ show_help() {
   echo
   echo "Options:"
   echo "  -c, --conf PATH        Path to site config TOML   (default: $CONF)"
+  echo "  -i, --pidfile PATH     Path to PID file           (default: $PID_FILE)" 
+  echo "  -s, --hostfile PATH    Path to host name file     (default: $HOST_FILE)" 
+  echo "  -l, --logfile PATH     Path to log file           (default: $LOG_FILE)" 
+  echo "  -L, --logfull PATH     Path to full log file      (default: $FULL_LOG_FILE)" 
   echo "  -m, --mute             Silence Slack notifs" 
   echo "  -t, --test             Run wrapper in test mode" 
-  echo "  -a, --actual           Run wrapper in test mode with watcher code" 
+  echo "  -ta, --actual           Run wrapper in test mode with watcher code" 
   echo "  -h, --help             Show this help message"
   HELP=1
 }
@@ -58,9 +64,13 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         stop|status)    COMMAND="$1"; shift;;
         -c|--conf)      CONF="$2"; shift 2 ;;
+        -i|--pidfile)   PID_FILE="$2"; shift 2 ;;
+        -s|--hostfile)  HOST_FILE="$2"; shift 2 ;;
+        -l|--logfile)   LOG_FILE="$2"; shift 2 ;;
+        -L|--logfull)   FULL_LOG_FILE="$2"; shift 2 ;;
         -m|--mute)      MUTE=1; shift ;;
         -t|--test)      TEST=1; shift ;;
-        -a|--actual)    TEST=1; ACTUAL=1; shift ;;
+        -ta|--actual)   TEST=1; ACTUAL=1; shift ;;
         -h|--help)      show_help; exit 0 ;;
         *)              echo "Unknown option: $1"; show_help; exit 1 ;;
     esac
@@ -74,6 +84,7 @@ if [[ ${TEST:-0} -eq 1 ]]; then
         PVENV="${VIRTUAL_ENV:0}"
     fi
     CONF=./site_configuration.toml
+    SLACK_WEBHOOK_URL=$(grep 'slack_webhook' "$CONF" | sed 's/.*= *"\(.*\)"/\1/' || true)
     WATCH_CMD=(python -u watcher.py)
 fi
 if [[ ${TEST:-0} -eq 0 || ${ACTUAL:-0} -eq 1 ]]; then
@@ -81,8 +92,6 @@ if [[ ${TEST:-0} -eq 0 || ${ACTUAL:-0} -eq 1 ]]; then
             python -u -m nmdc_automation.run_process.run_workflows watcher \
             --config "$CONF" daemon)
 fi
-
-SLACK_WEBHOOK_URL=$(grep 'slack_webhook' "$CONF" | sed 's/.*= *"\(.*\)"/\1/')
 
 # ----------- Functions ----------- 
 jaws() {
