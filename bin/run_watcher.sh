@@ -3,14 +3,14 @@ set -euo pipefail
 
 # Default values
 WORKSPACE="prod"
-CONF=/global/homes/n/nmdcda/nmdc_automation/$WORKSPACE/site_configuration_nersc_$WORKSPACE.toml
+CONF="/global/homes/n/nmdcda/nmdc_automation/${WORKSPACE}/site_configuration_nersc_${WORKSPACE}.toml"
 HOST=$(hostname)
-LOG_FILE=watcher-$WORKSPACE.log
-PID_FILE=watcher-$WORKSPACE.pid
-HOST_FILE=host-$WORKSPACE.last
+LOG_FILE="watcher-${WORKSPACE}.log"
+PID_FILE="watcher-${WORKSPACE}.pid"
+HOST_FILE="host-${WORKSPACE}.last"
 RESTART_FLAG="/tmp/watcher_${WORKSPACE}_restarting"
 KILL_FLAG="/tmp/watcher_${WORKSPACE}_kill"
-PVENV=/global/cfs/cdirs/m3408/nmdc_automation/$WORKSPACE/nmdc_automation/.venv
+PVENV="/global/cfs/cdirs/m3408/nmdc_automation/${WORKSPACE}/nmdc_automation/.venv"
 COMMAND=""   # default start/restart watcher when script called
 
 # Global state flags
@@ -116,8 +116,8 @@ log() {
 }
 
 log_status() {
-    log "CLEANUP RESTARTING MISMATCH KILL_PID HELP"
-    log "$CLEANED_UP $RESTARTING $MISMATCH $KILL_PID $HELP"
+    log "CLEANUP RESTARTING MISMATCH KILL_PID HELP MUTE TEST ACTUAL"
+    log "$CLEANED_UP $RESTARTING $MISMATCH $KILL_PID $HELP $MUTE $TEST $ACTUAL"
 }
 
 check_host_match() {
@@ -142,6 +142,11 @@ cleanup() {
         return
     fi
     CLEANED_UP=1
+
+    # HELP or MISMATCH intentionally terminate without Slack noise.
+    if [[ ${HELP:-0} -eq 1 || ${MISMATCH:-0} -eq 1 ]]; then
+        exit 0
+    fi
  
     # If this process is being replaced, exit quietly
     if [[ -f "$RESTART_FLAG" ]]; then
@@ -163,10 +168,7 @@ cleanup() {
     fi
     kill_tails
 
-    # HELP or MISMATCH intentionally terminate without Slack noise.
-    if [[ ${HELP:-0} -eq 1 || ${MISMATCH:-0} -eq 1 ]]; then
-        exit 0
-    fi
+
 
     # NORMAL TERMINATION: Send termination notification, include last error if present.
     kill "$WATCHER_PID" 2>/dev/null || true
@@ -202,9 +204,9 @@ if [[ "$COMMAND" == "stop" || "$COMMAND" == "status" ]]; then
                 kill_tails
             else
                 echo "Watcher is running (PID $OLD_PID)"
-                ps -u "$USER" -o pid,user,etime,command | awk 'NR==1 || (/watcher/ && !/awk/)'
+                ps -u "$USER" -o pid,user,etime,command | awk 'NR==1 || (/watcher/ && !/(awk|status)/)' || echo "Cannot check ps"
                 echo -e "\nChecking JAWS jobs going back 1 day..."
-                jaws history | awk '/status/ { count[$0]++ } END { for (k in count) print count[k], k }' | sort -n 
+                jaws history | awk '/status/ { count[$0]++ } END { for (k in count) print count[k], k }' | sort -n || echo "Cannot access JAWS history"
             fi
         else
             echo "Watcher PID $OLD_PID not running"
@@ -294,11 +296,12 @@ tail -n 0 -F "$LOG_FILE" | while IFS= read -r line; do
     # single line error detection
     shopt -s nocasematch
     if [[ "$line" =~ error|exception ]]; then
-        # [[ "$line" =~ $IGNORE_PATTERN ]] && continue # taken care of above
-        LAST_ERROR="$line"
-        if [[ "$line" != "$LAST_ALERT" || "$line" == *"$ALERT_PATTERN"* ]]; then
+        # remove timestamp
+        LAST_ERROR=$(awk '{sub(/^[0-9-]+ [0-9:,]+ /, ""); print}' <<< "$line")
+        if [[ "$LAST_ERROR" != "$LAST_ALERT" ]] || \
+            [[ -n "$ALERT_PATTERN" && "$LAST_ERROR" == *"$ALERT_PATTERN"* ]]; then
             send_slack_notification ":warning: *Watcher-$WORKSPACE ERROR* on \`$HOST\` at \`$(get_timestamp)\`:\n\`\`\`$line\`\`\`"
-            LAST_ALERT="$line"
+            LAST_ALERT="$LAST_ERROR"
         fi
     fi
     shopt -u nocasematch

@@ -4,14 +4,15 @@ set -euo pipefail
 # Default values
 LIST="/conf/allow.lst"
 CONF="/conf/site_configuration.toml"
-PID_FILE="/conf/test.sched.pid"
-LOG_FILE="/conf/test.sched.log"
-FULL_LOG_FILE="/conf/test.sched_full.log"
+YAML="/src/nmdc_automation/config/workflows/workflows.yaml"
 WORKSPACE="dev"
-PORT="27017"
-SKIP=""
+PID_FILE="/conf/sched-${WORKSPACE}.pid"
+LOG_FILE="/conf/sched-${WORKSPACE}.log"
+FULL_LOG_FILE="/conf/sched-${WORKSPACE}_full.log"
 RESTART_FLAG="/tmp/scheduler_${WORKSPACE}_restarting"
 KILL_FLAG="/tmp/scheduler_${WORKSPACE}_kill"
+SKIP=""
+PORT="27017"
 
 # Global state flags
 DEBUG=0
@@ -79,6 +80,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# process developer options
 
 if [[ ${TEST:-0} -eq 1 ]]; then
     LIST="./allow.lst"
@@ -88,19 +90,22 @@ if [[ ${TEST:-0} -eq 1 ]]; then
     FULL_LOG_FILE="./test.sched_full.log"
     YAML="../nmdc_automation/config/workflows/workflows.yaml"
     SCHED_CMD=(python -u sched.py)
-    if [[ ${ACTUAL:-0} -eq 1 ]]; then
-        # SCHED_CMD=(env ALLOWLISTFILE="$LIST" \
-        SCHED_CMD=(python -u -m nmdc_automation.workflow_automation.sched \
-                "$NMDC_SITE_CONF" "$NMDC_WORKFLOW_YAML_FILE")
-    fi
-else
-    # SCHED_CMD=(cd /src && env ALLOWLISTFILE="$LIST" \
-    SCHED_CMD=(cd /src && \
-            python -u -m nmdc_automation.workflow_automation.sched \
-            "$NMDC_SITE_CONF" "$NMDC_WORKFLOW_YAML_FILE")
 fi
 
+# set env vars
+export MONGO_PORT="$PORT"
+export NMDC_WORKFLOW_YAML_FILE="$YAML"
+export NMDC_SITE_CONF="$CONF"
+export NMDC_LOG_LEVEL=INFO # info by default every time. 
+export DRYRUN="$DRYRUN"
+export SKIPLISTFILE="$SKIP"
+export ALLOWLISTFILE="$LIST"
 SLACK_WEBHOOK_URL=$(grep 'slack_webhook' "$CONF" | sed 's/.*= *"\(.*\)"/\1/')
+
+if [[ ${TEST:-0} -eq 0 || ${ACTUAL:-0} -eq 1 ]]; then
+    SCHED_CMD=(python -u -m nmdc_automation.workflow_automation.sched \
+            "$NMDC_SITE_CONF" "$NMDC_WORKFLOW_YAML_FILE")
+fi
 
 # ----------- Functions ----------- 
 send_slack_notification() {
@@ -130,8 +135,8 @@ log() {
 }
 
 log_status() {
-  log "CLEANED_UP RESTARTING MISMATCH KILL_PID DEBUG COMMAND" 
-  log "$CLEANED_UP $RESTARTING $MISMATCH $KILL_PID $DEBUG $COMMAND" 
+  log "CLEANED_UP RESTARTING MISMATCH KILL_PID DEBUG COMMAND DRYRUN HELP MUTE TEST ACTUAL" 
+  log "$CLEANED_UP $RESTARTING $MISMATCH $KILL_PID $DEBUG $COMMAND $DRYRUN $HELP $MUTE $TEST $ACTUAL" 
 }
 
 kill_tails() {
@@ -140,13 +145,17 @@ kill_tails() {
 }
 
 cleanup() {
-    # cleanup() may be invoked multiple times (signals, errors, exits).
-    # This ensures side effects only run once.
+    # cleanup() may be invoked multiple times (signals, errors, exits). Ensures side effects only run once.
     if [[ $CLEANED_UP -eq 1 ]]; then 
         return
     fi
     CLEANED_UP=1
     
+    # HELP or MISMATCH intentionally terminate without Slack noise.
+    if [[ ${HELP:-0} -eq 1 || ${MISMATCH:-0} -eq 1 ]]; then
+        exit 0
+    fi
+
     # If this process is being replaced, exit quietly
     if [[ -f "$RESTART_FLAG" ]]; then
         log "Watcher exiting due to restart"
@@ -166,11 +175,6 @@ cleanup() {
         pkill -P "$TAIL_PID" 2>/dev/null || true
     fi
     kill_tails
-
-    # HELP or MISMATCH intentionally terminate without Slack noise.
-    if [[ ${HELP:-0} -eq 1 || ${MISMATCH:-0} -eq 1 ]]; then
-        exit 0
-    fi
 
     # NORMAL TERMINATION: Send termination notification, include last error if present.
     kill "$SCHED_PID" 2>/dev/null || true
@@ -200,7 +204,7 @@ if [[ "${COMMAND}" == "stop" || "${COMMAND}" == "status" ]]; then
                 kill_tails
             else
                 echo "Scheduler is running (PID $OLD_PID)"
-                ps -o pid,user,etime,command | awk 'NR==1 || (/sched/ && !/awk/)'
+                ps -o pid,user,etime,command | awk 'NR==1 || (/sched/ && !/(awk|status)/)' || echo "Cannot check ps"
             fi
         else
             echo "Scheduler PID $OLD_PID not running"
@@ -214,19 +218,10 @@ if [[ "${COMMAND}" == "stop" || "${COMMAND}" == "status" ]]; then
     exit 0
 fi
 
-# set env vars
-export MONGO_PORT="$PORT"
-export NMDC_WORKFLOW_YAML_FILE="$YAML"
-export NMDC_SITE_CONF="$CONF"
-export NMDC_LOG_LEVEL=INFO # info by default every time. 
-export DRYRUN="$DRYRUN"
-export SKIPLISTFILE="$SKIP"
-export ALLOWLISTFILE="$LIST"
 rm "$LOG_FILE" || true
 
 if [[ ${DEBUG:-0} -eq 1 ]]; then
     export NMDC_LOG_LEVEL=DEBUG
-    # STD_OUT=/dev/stdout # no longer needed due to nohup
     log "Debug mode enabled."
 fi
 
@@ -300,12 +295,13 @@ tail -n 0 -F "$LOG_FILE" | while IFS= read -r line; do
 
     # single line error detection
     shopt -s nocasematch
-    if [[ "$line" =~ error|exception ]]; then
-        # [[ "$line" =~ $IGNORE_PATTERN ]] && continue # taken care of above
-        LAST_ERROR="$line"
-        if [[ "$line" != "$LAST_ALERT" || "$line" == *"$ALERT_PATTERN"* ]]; then
-            send_slack_notification ":warning: *Scheduler-$WORKSPACE ERROR* at \`$(get_timestamp)\`:\n\`\`\`$line\`\`\`"
-            LAST_ALERT="$line"
+    if [[ "$line" =~ (error|exception) ]]; then
+        # remove timestamp
+        LAST_ERROR=$(awk '{sub(/^[0-9-]+ [0-9:,]+ /, ""); print}' <<< "$line")
+        if [[ "$LAST_ERROR" != "$LAST_ALERT" ]] || \
+            [[ -n "$ALERT_PATTERN" && "$LAST_ERROR" == *"$ALERT_PATTERN"* ]]; then
+            send_slack_notification ":warning: *Scheduler-$WORKSPACE ERROR* at \`$(get_timestamp)\`:\n\`\`\`$LAST_ERROR\`\`\`"
+            LAST_ALERT="$LAST_ERROR"
         fi
     fi
     shopt -u nocasematch
@@ -321,11 +317,10 @@ log_status
 RESTARTING=0
 CLEANED_UP=0
 
-# cd /src
-# ALLOWLISTFILE="$LIST" python -u -m nmdc_automation.workflow_automation.sched \
-#     "$NMDC_SITE_CONF" \
-#     "$NMDC_WORKFLOW_YAML_FILE" \
-# python -u sched.py \
+if [[ ${TEST:-0} -eq 0 ]]; then
+    cd /src # needed for docker/spin env
+fi
+
 "${SCHED_CMD[@]}" \
     > >(tee -a "$LOG_FILE" "$FULL_LOG_FILE") 2>&1 &
 
