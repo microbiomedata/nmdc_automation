@@ -6,6 +6,7 @@ WORKSPACE="prod"
 CONF="/global/homes/n/nmdcda/nmdc_automation/${WORKSPACE}/site_configuration_nersc_${WORKSPACE}.toml"
 HOST=$(hostname)
 LOG_FILE="watcher-${WORKSPACE}.log"
+FULL_LOG_FILE="watcher-${WORKSPACE}_full.log"
 PID_FILE="watcher-${WORKSPACE}.pid"
 HOST_FILE="host-${WORKSPACE}.last"
 RESTART_FLAG="/tmp/watcher_${WORKSPACE}_restarting"
@@ -107,11 +108,11 @@ get_timestamp() {
 log() {
     if [ -n "$1" ]; then
         # Direct message
-        printf '[%s] %s\n' "$(get_timestamp)" "$1" | tee -a "$LOG_FILE" 
+        printf '[%s] %s\n' "$(get_timestamp)" "$1" | tee -a "$LOG_FILE" "$FULL_LOG_FILE"
     else
         # Read from stdin (for piped input)
         while IFS= read -r line; do
-            printf '[%s] %s\n' "$(get_timestamp)" "$line" | tee -a "$LOG_FILE" 
+            printf '[%s] %s\n' "$(get_timestamp)" "$line" | tee -a "$LOG_FILE" "$FULL_LOG_FILE"
         done
     fi
 }
@@ -219,6 +220,8 @@ if [[ "$COMMAND" == "stop" || "$COMMAND" == "status" ]]; then
     exit 0
 fi
 
+rm "$LOG_FILE" || true
+
 # Kill existing process only if it's the correct watcher on this host
 if ! check_host_match; then
     log "Aborting startup due to host mismatch."
@@ -227,7 +230,7 @@ if ! check_host_match; then
 fi
 
 if [[ "${VIRTUAL_ENV:0}" != "$PVENV" ]]; then
-    log "Incorrect poetry environment. Aborting."
+    log "Aborting startup due to poetry environment mismatch."
     MISMATCH=1
     exit 1
 fi
@@ -321,7 +324,7 @@ log "Watcher script started on $HOST"
 log_status
 
 "${WATCH_CMD[@]}" \
-    > >(tee -a "$LOG_FILE") 2>&1 &
+    > >(tee -a "$LOG_FILE" "$FULL_LOG_FILE") 2>&1 &
 
 WATCHER_PID=$!
 echo "$WATCHER_PID" > "$PID_FILE"
