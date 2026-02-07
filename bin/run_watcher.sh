@@ -1,26 +1,26 @@
 #!/bin/bash
 set -euo pipefail
-CONF=/Users/kli/Documents/NMDC/nmdc_automation/bin/site_configuration.toml
 
 # Default values
 WORKSPACE="prod"
-# CONF=/global/homes/n/nmdcda/nmdc_automation/$WORKSPACE/site_configuration_nersc_$WORKSPACE.toml
+CONF=/global/homes/n/nmdcda/nmdc_automation/$WORKSPACE/site_configuration_nersc_$WORKSPACE.toml
 HOST=$(hostname)
 LOG_FILE=watcher-$WORKSPACE.log
 PID_FILE=watcher-$WORKSPACE.pid
 HOST_FILE=host-$WORKSPACE.last
 RESTART_FLAG="/tmp/watcher_${WORKSPACE}_restarting"
 KILL_FLAG="/tmp/watcher_${WORKSPACE}_kill"
-SLACK_WEBHOOK_URL=$(grep 'slack_webhook' "$CONF" | sed 's/.*= *"\(.*\)"/\1/')
 PVENV=/global/cfs/cdirs/m3408/nmdc_automation/$WORKSPACE/nmdc_automation/.venv
-COMMAND=""   # default start watcher when script called
+COMMAND=""   # default start/restart watcher when script called
 
 # Global state flags
 CLEANED_UP=0
 RESTARTING=0
 MISMATCH=0
 HELP=0
-MANUAL_STOP=0
+MUTE=0
+TEST=0
+ACTUAL=0
 KILL_PID=""
 WATCHER_PID=""
 OLD_PID=""
@@ -32,17 +32,21 @@ IGNORE_PATTERN="Error removing directory /tmp: \[Errno 13\] Permission denied: .
 ALERT_PATTERN='Internal Server Error'
 TRACEBACK_LINES=()
 ERROR_SUMMARY=""
+WATCH_CMD=()
 
 # Help message
 show_help() {
-  echo "Usage: ./run_watcher_[prod/dev].sh [COMMAND] [--conf PATH]"
+  echo "Usage: $0 [COMMAND] [--conf PATH] [OPTIONS]"
   echo
   echo "Commands:"
-  echo "  stop                  Stop the running watcher"
-  echo "  status                Show watcher status"
+  echo "  stop                   Stop the running watcher"
+  echo "  status                 Show watcher status"
   echo
   echo "Options:"
   echo "  -c, --conf PATH        Path to site config TOML   (default: $CONF)"
+  echo "  -m, --mute             Silence Slack notifs" 
+  echo "  -t, --test             Run wrapper in test mode" 
+  echo "  -a, --actual           Run wrapper in test mode with watcher code" 
   echo "  -h, --help             Show this help message"
   HELP=1
 }
@@ -52,10 +56,31 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         stop|status)    COMMAND="$1"; shift;;
         -c|--conf)      CONF="$2"; shift 2 ;;
+        -m|--mute)      MUTE=1; shift ;;
+        -t|--test)      TEST=1; shift ;;
+        -a|--actual)    TEST=1; ACTUAL=1; shift ;;
         -h|--help)      show_help; exit 0 ;;
         *)              echo "Unknown option: $1"; show_help; exit 1 ;;
     esac
 done
+
+# process developer options
+
+if [[ ${TEST:-0} -eq 1 ]]; then
+    if [[ "${VIRTUAL_ENV:0}" != "$PVENV" ]]; then
+        echo "Warning: Different poetry environment ${VIRTUAL_ENV:0}"
+        PVENV="${VIRTUAL_ENV:0}"
+    fi
+    CONF=./site_configuration.toml
+    WATCH_CMD=(python -u watcher.py)
+fi
+if [[ ${TEST:-0} -eq 0 || ${ACTUAL:-0} -eq 1 ]]; then
+    WATCH_CMD=(env PYTHONPATH="$(pwd)/nmdc_automation" \
+            python -u -m nmdc_automation.run_process.run_workflows watcher \
+            --config "$CONF" daemon)
+fi
+
+SLACK_WEBHOOK_URL=$(grep 'slack_webhook' "$CONF" | sed 's/.*= *"\(.*\)"/\1/')
 
 # ----------- Functions ----------- 
 jaws() {
@@ -65,6 +90,9 @@ jaws() {
     }
 
 send_slack_notification() {
+    if [[ "$MUTE" -eq 1 ]]; then
+        return
+    fi
     local message="$1"
     curl -s -X POST -H 'Content-type: application/json' \
          --data "{\"text\": \"$message\"}" \
@@ -88,8 +116,8 @@ log() {
 }
 
 log_status() {
-    log "CLEANUP RESTARTING MISMATCH KILL_PID HELP MANUAL_STOP"
-    log "$CLEANED_UP $RESTARTING $MISMATCH $KILL_PID $HELP $MANUAL_STOP"
+    log "CLEANUP RESTARTING MISMATCH KILL_PID HELP"
+    log "$CLEANED_UP $RESTARTING $MISMATCH $KILL_PID $HELP"
 }
 
 check_host_match() {
@@ -141,6 +169,7 @@ cleanup() {
     fi
 
     # NORMAL TERMINATION: Send termination notification, include last error if present.
+    kill "$WATCHER_PID" 2>/dev/null || true
     EXIT_MESSAGE=":x: *Watcher-$WORKSPACE script terminated* on \`$HOST\` at \`$(get_timestamp)\`"
     if [[ -n "${LAST_ERROR:-}" && "${LAST_ERROR:-}" != "${LAST_ALERT:-}" ]]; then
         EXIT_MESSAGE+="\nLatest error:\n\`\`\`${LAST_ERROR}\`\`\`"
@@ -169,13 +198,13 @@ if [[ "$COMMAND" == "stop" || "$COMMAND" == "status" ]]; then
                 KILL_PID="$OLD_PID"; touch "$KILL_FLAG"
                 send_slack_notification ":octagonal_sign: *Watcher-$WORKSPACE manually stopped* on \`$HOST\` at \`$(get_timestamp)\`"
                 log "Watcher script manually terminated"
-                kill "$KILL_PID" 2>/dev/null || true
+                kill "$KILL_PID" 2>/dev/null 
                 kill_tails
             else
                 echo "Watcher is running (PID $OLD_PID)"
                 ps -u "$USER" -o pid,user,etime,command | awk 'NR==1 || (/watcher/ && !/awk/)'
-                echo "Checking JAWS jobs going back 1 day"
-                jaws history | awk '/status/ { count[$0]++ } END { for (k in count) print count[k], k }' | sort -n || true
+                echo -e "\nChecking JAWS jobs going back 1 day..."
+                jaws history | awk '/status/ { count[$0]++ } END { for (k in count) print count[k], k }' | sort -n 
             fi
         else
             echo "Watcher PID $OLD_PID not running"
@@ -190,6 +219,7 @@ if [[ "$COMMAND" == "stop" || "$COMMAND" == "status" ]]; then
 fi
 
 
+
 # Kill existing process only if it's the correct watcher on this host
 if ! check_host_match; then
     log "Aborting startup due to host mismatch."
@@ -197,11 +227,11 @@ if ! check_host_match; then
     exit 1
 fi
 
-# if [[ "${VIRTUAL_ENV:0}" != "$PVENV" ]]; then
-#     log "Incorrect poetry environment. Aborting."
-#     MISMATCH=1
-#     exit 1
-# fi
+if [[ "${VIRTUAL_ENV:0}" != "$PVENV" ]]; then
+    log "Incorrect poetry environment. Aborting."
+    MISMATCH=1
+    exit 1
+fi
 
 # Look for an existing watcher process
 if [[ -f "$PID_FILE" ]] && read -r OLD_PID < "$PID_FILE" && ps -p "$OLD_PID" > /dev/null 2>&1; then
@@ -224,8 +254,6 @@ if [[ -f "$PID_FILE" ]] && read -r OLD_PID < "$PID_FILE" && ps -p "$OLD_PID" > /
 else
     log "No active process found for PID $OLD_PID"
 fi
-
-
 kill_tails
 
 # Start monitoring the log file for errors in background
@@ -266,7 +294,7 @@ tail -n 0 -F "$LOG_FILE" | while IFS= read -r line; do
     # single line error detection
     shopt -s nocasematch
     if [[ "$line" =~ error|exception ]]; then
-        [[ "$line" =~ $IGNORE_PATTERN ]] && continue
+        # [[ "$line" =~ $IGNORE_PATTERN ]] && continue # taken care of above
         LAST_ERROR="$line"
         if [[ "$line" != "$LAST_ALERT" || "$line" == *"$ALERT_PATTERN"* ]]; then
             send_slack_notification ":warning: *Watcher-$WORKSPACE ERROR* on \`$HOST\` at \`$(get_timestamp)\`:\n\`\`\`$line\`\`\`"
@@ -285,8 +313,7 @@ log_status
 RESTARTING=0
 CLEANED_UP=0
 
-PYTHONPATH=$(pwd)/nmdc_automation \
-    python -u -m nmdc_automation.run_process.run_workflows watcher --config "$CONF" daemon \
+"${WATCH_CMD[@]}" \
     > >(tee -a "$LOG_FILE") 2>&1 &
 
 WATCHER_PID=$!

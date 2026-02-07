@@ -1,23 +1,17 @@
-# LIST="./allow.lst"
-# TOML="./site_configuration.toml"
-# PID_FILE="./test.sched.pid"
-# LOG_FILE="./test.sched.log"
-# FULL_LOG_FILE="./test.sched_full.log"
-# YAML="/Users/kli/Documents/NMDC/nmdc_automation/nmdc_automation/config/workflows/workflows.yaml"
 #!/bin/bash
 set -euo pipefail
 
 # Default values
 LIST="/conf/allow.lst"
-TOML="/conf/site_configuration.toml"
+CONF="/conf/site_configuration.toml"
 PID_FILE="/conf/test.sched.pid"
 LOG_FILE="/conf/test.sched.log"
 FULL_LOG_FILE="/conf/test.sched_full.log"
-YAML=$(grep 'workflows_config' "$TOML" | sed 's/.*= *"\(.*\)"/\1/')
 WORKSPACE="dev"
 PORT="27017"
-SLACK_WEBHOOK_URL=$(grep 'slack_webhook' "$TOML" | sed 's/.*= *"\(.*\)"/\1/')
 SKIP=""
+RESTART_FLAG="/tmp/scheduler_${WORKSPACE}_restarting"
+KILL_FLAG="/tmp/scheduler_${WORKSPACE}_kill"
 
 # Global state flags
 DEBUG=0
@@ -26,35 +20,42 @@ CLEANED_UP=0
 RESTARTING=0
 MISMATCH=0
 HELP=0
-MANUAL_STOP=0
+MUTE=0
+TEST=0
+ACTUAL=0
 SCHED_PID=""
 TAIL_PID=""
 OLD_PID=""
 KILL_PID=""
 LAST_ALERT=""
 LAST_ERROR=""
+ALERT_PATTERN=""
 IGNORE_PATTERN=""
-# STD_OUT=/dev/null # no longer needed because of nohup
-COMMAND=""   # default start scheduler when script called
+COMMAND=""   # default start/restart scheduler when script called
+TRACEBACK_LINES=()
 ERROR_SUMMARY=""
+SCHED_CMD=()
 
 # Help message
 show_help() {
-  echo "Usage: ./run_scheduler.sh [COMMAND] [--allowlist PATH] [--yaml PATH] [--toml PATH] [--port PORT]"
+  echo "Usage: $0 [COMMAND] [--allowlist PATH] [--yaml PATH] [--toml PATH] [OPTIONS]"
   echo
   echo "Commands:"
-  echo "  stop                  Stop the running scheduler"
-  echo "  status                Show scheduler status"
+  echo "  stop                   Stop the running scheduler"
+  echo "  status                 Show scheduler status"
   echo "  By default, if no command is called, scheduler will start"
   echo
   echo "Options:"
   echo "  -a, --allowlist PATH   Path to allowlist file     (default: $LIST)"
-  echo "  -y, --yaml PATH        Path to workflow YAML file (default: $YAML)"
-  echo "  -t, --toml PATH        Path to site config TOML   (default: $TOML)"
+  echo "  -w, --workflows PATH   Path to workflow YAML file (default: $YAML)"
+  echo "  -c, --config PATH      Path to site config CONF   (default: $CONF)"
   echo "  -p, --port PORT        MongoDB port number        (default: $PORT)"
   echo "  -s, --skiplist PATH    Path to skiplist file      (default: $SKIP)" 
   echo "  -d, --debug            Enable debug mode          (increases logging)"
   echo "  -n, --dryrun           Enable dryrun mode         (nothing schedules)" 
+  echo "  -m, --mute             Silence Slack notifs" 
+  echo "  -t, --test             Run wrapper in test mode" 
+  echo "  -ta, --actual          Run wrapper in test mode with sched code" 
   echo "  -h, --help             Show this help message"
   HELP=1
 }
@@ -63,20 +64,49 @@ show_help() {
 while [[ $# -gt 0 ]]; do
     case "$1" in
         stop|status)    COMMAND="$1"; shift;;
-        -y|--yaml)      YAML="$2"; shift 2 ;;
         -a|--allowlist) LIST="$2"; shift 2 ;;
-        -t|--toml)      TOML="$2"; shift 2 ;;
+        -w|--workflows) YAML="$2"; shift 2 ;;
+        -c|--conf)      CONF="$2"; shift 2 ;;
         -p|--port)      PORT="$2"; shift 2 ;;
-        -S|--skiplist)  SKIP="$2"; shift 2 ;;
+        -s|--skiplist)  SKIP="$2"; shift 2 ;;
         -d|--debug)     DEBUG=1; shift ;;
         -n|--dryrun)    DRYRUN=1; shift ;;
+        -m|--mute)      MUTE=1; shift ;;
+        -t|--test)      TEST=1; shift ;;
+        -ta|--actual)   TEST=1; ACTUAL=1; shift ;;
         -h|--help)      show_help; exit 0 ;;
         *)              echo "Unknown option: $1"; show_help; exit 1 ;;
     esac
 done
 
+
+if [[ ${TEST:-0} -eq 1 ]]; then
+    LIST="./allow.lst"
+    CONF="./site_configuration.toml"
+    PID_FILE="./test.sched.pid"
+    LOG_FILE="./test.sched.log"
+    FULL_LOG_FILE="./test.sched_full.log"
+    YAML="../nmdc_automation/config/workflows/workflows.yaml"
+    SCHED_CMD=(python -u sched.py)
+    if [[ ${ACTUAL:-0} -eq 1 ]]; then
+        # SCHED_CMD=(env ALLOWLISTFILE="$LIST" \
+        SCHED_CMD=(python -u -m nmdc_automation.workflow_automation.sched \
+                "$NMDC_SITE_CONF" "$NMDC_WORKFLOW_YAML_FILE")
+    fi
+else
+    # SCHED_CMD=(cd /src && env ALLOWLISTFILE="$LIST" \
+    SCHED_CMD=(cd /src && \
+            python -u -m nmdc_automation.workflow_automation.sched \
+            "$NMDC_SITE_CONF" "$NMDC_WORKFLOW_YAML_FILE")
+fi
+
+SLACK_WEBHOOK_URL=$(grep 'slack_webhook' "$CONF" | sed 's/.*= *"\(.*\)"/\1/')
+
 # ----------- Functions ----------- 
 send_slack_notification() {
+    if [[ "$MUTE" -eq 1 ]]; then
+        return
+    fi
     local message="$1"
     curl -s -X POST -H 'Content-type: application/json' \
          --data "{\"text\": \"$message\"}" \
@@ -104,6 +134,11 @@ log_status() {
   log "$CLEANED_UP $RESTARTING $MISMATCH $KILL_PID $DEBUG $COMMAND" 
 }
 
+kill_tails() {
+    # Ensure no leftover tail processes are running for log file
+    pkill -f "tail -n 0 -F $LOG_FILE" 2>/dev/null || true
+}
+
 cleanup() {
     # cleanup() may be invoked multiple times (signals, errors, exits).
     # This ensures side effects only run once.
@@ -111,37 +146,34 @@ cleanup() {
         return
     fi
     CLEANED_UP=1
+    
+    # If this process is being replaced, exit quietly
+    if [[ -f "$RESTART_FLAG" ]]; then
+        log "Watcher exiting due to restart"
+        rm -f "$RESTART_FLAG"
+        exit 0
+    fi
+
+    # Manual stop is a hard termination with notification.
+    if [[ -f "$KILL_FLAG" ]]; then
+        rm -f "$KILL_FLAG"
+        exit 0
+    fi
 
     # Always clean up tail process if it exists    
     if [[ -n "${TAIL_PID:-}" ]]; then
         kill "$TAIL_PID" 2>/dev/null || true 
         pkill -P "$TAIL_PID" 2>/dev/null || true
     fi
-    # scheduler instance on spin only has root user
-    # pkill -u "$USER" -f "tail -n 0 -F $LOG_FILE" 2>/dev/null || true
-    pkill -f "tail -n 0 -F $LOG_FILE" 2>/dev/null || true
-
-    # If this cleanup was triggered by a restart, kill the old PID
-    if [[ ${RESTARTING:-0} -eq 1 && -n "${KILL_PID:-}" ]]; then
-        kill "$KILL_PID" 2>/dev/null || true
-        log "Scheduler script restarted" 
-        send_slack_notification ":arrows_counterclockwise: *Scheduler-$WORKSPACE script refresh* at \`$(get_timestamp)\` (replacing PID \`$OLD_PID\`)"
-        return
-    fi
-
-    # If this cleanup was triggered by a manual kill, kill the old PID and exit
-    if [[ ${MANUAL_STOP:-0} -eq 1 ]]; then
-        send_slack_notification ":x: *Scheduler-$WORKSPACE manually stopped* at \`$(get_timestamp)\`"
-        log "Scheduler script manually terminated"
-        exit 0
-    fi
+    kill_tails
 
     # HELP or MISMATCH intentionally terminate without Slack noise.
     if [[ ${HELP:-0} -eq 1 || ${MISMATCH:-0} -eq 1 ]]; then
         exit 0
     fi
 
-    # normal termination
+    # NORMAL TERMINATION: Send termination notification, include last error if present.
+    kill "$SCHED_PID" 2>/dev/null || true
     EXIT_MESSAGE=":x: *Scheduler-$WORKSPACE script terminated* at \`$(get_timestamp)\`"
     if [[ -n "${LAST_ERROR:-}" && "${LAST_ERROR:-}" != "${LAST_ALERT:-}" ]]; then
         EXIT_MESSAGE+="\nLatest error:\n\`\`\`${LAST_ERROR}\`\`\`"
@@ -161,11 +193,14 @@ if [[ "${COMMAND}" == "stop" || "${COMMAND}" == "status" ]]; then
         if ps -p "$OLD_PID" > /dev/null 2>&1; then
             if [[ "$COMMAND" == "stop" ]]; then
                 echo "Stopping scheduler PID $OLD_PID..."
-                MANUAL_STOP=1; RESTARTING=0; MISMATCH=0; HELP=0
-                cleanup
+                KILL_PID="$OLD_PID"; touch "$KILL_FLAG"
+                send_slack_notification ":octagonal_sign: *Scheduler-$WORKSPACE manually stopped* at \`$(get_timestamp)\`"
+                log "Scheduler script manually terminated"
+                kill "$KILL_PID" 2>/dev/null 
+                kill_tails
             else
                 echo "Scheduler is running (PID $OLD_PID)"
-                ps aux | grep sched
+                ps -o pid,user,etime,command | awk 'NR==1 || (/sched/ && !/awk/)'
             fi
         else
             echo "Scheduler PID $OLD_PID not running"
@@ -182,10 +217,10 @@ fi
 # set env vars
 export MONGO_PORT="$PORT"
 export NMDC_WORKFLOW_YAML_FILE="$YAML"
-export NMDC_SITE_CONF="$TOML"
+export NMDC_SITE_CONF="$CONF"
 export NMDC_LOG_LEVEL=INFO # info by default every time. 
 export DRYRUN="$DRYRUN"
-export DRYRUN="$DRYRUN"
+export SKIPLISTFILE="$SKIP"
 export ALLOWLISTFILE="$LIST"
 rm "$LOG_FILE" || true
 
@@ -204,8 +239,10 @@ if [[ -f "$PID_FILE" ]] && read -r OLD_PID < "$PID_FILE" && ps -p "$OLD_PID" > /
     if [[ "$COMMAND_NAME" == *python* && "$PROC_COMMAND" == *sched* ]]; then
         log "Found running scheduler process $OLD_PID: $COMMAND_NAME"
         RESTARTING=1
+        touch "$RESTART_FLAG"
+        send_slack_notification ":arrows_counterclockwise: *Scheduler-$WORKSPACE script refresh* at \`$(get_timestamp)\` (replacing PID \`$OLD_PID\`)"
         KILL_PID="$OLD_PID"
-        cleanup
+        kill "$KILL_PID" 2>/dev/null || true
     else
         log "PID $OLD_PID is not the scheduler, skipping kill"
         MISMATCH=1
@@ -224,9 +261,7 @@ if EXISTING_PID=$(pgrep -f "python.*sched" 2>/dev/null); then
         kill "$PID" 2>/dev/null || true
     done
 fi
-
-# Ensure no leftover tail processes are running for full log file
-pkill -f "tail -n 0 -F $LOG_FILE" 2>/dev/null || true
+kill_tails
 
 # Start monitoring the log file for errors in background
 tail -n 0 -F "$LOG_FILE" | while IFS= read -r line; do
@@ -277,29 +312,22 @@ tail -n 0 -F "$LOG_FILE" | while IFS= read -r line; do
 done &
 TAIL_PID=$!
 
-RESTARTING=0
-CLEANED_UP=0
-send_slack_notification ":rocket: *Scheduler-$WORKSPACE started* at \`$(get_timestamp)\`"
+if [[ ${RESTARTING:-0} -eq 0 ]]; then 
+    send_slack_notification ":rocket: *Scheduler-$WORKSPACE started* at \`$(get_timestamp)\`"
+fi
 log "Scheduler script started" 
 log_status
 
-cd /src
+RESTARTING=0
+CLEANED_UP=0
 
+# cd /src
 # ALLOWLISTFILE="$LIST" python -u -m nmdc_automation.workflow_automation.sched \
 #     "$NMDC_SITE_CONF" \
 #     "$NMDC_WORKFLOW_YAML_FILE" \
-#     2>&1 \
-#     | tee -a "$LOG_FILE" \
-#     "$FULL_LOG_FILE" \
-#     &
-
-(
-  exec python -u -m nmdc_automation.workflow_automation.sched \
-      "$NMDC_SITE_CONF" \
-      "$NMDC_WORKFLOW_YAML_FILE" \
-      2>&1 \
-    | tee -a "$LOG_FILE" "$FULL_LOG_FILE"
-) &
+# python -u sched.py \
+"${SCHED_CMD[@]}" \
+    > >(tee -a "$LOG_FILE" "$FULL_LOG_FILE") 2>&1 &
 
 SCHED_PID=$!
 echo "$SCHED_PID" > "$PID_FILE"
