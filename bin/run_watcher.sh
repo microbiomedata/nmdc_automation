@@ -213,7 +213,7 @@ if [[ "$COMMAND" == "stop" || "$COMMAND" == "status" ]]; then
                 kill_tails
             else
                 echo "Watcher is running (PID $OLD_PID)"
-                ps -u "$USER" -o pid,user,etime,command | awk 'NR==1 || (/watcher/ && !/(awk|status)/)' || echo "Cannot check ps"
+                ps ax -u "$USER" -o pid,user,etime,command | awk 'NR==1 || (/watcher/ && !/(awk|status)/)' || echo "Cannot check ps"
                 echo -e "\nChecking JAWS jobs going back 1 day..."
                 jaws history | awk '/status/ { count[$0]++ } END { for (k in count) print count[k], k }' | sort -n || echo "Cannot access JAWS history"
             fi

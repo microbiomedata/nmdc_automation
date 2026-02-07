@@ -2,9 +2,9 @@
 set -euo pipefail
 
 # Default values
+WORKSPACE="prod"
 LIST="/conf/allow.lst"
 CONF="/conf/site_configuration.toml"
-WORKSPACE="dev"
 PID_FILE="/conf/sched-${WORKSPACE}.pid"
 LOG_FILE="/conf/sched-${WORKSPACE}.log"
 FULL_LOG_FILE="/conf/sched-${WORKSPACE}_full.log"
@@ -213,7 +213,7 @@ if [[ "${COMMAND}" == "stop" || "${COMMAND}" == "status" ]]; then
                 kill_tails
             else
                 echo "Scheduler is running (PID $OLD_PID)"
-                ps -o pid,user,etime,command | awk 'NR==1 || (/sched/ && !/(awk|status)/)' || echo "Cannot check ps"
+                ps ax -o pid,user,etime,command | awk 'NR==1 || (/sched/ && !/(awk|status)/)' || echo "Cannot check ps"
             fi
         else
             echo "Scheduler PID $OLD_PID not running"
