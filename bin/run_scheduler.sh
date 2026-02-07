@@ -24,6 +24,7 @@ HELP=0
 MUTE=0
 TEST=0
 ACTUAL=0
+LAST_ALERT_TIME=0
 SCHED_PID=""
 TAIL_PID=""
 OLD_PID=""
@@ -298,10 +299,15 @@ tail -n 0 -F "$LOG_FILE" | while IFS= read -r line; do
     if [[ "$line" =~ (error|exception) ]]; then
         # remove timestamp
         LAST_ERROR=$(awk '{sub(/^[0-9-]+ [0-9:,]+ /, ""); print}' <<< "$line")
+        # send repeat errors only after 1 hour
+        now=$(date +%s)
+        resend_after=$((60 * 60))  # 1 hour
         if [[ "$LAST_ERROR" != "$LAST_ALERT" ]] || \
-            [[ -n "$ALERT_PATTERN" && "$LAST_ERROR" == *"$ALERT_PATTERN"* ]]; then
+            [[ -n "$ALERT_PATTERN" && "$LAST_ERROR" == *"$ALERT_PATTERN"* ]] || \
+            [[ "$LAST_ERROR" == "$LAST_ALERT" && $((now - LAST_ALERT_TIME)) -ge $resend_after ]]; then
             send_slack_notification ":warning: *Scheduler-$WORKSPACE ERROR* at \`$(get_timestamp)\`:\n\`\`\`$LAST_ERROR\`\`\`"
             LAST_ALERT="$LAST_ERROR"
+            LAST_ALERT_TIME="$now"
         fi
     fi
     shopt -u nocasematch
@@ -311,8 +317,6 @@ TAIL_PID=$!
 if [[ ${RESTARTING:-0} -eq 0 ]]; then 
     send_slack_notification ":rocket: *Scheduler-$WORKSPACE started* at \`$(get_timestamp)\`"
 fi
-log "Scheduler script started" 
-log_status
 
 RESTARTING=0
 CLEANED_UP=0
@@ -320,6 +324,9 @@ CLEANED_UP=0
 if [[ ${TEST:-0} -eq 0 ]]; then
     cd /src # needed for docker/spin env
 fi
+
+log "Scheduler script started" 
+log_status
 
 "${SCHED_CMD[@]}" \
     > >(tee -a "$LOG_FILE" "$FULL_LOG_FILE") 2>&1 &
