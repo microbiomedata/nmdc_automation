@@ -24,11 +24,7 @@ available as metadata in the NMDC database, and data objects on the NMDC data po
       - [Workflow Definitions](#workflow-definitions)
   - [Quick Start](#quick-start)
     - [Running the Scheduler on NERSC Rancher2](#running-the-scheduler-on-nersc-rancher2)
-      - [Watcher Set-Up and Configuration](#watcher-set-up-and-configuration)
     - [Running the Watcher on NERSC Perlmutter](#running-the-watcher-on-nersc-perlmutter)
-      - [Check the Watcher Status](#check-the-watcher-status)
-      - [Running the Watcher](#running-the-watcher)
-      - [Monitoring the Watcher](#monitoring-the-watcher)
       - [JAWS](#jaws)
         - [NMDC Database](#nmdc-database)
         - [Watcher State File](#watcher-state-file)
@@ -39,7 +35,7 @@ available as metadata in the NMDC database, and data objects on the NMDC data po
 
 ### Requirements
 
-- mongodb-community needs to be installed and running on the local machine
+- `mongodb-community` needs to be installed and running on the local machine
 - Python 3.11 or later
 - Poetry version 2.2.1
 
@@ -115,6 +111,8 @@ Workflow definitions in a `.yaml` file describing each analysis step, specifying
 
 ## Quick Start
 
+We run both the Scheduler and the Watcher using `nohup` (No Hangup) - this prevents the process from being terminated when the user's terminal session ends.  This will cause `stdout` and `stderr` to be written to a file named `nohup.out` in addition to being written to the per-session `*[dev/prod].log` and running `*[dev/prod]_full.log` files. The `nohup.out` files are manually cleared by the user with each (re)start of the processes while the per session logs are automatically overwritten every time.   
+
 ### Running the Scheduler on NERSC Rancher2
 
 The Scheduler is a Dockerized application running on [Rancher](https://rancher2.spin.nersc.gov). To initialize the Scheduler for new DataGeneration IDs, the following steps:
@@ -123,133 +121,146 @@ The Scheduler is a Dockerized application running on [Rancher](https://rancher2.
    1. Check that the image is running the latest production version for prod or the desired release candidate for testing for dev. 
    2. Refer to [Release Documentation](https://github.com/microbiomedata/infra-admin/blob/main/releases/nmdc-automation.md) for more information
 2. Click on the Scheduler and select `run shell`
-3. In the shell, `cd /conf`
+3. `cd /conf` in shell for working directory. 
+   1. All following user actions will be in this directory.
 4. Update the file `allow.lst` with the Data Generation IDs that you want to schedule
-   1. Copy the list of data-generation IDs to you clipboard
+   1. Copy the list of data generation IDs to you clipboard
    2. In the shell, delete the existing allow list `rm allow.lst`
    3. Replace the file with your copied list:
-      1. `cat >allow.lst`
-      2. Paste your IDs `command-v`
-      3. Ensure a blank line at the end with a `return` 
-      4. Terminate the `cat` command using `control-d`
-5. The default log level is `INFO` if you want to change it to `DEBUG` for more verbose logging, run the following command:
-   1. `export NMDC_LOG_LEVEL=DEBUG`
-6. Restart the scheduler. In the shell, in `/conf`:  `./run_scheduler.sh`
-   1. If running tests on `dev`, make sure to check `./run_scheduler.sh -h` for options. 
-7. Ensure the scheduler is running by checking `sched.log`
-   1. By default, calling `./run_scheduler.sh` will delete `sched.log` and restart the Scheduler. 
+      1. `cat > allow.lst` to start writing to file
+      2. `command-v` to paste IDs
+      3. `return` to ensure a blank line at the end 
+      4. `control-d` to terminate the `cat` command 
+5. `./run_scheduler.sh status` to see if there's anything running.
+   1. `./run_scheduler.sh stop` to manually terminate the process without restarting.
+6. Start or restart the Scheduler by calling the startup script with `nohup`.
+   1. `rm nohup.out` to clear the nohup log. This is optional, but recommended since there's already the running `*_full.log`
+   2. `nohup ./run_scheduler.sh &` 
+      1. Only run without `nohup` for troubleshooting and development.
+      2. `./run_scheduler.sh -h` to see more running options
+      3. `[-d/--debug ]` for more verbose logging
+7. `[cat/tail] sched-[dev/prod].log` to see Scheduler activity.
+   1. By default, calling `./run_scheduler.sh` will delete `sched-[dev/prod].log` and restart the Scheduler. 
 
-
-#### Watcher Set-Up and Configuration
-
-1. Ensure you have the desired version of `nmdc_automation` code.
-   1. `cd nmdc_automation`
-   2. `git status` 
-   3. `git fetch --all --prune`
-   4. `git checkout tags/[release-version]`
-2. Setup NMDC automation environment with `conda` and `poetry`. 
-   1. load conda: `eval "$__conda_setup"` 
-   3. in the `nmdc_automation` directory, install the nmdc_automation project with `poetry install`
-   4. `eval $(poetry env activate)` to use the environment
-        <details><summary>Hint</summary>
-            
-        If you can't remember the command for step 4, there's an alias set in the nmdcda `~/.bashrc file` that allows you to just call `poetry-shell`:
-
-            alias poetry-shell='eval $(poetry env activate)'
-
-        </details>
-
-<details><summary>Example Setup:</summary>
-
-```bash
-(nersc-python) nmdcda@perlmutter:login38:~> pwd
-/global/homes/n/nmdcda
-(nersc-python) nmdcda@perlmutter:login38:~> cd nmdc_automation/dev/
-(nersc-python) nmdcda@perlmutter:login38:~/nmdc_automation/dev> eval "$__conda_setup"
-(base) nmdcda@perlmutter:login38:~/nmdc_automation/dev> cd nmdc_automation/
-(base) nmdcda@perlmutter:login38:~/nmdc_automation/dev/nmdc_automation> poetry install
-Installing dependencies from lock file
-
-No dependencies to install or update
-
-Installing the current project: nmdc-automation (0.1.0)
-(base) nmdcda@perlmutter:login06:~/nmdc_automation/dev/nmdc_automation> eval $(poetry env activate)
-(nmdc-automation-py3.11) (base) nmdcda@perlmutter:login06:~/nmdc_automation/dev/nmdc_automation>
-```
-</details>
-
-
-The `eval $(poetry env activate)` command will activate the environment for the current shell session. 
-Environment `(nmdc-automation-py3.11)` will be displayed in the prompt.
 
 ### Running the Watcher on NERSC Perlmutter
 
-The watcher is a python application which runs on a login node on Perlmutter. 
-The following instructions all assume the user is logged in as user `nmdcda@perlmutter.nersc.gov`
+The Watcher is a python application which runs on a login node on Perlmutter. 
+The following instructions all assume the user is logged in as user `nmdcda@perlmutter.nersc.gov`. For setup instructions, please refer to [startup documentation](docs/README_troubleshooting.md).
 
-1. Get an ssh key - in your home directory: `./sshproxy.sh -u <your_nersc_username> -c nmdcda`
-2. Log in using the key `ssh -i .ssh/nmdcda nmdcda@perlmutter.nersc.gov`
+Watcher code and config files can be found in `/global/homes/n/nmdcda/nmdc_automation/[dev/prod]`, respectively. 
 
-Watcher code and config files can be found in `/global/homes/n/nmdcda/nmdc_automation/[dev/prod]`, respectively.
 
-#### Check the Watcher Status
-
-1. Check the last node the watcher was running on via `host-[dev/prod].last`
+1. Navigate to the correct login node where the Watcher was last run
+   1. `cat ~/nmdc_automation/[dev/prod]/host-[dev/prod].last`
+   2. `ssh login[node #]`
+2. Ensure you have the desired version of `nmdc_automation` code.
+   1. `cd ~/nmdc_automation/[dev/prod]/nmdc_automation` to access the repository
+   2. `git status` to see which tag.
+   3. `git fetch --all --prune`
+   4. `git checkout tags/[release-version]` to access desired version.
+3. Setup NMDC automation environment with `conda` and `poetry`. 
+   1. `eval "$__conda_setup"` to load conda.
+   2. `poetry install` to install the nmdc_automation project 
+   3. `eval $(poetry env activate)` to use the environment.
+      1. This will activate the environment for the current shell session. 
+      2. Environment `(nmdc-automation-py3.11)` will be displayed in the prompt.
    
-    <details><summary>example</summary>
 
-    ```shell
-    (base) nmdcda@perlmutter:login07:~> cd nmdc_automation/[dev/prod]
-    (base) nmdcda@perlmutter:login07:~/nmdc_automation/[dev/prod]> cat host-[dev/prod].last
-    login24
+    <details><summary>Example Setup:</summary>
+
+    ```bash
+    (nersc-python) nmdcda@login37:~> cat /global/homes/n/nmdcda/nmdc_automation/prod/host-prod.last
+    login17
+    (nersc-python) nmdcda@login37:~> ssh login17
+    (nersc-python) nmdcda@perlmutter:login17:~> eval "$__conda_setup"
+    (base) nmdcda@perlmutter:login17:~> cd ~/nmdc_automation/prod/nmdc_automation/
+    (base) nmdcda@perlmutter:login17:~/nmdc_automation/prod/nmdc_automation> poetry install
+    Installing dependencies from lock file
+
+    No dependencies to install or update
+
+    Installing the current project: nmdc-automation (0.0.0)
+    (base) nmdcda@perlmutter:login17:~/nmdc_automation/prod/nmdc_automation> eval $(poetry env activate)
+    (nmdc-automation-py3.11) (base) nmdcda@perlmutter:login17:~/nmdc_automation/prod/nmdc_automation> 
     ```
     </details>
 
-2. ssh to that node
-   
-    <details><summary>example</summary>
 
-    ```shell
-    (base) nmdcda@perlmutter:login07:~/nmdc_automation/[dev/prod]> ssh login24
+    <details><summary>Hint</summary>
+
+    A function has been set within the `~/.bashrc` of the `nmdcda` account to quickly set up the environment once you are on the correct node / host. This way, you can call `auto-[dev/prod]`, and  steps 3-4 will automatically be run for you. 
+    ```bash
+    auto-[dev/prod]() {
+        eval "$__conda_setup"
+        cd /global/homes/n/nmdcda/nmdc_automation/[dev/prod]/nmdc_automation
+        poetry install
+        eval $(poetry env activate)
+        cd /global/homes/n/nmdcda/nmdc_automation/[dev/prod]/
+    }
+    ```
+
+    There's also an alias set that allows you to call `poetry-shell`:
+
+    ```bash
+    alias poetry-shell='eval $(poetry env activate)'
     ```
     </details>
 
-1. Check for the watcher process using `ps aux`
 
-    <details><summary>example</summary>
+4. Change to the working `prod` or `dev` directory
+   - `/global/homes/n/nmdcda/nmdc_automation/prod`
+   - `/global/homes/n/nmdcda/nmdc_automation/dev`
+   1. Running the command in Step 3's hint automatically navigates to the correct environment. However, it must be run right after navigating to the correct login node. 
+5. Check for the watcher process using `./run_watcher_[dev/prod].sh status` or `ps aux`.
+
+    <details><summary>example check status</summary>
+
     ```shell
-    (base) nmdcda@perlmutter:login24:~> ps aux | grep watcher
-    nmdcda    115825  0.0  0.0   8236   848 pts/94   S+   09:33   0:00 grep watcher
-    nmdcda   2044781  0.4  0.0 146420 113668 ?       S    Mar06   5:42 python -m nmdc_automation.run_process.run_workflows watcher --config /global/homes/n/nmdcda/nmdc_automation/prod/site_configuration_nersc_prod.toml --jaws daemon
-    nmdcda   2044782  0.0  0.0   5504   744 ?        S    Mar06   0:00 tee -a watcher-prod.log
+    (nmdc-automation-py3.11) (base) nmdcda@perlmutter:login17:~/nmdc_automation/prod> ./run_watcher_prod.sh status
+    Watcher is running (PID 1429358)
+        PID USER         ELAPSED COMMAND
+    1429309 nmdcda      05:23:01 /bin/bash ./run_watcher_prod.sh
+    1429340 nmdcda      05:23:00 tail -n 0 -F watcher-prod.log
+    1429341 nmdcda      05:23:00 /bin/bash ./run_watcher_prod.sh
+    1429358 nmdcda      05:23:00 python -u -m nmdc_automation.run_process.run_workflows watcher --config /global/homes/n/nmdcda/nmdc_automation/prod/site_configuration_nersc_prod.toml daemon
+    1429359 nmdcda      05:23:00 /bin/bash ./run_watcher_prod.sh
+    1429360 nmdcda      05:23:00 tee -a watcher-prod.log watcher-prod_full.log
+
+    Checking JAWS jobs going back 1 day...
+    1     "status_detail": "At least one task has requested resources but no tasks have started running yet",
+    1     "status": "queued",
+    42     "status_detail": "The run is complete.",
+    42     "status": "done",
+    ```
+
+    ```shell
+    (nmdc-automation-py3.11) (base) nmdcda@perlmutter:login17:~/nmdc_automation/prod> ps aux | grep nmdcda | grep watcher
+    nmdcda     78922  0.0  0.0   8236   844 pts/29   S+   21:06   0:00 grep watcher
+    nmdcda   1429309  0.0  0.0   7312  3784 ?        S    15:43   0:00 /bin/bash ./run_watcher_prod.sh
+    nmdcda   1429340  0.0  0.0   5536   824 ?        S    15:43   0:01 tail -n 0 -F watcher-prod.log
+    nmdcda   1429341  0.0  0.0   7684  3436 ?        S    15:43   0:04 /bin/bash ./run_watcher_prod.sh
+    nmdcda   1429358  1.7  0.2 1249168 1224036 ?     S    15:43   5:44 python -u -m nmdc_automation.run_process.run_workflows watcher --config /global/homes/n/nmdcda/nmdc_automation/prod/site_configuration_nersc_prod.toml daemon
+    nmdcda   1429359  0.0  0.0   7312  2068 ?        S    15:43   0:00 /bin/bash ./run_watcher_prod.sh
+    nmdcda   1429360  0.0  0.0   5504   740 ?        S    15:43   0:00 tee -a watcher-prod.log watcher-prod_full.log
     ````
     </details>
 
-2. **IF** we are going to shut down the Watcher (without restarting), we need to kill the existing process
+6. **IF** we are going to shut down the Watcher (without restarting), we need to kill the existing process. You don't need the poetry environment activated, but you need to be on the correct login node. 
     ```shell
-    (base) nmdcda@perlmutter:login24:~> ./run_watcher_[dev/prod].sh cleanup
+    nmdcda@perlmutter:login17:~/nmdc_automation/prod> ./run_watcher_[dev/prod].sh stop
     ```
-> [!NOTE]
-> This will also terminate the `tee` process that is writing to the log file.
-> To restart the Watcher with older versions of the `./run.sh script`, manual termination of the existing process was necessary with `kill -9 2044781`. However, the new `run_watcher.sh` script now handles killing and restarting the Watcher. 
+    1. This will terminate all 6 processes seen in Step 4. 
+    2. To restart the Watcher with older versions of the `./run.sh script`, manual termination of the existing process was necessary with `kill -9 2044781`. However, the new `run_watcher_[dev/prod].sh` script now handles killing and restarting the Watcher. 
 
+7. Start or restart the Watcher by calling the startup script with `nohup`.
+   1. `rm nohup.out` to clear the nohup log. This is optional, but recommended since there's already the running `*_full.log`
+   2. `nohup ./run_watcher_[dev/prod].sh &` 
+      1. Only run without `nohup` for troubleshooting and development.
+      2. `./run_watcher_[dev/prod].sh -h` to see more running options
+8. `[cat/tail] watcher-[dev/prod].log` to see Watcher activity.
+   1. By default, calling `./run_watcher_[dev/prod].sh` will delete `watcher-[dev/prod].log` and restart the Watcher. 
 
-
-#### Running the Watcher
-
-We run the Watcher using `nohup` (No Hangup) - this prevents the Watcher process from being terminated
-when the user's terminal session ends.  This will cause stdout and stderr to be written to a file
-names `nohup.out` in addition to being written to the `watcher-[dev/prod].log` file.  
-
-1. change to the working `prod` or `dev` directory
-- `/global/homes/n/nmdcda/nmdc_automation/prod`
-- `/global/homes/n/nmdcda/nmdc_automation/dev`
-1. `rm nohup.out` (Long term logging is captured in the `watcher-[dev/prod].log` file, which is retained)
-2. `nohup ./run_watcher_dev.sh &` (for dev) OR `nohup ./run_watcher_prod.sh &` (for prod)
-    
-#### Monitoring the Watcher
-
-Same process as as [Checking the Watcher Status](#check-the-watcher-status)
 
 #### JAWS
 
