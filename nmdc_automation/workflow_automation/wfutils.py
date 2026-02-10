@@ -20,7 +20,7 @@ import zipfile
 from nmdc_automation.config import SiteConfig
 from nmdc_automation.models.nmdc import DataObject, WorkflowExecution, workflow_process_factory
 
-from nmdc_schema.nmdc import DataCategoryEnum
+from nmdc_schema.nmdc import DataCategoryEnum, ExecutionResourceEnum
 
 from jaws_client import api as jaws_api
 from jaws_client.config import Configuration as jaws_Configuration
@@ -93,6 +93,7 @@ class JawsRunner(JobRunnerABC):
     """ Job runner for J.A.W.S"""
 
     DEFAULT_JOB_SITE = 'nmdc'
+    EMSL_JOB_SITE = 'nmdc_tahoma'
     JAWS_NO_SUBMIT_STATES = [
         "created",          # The Run was accepted and a run_id assigned.
         "upload queued",    # The Run's input files are waiting to be transferred to the compute-site.
@@ -121,13 +122,17 @@ class JawsRunner(JobRunnerABC):
 
     def __init__(self,
                  site_config: SiteConfig, workflow: "WorkflowStateManager", jaws_api: jaws_api.JawsApi,
-                 job_metadata: Dict[str, Any] = None, job_site: str = None, dry_run: bool = False) -> None:
+                 job_metadata: Dict[str, Any] = None, dry_run: bool = False) -> None:
         super().__init__(site_config, workflow)
         self.jaws_api = jaws_api
         self._metadata = {}
         if job_metadata:
             self._metadata = job_metadata
-        self.job_site = job_site or self.DEFAULT_JOB_SITE
+        self.job_site = self.DEFAULT_JOB_SITE
+        tahoma_permissible_value = getattr(ExecutionResourceEnum, "EMSL-Tahoma", None)
+        exec_resource = site_config.resource
+        if tahoma_permissible_value and exec_resource == tahoma_permissible_value.text:
+            self.job_site = self.EMSL_JOB_SITE
         self.no_submit_states = self.JAWS_NO_SUBMIT_STATES + self.NO_SUBMIT_STATES
         self.dry_run = dry_run
 
