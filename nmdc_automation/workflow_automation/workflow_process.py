@@ -25,7 +25,8 @@ def get_required_data_objects_map(api, workflows: List[WorkflowConfig]) -> Dict[
     # Build up a filter of what types are used
     required_types = {t for wf in workflows for t in wf.input_data_object_types}
     q = {"data_object_type": {"$in": list(required_types)}}
-    records = api.list_from_collection("data_object_set", q)
+    max_page_size = 1000  # max number of documents to include in the page
+    records = api.list_from_collection("data_object_set", q, max=max_page_size)
     required_data_object_map = {
         rec["id"]: DataObject(**rec)
         for rec in records
