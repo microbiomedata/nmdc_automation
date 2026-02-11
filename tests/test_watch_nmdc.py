@@ -659,13 +659,28 @@ def test_watcher_restore_from_checkpoint_and_report(site_config_file, fixtures_d
     assert rpt['wdl'] == "mbin_nmdc.wdl"
     assert rpt['last_status'] == "failed"
 
+@pytest.mark.parametrize("site_id, expected_resource", [
+    ("nmdc", "NERSC-Perlmutter"),
+    ("nmdc_tahoma", "EMSL-Tahoma"),
+    ("unknown_site", "FALLBACK_VALUE")
+])
+def test_watcher_validate_exec_resource_mapping(site_config, initial_state_file_1_failure, fixtures_dir, job_metadata_factory, mock_jaws_api, site_id, expected_resource):
+    '''
+    Cycle through the possible jaws compute_site_id metadata for a successful job and ensure it maps
+    to the appropriate exec resource enum for the workflow execution record. Also added a test for "unknown_site"
+    to support the fallback code to the site config resource value 
+    '''
 
-def test_watcher_validate_job_dict_tahoma(site_config, initial_state_file_1_failure, fixtures_dir, job_metadata_factory, mock_jaws_api):
+
     modified_job_metadata = job_metadata_factory(fixtures_dir / "mags_jaws_status.json")
     assert modified_job_metadata is not None
 
-    # Inject the resource into the site_config before using it
-    site_config.config_data["site"]["resource"] = "EMSL-Tahoma"
+    # inject the site_id to test
+    modified_job_metadata["compute_site_id"] = site_id
+
+    if expected_resource == "FALLBACK_VALUE":
+        # Pull the actual default from the config
+        expected_resource = site_config.config_data["site"]["resource"]
     
     # mock job.job.get_job_metadata - use fixture cromwell/succeded_metadata.json
     #job_metadata = json.load(open(fixtures_dir / "mags_job_metadata.json"))
@@ -697,7 +712,7 @@ def test_watcher_validate_job_dict_tahoma(site_config, initial_state_file_1_fail
         # which would also gets passed to the linkml validator
         job_dict = yaml.safe_load(yaml_dumper.dumps(db))
         workflow_dict = job_dict['workflow_execution_set'][0]
-        assert workflow_dict['execution_resource'] == 'EMSL-Tahoma'
+        assert workflow_dict['execution_resource'] == expected_resource
 
         # cleanup
         jm.job_cache = []

@@ -834,15 +834,37 @@ class WorkflowJob:
     
     @property
     def as_workflow_execution_dict(self) -> Dict[str, Any]:
+        
         """
         Create a dictionary representation of the basic workflow execution attributes for a WorkflowJob.
+        Updated to use the resource defined from the completed job metadata
         """
+
+
+        # Note: below is runner agnostic: this resource map has fallback keys of "UNKNOWN" and "UNSUPPORTED_EMSL" for the cromwell jobrunner code
+        # for backwards compatibility. TODO to cleanup cromwell legacy code means we can simplify dict keys to
+        # self.job.DEFAULT_JOB_SITE and self.job.EMSL_JOB_SITE instead of getattr() in the future. -jlp 20260211
+        resource_map = {
+            getattr(self.job, "DEFAULT_JOB_SITE", "UNKNOWN"): getattr(ExecutionResourceEnum, "NERSC-Perlmutter", None),
+            getattr(self.job, "EMSL_JOB_SITE", "UNSUPPORTED_EMSL"): getattr(ExecutionResourceEnum, "EMSL-Tahoma", None),
+        }
+
+        job_resource = None
+        site_id = self.job.metadata.get("compute_site_id")
+        resource_member = resource_map.get(site_id)
+        if resource_member is not None:
+            job_resource = resource_member.text
+        
+        # Else fallback onto the site config value
+        else:
+            job_resource = self.execution_resource
+            
         base_dict = {
             "id": self.workflow_execution_id,
             "type": self.workflow.workflow_execution_type,
             "name": self.workflow.workflow_execution_name,
             "git_url": self.workflow.config["git_repo"],
-            "execution_resource": self.execution_resource,
+            "execution_resource": job_resource,
             "processing_institution": "NMDC",
             "was_informed_by": self.was_informed_by,
             "has_input": [dobj["id"] for dobj in self.workflow.config["input_data_objects"]],
