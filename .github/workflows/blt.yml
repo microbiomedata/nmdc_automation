@@ -19,9 +19,13 @@ jobs:
       run: |
         sudo mkdir -p /etc/docker
 
-
-    - name: setup_mongodb
-      uses: supercharge/mongodb-github-action@v1.10.0
+    # Documentation: https://github.com/marketplace/actions/mongodb-in-github-actions
+    - name: Set up MongoDB
+      uses: supercharge/mongodb-github-action@1.12.1
+      with:
+        # Keep the MongoDB version in sync with the `nmdc-runtime` development environment; i.e.,
+        # https://github.com/microbiomedata/nmdc-runtime/blob/46dd6fe5e4088cc6715ecaef3533ac19a8f171d6/docker-compose.yml#L118
+        mongodb-version: 8.2.3
 
     - name: Set up Python 3.11
       uses: actions/setup-python@v3
