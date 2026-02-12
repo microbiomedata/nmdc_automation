@@ -60,7 +60,7 @@ class SiteConfig:
 
     @property
     def resource(self):
-        return self.config_data["site"]["resource"]
+        return self.config_data.get("site", {}).get("resource", None)
 
     @property
     def site(self):
