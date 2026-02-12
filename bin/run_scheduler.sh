@@ -34,7 +34,7 @@ KILL_PID=""
 LAST_ALERT=""
 LAST_ERROR=""
 ALERT_PATTERN=""
-IGNORE_PATTERN=""
+IGNORE_PATTERN="The above exception was the direct cause of the following exception:|During handling of the above exception, another exception occurred:"
 COMMAND=""   # default start/restart scheduler when script called
 TRACEBACK_LINES=()
 ERROR_SUMMARY=""
@@ -274,6 +274,7 @@ tail -n 0 -F "$LOG_FILE" | while IFS= read -r line; do
     
     # begin python traceback
     if [[ "$line" == *"Traceback (most recent call last):"* ]]; then
+        send_slack_notification ":warning: *Scheduler-$WORKSPACE ERROR* at \`$(get_timestamp)\`:\n\`\`\`PYTHON TRACEBACK DETECTED\`\`\`"
         TRACEBACK_LINES=("$line")
         TRACEBACK_ACTIVE=1
         continue
@@ -286,8 +287,7 @@ tail -n 0 -F "$LOG_FILE" | while IFS= read -r line; do
             ERROR_SUMMARY=$(printf "%s\n" "${TRACEBACK_LINES[@]}" \
                 | grep -E "[A-Za-z]+Error:|Exception:" \
                 | tail -n1 \
-                | sed -E 's/with url: .*//' \
-                | sed -E 's/^[^:]+: //' )
+                | sed -E 's/.*with url: ([^?]*).*/\1/' )
             ERROR_SUMMARY=${ERROR_SUMMARY:-"Unknown error"}
             LAST_ERROR="$ERROR_SUMMARY"
 

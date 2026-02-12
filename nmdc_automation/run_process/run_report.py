@@ -3,19 +3,23 @@ Run reports for the NMDC pipeline.
 """
 import logging
 from itertools import islice
+from typing import Union
+from pathlib import Path
 import json
 import requests
 from typing import List
 import click
+import pandas as pd
 
 from nmdc_automation.api import NmdcRuntimeApi
 from nmdc_automation.config import SiteConfig
 
 
-logging.basicConfig(level=logging.INFO,
+logging.basicConfig(level=logging.DEBUG,
     format="%(asctime)s %(levelname)s: %(message)s"
                     )
 logger = logging.getLogger(__name__)
+WF_TYPES = ['nmdc:ReadQcAnalysis', 'nmdc:ReadBasedTaxonomyAnalysis', 'nmdc:MetagenomeAssembly', 'nmdc:MetagenomeAnnotation', 'nmdc:MagsAnalysis']
 
 
 @click.group()
@@ -26,34 +30,81 @@ def cli():
 @cli.command()
 @click.argument("config_file", type=click.Path(exists=True))
 @click.argument("study_id")
-def study_report(config_file, study_id, pipeline = None):
+@click.option("--pipeline", default=None, help="Custom aggregation pipeline (JSON)")
+@click.option("--analyte-category", default="metagenome")
+@click.option("--wf-type", default=WF_TYPES)
+@click.option("--len-wfe", default=5, type=int)
+def study_report(site_config: Union[str, Path, SiteConfig], study_id: str, pipeline=None, write_files=False, **pipeline_params):
     """
     Generate a report for a specific study.
     """
-    logger.info(f"Generating report for study {study_id} from {config_file}")
-    site_config = SiteConfig(config_file)
+    logger.info(f"Generating report for study {study_id}")
+    site_config = SiteConfig(site_config)
     runtime_api = NmdcRuntimeApi(site_config)
-    username = site_config.username
-    password = site_config.password
 
-    study_status_query = build_query()
+    all_runs = run_aggregation(runtime_api, study_id, pipeline, **pipeline_params)
+
+    if "cursor" in all_runs:
+        all_runs = all_runs['cursor']['batch']
+
+    # Create a list to store rows for the CSV/TSV
+    rows = []
+
+    for group in all_runs:
+        wfex_type = group['_id']['wfex_type']
+        job_wfex_type = group['_id']['job_wfex_type']
+        n_dgs = group['n_dgs']
+        missing_wfex = [wf for wf in WF_TYPES if wf not in wfex_type]
+        incomplete_jobs = [wf for wf in job_wfex_type if wf not in wfex_type]
+        complete = True if len(missing_wfex) == 0 else False
+        rows.append({
+            'wfex_type': wfex_type,
+            'job_wfex_type': job_wfex_type,
+            'n_dgs': n_dgs, 
+            'missing_wfex': missing_wfex,
+            'incomplete_jobs': incomplete_jobs,
+            'complete': complete
+        })
+    study_summary = pd.DataFrame(rows)
+
+    incomplete_dgs = study_summary[study_summary['complete'] == False]
+    complete_dgs = study_summary[study_summary['complete'] == True]
+    total_incomplete = incomplete_dgs['n_dgs'].sum()
+    total_complete = complete_dgs['n_dgs'].sum()
+    workflow_status_count = json.load({"Done": total_complete, "Not done": total_incomplete})
     
+    logger.info(f"Workflow status found: {json.dumps(workflow_status_count, indent=2)}")
 
+    logger.info(f"Found {len(incomplete_dgs)} categories of incomplete data generations.")
+    max_width = len(max(WF_TYPES, key=len))
+    columns = ['wfex_type', 'job_wfex_type', 'missing_wfex', 'incomplete_jobs']
+    widths = {'n_dgs': 8, **{col: max_width for col in columns}}
+    header = " ".join(f"{col:<{widths[col]}}" for col in ['n_dgs'] + columns)
+    print(header)
+    for idx, row in incomplete_dgs.iterrows():
+        print("-" * len(header))
+        max_len = max(len(row[col]) for col in columns)
+        for i in range(max_len):
+            row_values = {
+                'dgs_count': row['dgs_count'] if i == 0 else "",
+                **{col: row[col][i] if i < len(row[col]) else "" for col in columns}
+            }
+            print(" ".join(f"{row_values[col]:<{widths[col]}}" for col in ['dgs_count'] + columns))
     
+    if write_files:
 
-    # Set up the API URL
-    api_url = site_config.api_url
-    headers = {'accept': 'application/json', 'Authorization': f'Basic {username}:{password}'}
-
-    # get default aggregation for a study_id
-    incomplete_runs = run_aggregation(api_url, headers, study_id, pipeline)
-    logger.info(f"Found {len(incomplete_runs)} categories of incomplete runs")
+        for i in range(len(incomplete_dgs)):
+            with open(f"{outdir}/set_{i}.json", 'w') as f:
+                json.dump(incomplete_dgs[i], indent=1)
+            
 
 
 
-def run_aggregation(runtime_api, api_url, headers, study_id: str, pipeline: List[dict], aggregate = "data_generation_set",
-                    analyte_category = "metagenome", manifest = False, qc_status_exists = False, 
-                    qc_comment_exists = False, dg_output = True, wf_type = "nmdc:MagsAnalysis", len_wfe = 5):
+
+
+
+
+def run_aggregation(runtime_api, study_id: str, pipeline=None, aggregate="data_generation_set", **pipeline_params):
     """
     Submit an aggregation pipeline to the NMDC run_query endpoint.
 
@@ -62,38 +113,36 @@ def run_aggregation(runtime_api, api_url, headers, study_id: str, pipeline: List
     :param pipeline: MongoDB aggregation pipeline (list of dicts)
     :return: Parsed JSON response
     """
-
-    query_url = f"{api_url}/queries:run"
+    pipeline_params
     if not pipeline:
-        pipeline = build_pipeline(study_id, analyte_category, manifest, qc_status_exists, qc_comment_exists, dg_output,wf_type, len_wfe)
+        pipeline = build_pipeline(study_id = study_id, **pipeline_params)
+    
 
-    payload = {
+    payload = json.dumps({
         "aggregate": aggregate,
         "pipeline": pipeline
-    }
-    resp = runtime_api.run_query(data_generation_update_query)
-
-    query_response = requests.post(query_url, headers=headers, json=payload)
-    query_response.raise_for_status()
-
-    return query_response.json()
+    })
+    
+    logging.info(payload)
+    query_response = runtime_api.run_query(payload)
+    return query_response
 
 
-def build_pipeline(study_id: str, analyte_category: str, 
-                      manifest: bool, qc_status_exists: bool, qc_comment_exists: bool, dg_output: bool,
-                      wf_type: str, len_wfe: int) -> dict:
+def build_pipeline(**pipeline_params)-> dict: 
     """
     Consolidate the above query stages into aggregation for submission to api
     """
-    pipeline = sum([study_and_analyte(study_id, analyte_category),
-                lookup_do_wf_job(),
-                manifest_and_qc(manifest, qc_status_exists, qc_comment_exists, dg_output),
-                set_completion_reqs(wf_type, len_wfe),
-                group_results()
-                ], [])
+    pipeline = sum([
+        study_and_analyte(**pipeline_params),
+        lookup_do_wf_job(),
+        manifest_and_qc(**pipeline_params),
+        set_completion_reqs(**pipeline_params),
+        group_results()
+    ], [])
     return pipeline
 
-def agg_match(field: str, value: str) -> List[dict]:
+
+def agg_match(field: str, value: str, **kwargs) -> List[dict]:
     """
     For personalized match queries
     
@@ -102,7 +151,7 @@ def agg_match(field: str, value: str) -> List[dict]:
     """
     return [{"$match": {field: value}}]
 
-def study_and_analyte(study_id: str, analyte_category = "metagenome") -> List[dict]:
+def study_and_analyte(study_id: str, analyte_category = "metagenome", **kwargs) -> List[dict]:
     """
     Looks up by study ID and analyte type
     :param study_id: Study ID
@@ -116,15 +165,16 @@ def lookup_do_wf_job() -> List[dict]:
     DO for checking if in manifest
     WF for seeing what executions exist
     JOB for seeing what's been attempted
-    WF and JOB are sorted for easier grouping later on.
+    WF and JOB are sorted in reverse alphabetical order for easier grouping later on.
     """
     return [{"$lookup": {"from": "data_object_set", "localField": "has_output", "foreignField": "id", "as": "data_object_set"}}, 
             {"$lookup": {"from": "workflow_execution_set", "localField": "id", "foreignField": "was_informed_by", 
-                         "pipeline": [{"$sort": {"type": 1}}], "as": "workflow_execution_set"}}, 
+                         "pipeline": [{"$sort": {"type": -1}}], "as": "workflow_execution_set"}}, 
             {"$lookup": {"from": "jobs", "localField": "id", "foreignField": "config.was_informed_by", 
-                         "pipeline": [{"$sort": {"config.activity.type": 1}}], "as": "jobs"}}]
+                         "pipeline": [{"$sort": {"config.activity.type": -1}}], "as": "jobs"}}]
 
-def manifest_and_qc(manifest = False, qc_status_exists = False, qc_comment_exists = False, dg_output = True) -> List[dict]:
+
+def manifest_and_qc(manifest = False, qc_status_exists = False, qc_comment_exists = False, dg_output = True, **kwargs) -> List[dict]:
     """
     Docstring for manifest_and_qc
     
@@ -140,16 +190,28 @@ def manifest_and_qc(manifest = False, qc_status_exists = False, qc_comment_exist
                         "workflow_execution_set.qc_comment": {"$exists": qc_comment_exists},
                         "has_output": {"$exists": dg_output}}}]
 
-def set_completion_reqs(wf_type = "nmdc:MagsAnalysis", len_wfe = 5) -> List[dict]:
+
+
+def set_completion_reqs(no_complete = False, complete_only = False, wf_type = WF_TYPES, len_wfe = 5, **kwargs) -> List[dict]:
     """
     What we define to be "completed"
     Typically, we look for the 5 workflow types (RQC, Assembly, Annotation, MAGs, and ReadsbasedTaxonomy (RBT/RBA))
     This is per data generation set ID.
-    :param wf_type: Can be any of the define WorkflowExecution slot https://microbiomedata.github.io/nmdc-schema/WorkflowExecution/
+    :param wf_type: List of any of the define WorkflowExecution slot https://microbiomedata.github.io/nmdc-schema/WorkflowExecution/
     :param len_wfe: Whatever number of workflows you're looking for
     """
-    return[{"$match": {"$or": [{"$expr": {"$lt": [{"$size": "$workflow_execution_set"}, len_wfe]}}, 
-                               {"workflow_execution_set": {"$not": {"$elemMatch": {"type": wf_type}}}}]}}]
+    if no_complete: 
+        or_list = [{"$expr": {"$lt": [{"$size": "$workflow_execution_set"}, len_wfe]}}]
+        for type in wf_type:
+            or_list.append({"workflow_execution_set": {"$not": {"$elemMatch": {"type": type}}}})
+        return[{"$match": {"$or": or_list}}]
+    elif complete_only:
+        and_list = [{"$expr": {"$gte": [{"$size": "$workflow_execution_set"}, len_wfe]}}]
+        for type in wf_type:
+            and_list.append({"workflow_execution_set": {"$elemMatch": {"type": type}}})
+        return[{"$match": {"$and": and_list}}]
+    else:
+        pass
 
 def group_results() -> List[dict]:
     """
@@ -157,10 +219,36 @@ def group_results() -> List[dict]:
     Allows us to look at whether there's a specific set of dates where a lot of issues may have occurred.
     """
     return [{"$group": {"_id": {"wfex_type": "$workflow_execution_set.type", "job_wfex_type": "$jobs.config.activity.type"}, 
-                        "dgs_count": {"$sum": 1},
+                        "n_dgs": {"$sum": 1},
                         "executions": {"$push": {"id": "$id", "wfex_id": "$workflow_execution_set.id", "wfex_end": "$workflow_execution_set.ended_at_time", 
                                                  "job_id": "$jobs.id", "job_wfid": "$jobs.config.activity_id", "job_start": "$jobs.created_at"}}}}]
 
+
+
+
+def set_completion_reqs(wf_type = ["nmdc:MagsAnalysis", "nmdc:ReadBasedTaxonomyAnalysis"], len_wfe = 5) -> List[dict]:
+    """
+    What we define to be "completed"
+    Typically, we look for the 5 workflow types (RQC, Assembly, Annotation, MAGs, and ReadsbasedTaxonomy (RBT/RBA))
+    This is per data generation set ID.
+    :param wf_type: List of any of the define WorkflowExecution slot https://microbiomedata.github.io/nmdc-schema/WorkflowExecution/
+    :param len_wfe: Whatever number of workflows you're looking for
+    """
+    or_list = [{"$expr": {"$lt": [{"$size": "$workflow_execution_set"}, len_wfe]}}]
+    for type in wf_type:
+        or_list.append({"workflow_execution_set": {"$not": {"$elemMatch": {"type": type}}}})
+
+    return[{"$match": {"$or": or_list}}]
+
+def group_results() -> List[dict]:
+    """
+    This grouping allows us to compare what exists in WFE and Jobs with dates of when they were run.
+    Allows us to look at whether there's a specific set of dates where a lot of issues may have occurred.
+    """
+    return [{"$group": {"_id": {"wfex_type": "$workflow_execution_set.type", "job_wfex_type": "$jobs.config.activity.type"}, 
+                        "n_dgs": {"$sum": 1},
+                        "executions": {"$push": {"id": "$id", "wfex_id": "$workflow_execution_set.id", "wfex_end": "$workflow_execution_set.ended_at_time", 
+                                                 "job_id": "$jobs.id", "job_wfid": "$jobs.config.activity_id", "job_start": "$jobs.created_at"}}}}]
 
 
 # ----Legacy code-----
