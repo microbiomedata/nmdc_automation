@@ -78,6 +78,10 @@ class NmdcRuntimeApi:
         self.session = requests.Session()
         retries = Retry(
             total=6,
+            # Explicitly handle network-level issues
+            connect=3,  # how many connection-related errors to retry
+            read=3,     # how many times to retry on read errors (timeouts)
+            status=3,   # how many times to retry on the status_forcelist
             backoff_factor=3,
             status_forcelist=[429, 500, 502, 503, 504],
             raise_on_redirect=False,

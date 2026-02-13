@@ -285,8 +285,6 @@ def test_list_from_collection_pagination(monkeypatch, requests_mock, test_client
     n.session = requests.Session()
 
     collection = "data_object_set"
-    base_url = "http://localhost:8000/nmdcschema/"
-    url = f"{base_url}{collection}"
 
     # Temporarily bind the REAL method to the mock instance
     monkeypatch.setattr(n, "list_from_collection", nmdcapi.list_from_collection.__get__(n, nmdcapi))
@@ -367,8 +365,7 @@ def test_list_from_collection_error_handling(monkeypatch, requests_mock, test_cl
     n.session = requests.Session()
 
     collection = "data_object_set"
-    url = f"http://localhost:8000/nmdcschema/{collection}"
-
+    
     monkeypatch.setattr(n, "list_from_collection", nmdcapi.list_from_collection.__get__(n, nmdcapi))
 
     # Simulate a successful first page followed by a 400 Bad Request (Invalid Token)
