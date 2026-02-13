@@ -17,6 +17,8 @@ from nmdc_automation.config import SiteConfig, UserConfig
 import logging
 from tenacity import retry, wait_exponential, stop_after_attempt
 from requests.exceptions import HTTPError
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 logging_level = os.getenv("NMDC_LOG_LEVEL", logging.INFO)
 logging.basicConfig(
@@ -73,6 +75,19 @@ class NmdcRuntimeApi:
         }
         if self._base_url[-1] != "/":
             self._base_url += "/"
+        self.session = requests.Session()
+        retries = Retry(
+            total=6,
+            backoff_factor=3,
+            status_forcelist=[429, 500, 502, 503, 504],
+            raise_on_redirect=False,
+            raise_on_status=False,
+            # Ensure it doesn't think the request is "unsafe" to repeat
+            allowed_methods=None
+        )
+        adapter = HTTPAdapter(max_retries=retries)
+        self.session.mount("https://", adapter)
+        self.session.mount("http://", adapter)
 
     def refresh_token(func):
         def _get_token(self, *args, **kwargs):
@@ -240,7 +255,7 @@ class NmdcRuntimeApi:
 
     def list_from_collection(self, collection, filt=None, projection=None, max=100):
         url = f"{self._base_url}nmdcschema/{collection}"
-        
+
         params = {
                 "max_page_size": max
         }
@@ -254,19 +269,30 @@ class NmdcRuntimeApi:
 
         results = []
         while True:
-            resp = requests.get(url, headers=self.header, params=params).json()
+            try:
+                resp_obj = self.session.get(url, headers=self.header, params=params, timeout=(10, 60))
             
-            if "resources" not in resp:
-                logging.warning(str(resp))
-                break
-            results.extend(resp["resources"])
+                resp_obj.raise_for_status()
+                resp = resp_obj.json()
+
+                if "resources" not in resp:
+                    logging.warning(f"Unexpected response format: {resp}")
+                    break
+                results.extend(resp["resources"])
+                
+                # Handle pagination
+                next_token = resp.get("next_page_token")
+                if not next_token:
+                    break
             
-            # Handle pagination
-            next_token = resp.get("next_page_token")
-            if not next_token:
-                break
-            
-            params["page_token"] = next_token
+                params["page_token"] = next_token
+
+            except (requests.exceptions.RequestException, Exception) as e:
+                # log where it died and raise runtime error because we don't want it to return partial records
+                logging.error("--- Session Terminated ---")
+                logging.error(f"Reason: {type(e).__name__} - {e}")
+                logging.error(f"Resume Token: {params.get('page_token', 'initial')}")
+                raise RuntimeError(f"Crawl failed at token {params.get('next_page_token')}. Data is incomplete.") from e
 
         
         return results
