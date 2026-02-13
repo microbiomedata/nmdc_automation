@@ -287,12 +287,12 @@ class NmdcRuntimeApi:
             
                 params["page_token"] = next_token
 
-            except (requests.exceptions.RequestException, Exception) as e:
+            except (requests.exceptions.RequestException, json.JSONDecodeError) as e:
                 # log where it died and raise runtime error because we don't want it to return partial records
                 logging.error("--- Session Terminated ---")
                 logging.error(f"Reason: {type(e).__name__} - {e}")
                 logging.error(f"Resume Token: {params.get('page_token', 'initial')}")
-                raise RuntimeError(f"Crawl failed at token {params.get('next_page_token')}. Data is incomplete.") from e
+                raise RuntimeError(f"Crawl failed at token {params.get('page_token', 'initial')}. Data is incomplete.") from e
 
         
         return results

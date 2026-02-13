@@ -315,7 +315,7 @@ def test_list_from_collection_pagination(monkeypatch, requests_mock, test_client
     target_pattern = re.compile(f"{n._base_url}nmdcschema/{collection}.*")
     requests_mock.register_uri('GET', target_pattern, responses)
     
-    results = n.list_from_collection(collection, max=2)
+    results = n.list_from_collection(collection)
 
     # Assert
     assert len(results) == 3
@@ -350,7 +350,7 @@ def test_actual_retry_delay_fast(site_config_file):
     try:
         results = api.list_from_collection("data_object_set")
         assert False, "Should have raised an error after failing to connect"
-    except:
+    except Exception:
         duration = time.time() - start_time
     
     # Assert it retried
