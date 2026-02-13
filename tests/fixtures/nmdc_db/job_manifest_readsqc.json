@@ -9,7 +9,7 @@
   "config": {
     "git_repo": "https://github.com/microbiomedata/ReadsQC",
     "release": "v1.0.20",
-    "wdl": "interleave_rqcfilter.wdl",
+    "wdl": "rqcfilter.wdl",
     "activity_id": "nmdc:wfrqc-15-8rcjpy94.1",
     "activity_set": "workflow_execution_set",
     "was_informed_by": [
@@ -18,7 +18,7 @@
     ],
     "trigger_activity": "nmdc:dgns-11-qmpge038",
     "iteration": 1,
-    "input_prefix": "nmdc_rqcfilter",
+    "input_prefix": "rqcfilter",
     "inputs": {
       "proj": "nmdc:wfrqc-15-8rcjpy94.1",
       "input_fastq1": [
