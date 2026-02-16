@@ -333,7 +333,7 @@ if [[ ${TEST:-0} -eq 0 ]]; then
     cd /src # needed for docker/spin env
 fi
 
-log "Scheduler script started" 
+log "Scheduler script started with ${LIST}" 
 log_status
 
 "${SCHED_CMD[@]}" \
