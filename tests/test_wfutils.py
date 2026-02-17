@@ -534,3 +534,31 @@ def test_jaws_job_runner_submit_job_new_manifest_job(mock_generate_submission_fi
     jobid = job_runner.submit_job()
     assert site_config.env == "dev"
     assert jobid
+
+@mock.patch("nmdc_automation.workflow_automation.wfutils.WorkflowStateManager.generate_submission_files")
+def test_jaws_job_runner_submit_tahoma_job(mock_generate_submission_files, site_config, fixtures_dir, mock_jaws_api):
+    """
+        Test submitting a job through the JAWS job runner using site nmdc_tahoma
+    """
+
+    # Inject the resource into the site_config before using it
+    site_config.config_data["site"]["resource"] = "EMSL-Tahoma"
+
+    mock_generate_submission_files.return_value = {
+        "wdl_file": "workflowSource",
+        "sub": "workflowDependencies",
+        "inputs": "workflowInputs"
+    }
+    # A new workflow job that has not been submitted - it has a workflow state
+    # but no job metadata
+    wf_state = json.load(open(fixtures_dir / "mags_workflow_state.json"))
+    wf_state['last_status'] = None # simulate a job that has not been submitted
+    wf_state['jaws_jobid'] = None # simulate a job that has not been submitted
+    wf_state['done'] = False # simulate a job that has not been submitted
+
+    wf_state_manager = WorkflowStateManager(wf_state)
+    job_runner = JawsRunner(site_config, wf_state_manager, mock_jaws_api, dry_run=True)
+    assert job_runner.job_site == "nmdc_tahoma"
+    jobid = job_runner.submit_job()
+    assert site_config.env == "dev"
+    assert jobid
