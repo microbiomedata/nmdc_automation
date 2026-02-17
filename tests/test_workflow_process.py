@@ -33,7 +33,7 @@ def test_load_workflow_process_nodes(test_db, test_client, workflow_file, workfl
     data_objs_by_id = get_required_data_objects_map(test_client, workflow_configs)
     current_nodes, manifest_map = get_current_workflow_process_nodes(test_client, workflow_configs, data_objs_by_id)
     assert current_nodes
-    assert len(current_nodes) == 2
+    assert len(current_nodes) == 4
 
     workflow_process_nodes, manifest_map = load_workflow_process_nodes(test_client, workflow_configs)
 

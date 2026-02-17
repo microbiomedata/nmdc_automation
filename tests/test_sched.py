@@ -71,7 +71,7 @@ def test_progress(test_db, test_client, workflow_file, workflows_config_dir, sit
     # There should be 1 RQC job for each data_generation record for each analyte category (metagenome and
     # metatranscriptome)
     resp = jm.cycle()
-    assert len(resp) == 4
+    assert len(resp) == 2
 
     # We simulate the RQC job finishing
     load_fixture(test_db, "read_qc_analysis.json", col="workflow_execution_set")
@@ -176,7 +176,7 @@ def test_out_of_range(test_db, test_client, workflows_config_dir, site_config_fi
 
     resp = jm.cycle()
     # there is one additional metatranscriptome rqc job from the fixture
-    assert len(resp) == 2
+    assert len(resp) == 4
     resp = jm.cycle()
     assert len(resp) == 0
 
