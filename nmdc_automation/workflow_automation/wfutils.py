@@ -20,7 +20,7 @@ import zipfile
 from nmdc_automation.config import SiteConfig
 from nmdc_automation.models.nmdc import DataObject, WorkflowExecution, workflow_process_factory
 
-from nmdc_schema.nmdc import DataCategoryEnum
+from nmdc_schema.nmdc import DataCategoryEnum, ExecutionResourceEnum
 
 from jaws_client import api as jaws_api
 from jaws_client.config import Configuration as jaws_Configuration
@@ -93,6 +93,7 @@ class JawsRunner(JobRunnerABC):
     """ Job runner for J.A.W.S"""
 
     DEFAULT_JOB_SITE = 'nmdc'
+    EMSL_JOB_SITE = 'nmdc_tahoma'
     JAWS_NO_SUBMIT_STATES = [
         "created",          # The Run was accepted and a run_id assigned.
         "upload queued",    # The Run's input files are waiting to be transferred to the compute-site.
@@ -121,13 +122,17 @@ class JawsRunner(JobRunnerABC):
 
     def __init__(self,
                  site_config: SiteConfig, workflow: "WorkflowStateManager", jaws_api: jaws_api.JawsApi,
-                 job_metadata: Dict[str, Any] = None, job_site: str = None, dry_run: bool = False) -> None:
+                 job_metadata: Dict[str, Any] = None, dry_run: bool = False) -> None:
         super().__init__(site_config, workflow)
         self.jaws_api = jaws_api
         self._metadata = {}
         if job_metadata:
             self._metadata = job_metadata
-        self.job_site = job_site or self.DEFAULT_JOB_SITE
+        self.job_site = self.DEFAULT_JOB_SITE
+        tahoma_permissible_value = getattr(ExecutionResourceEnum, "EMSL-Tahoma", None)
+        exec_resource = site_config.resource
+        if tahoma_permissible_value and exec_resource == tahoma_permissible_value.text:
+            self.job_site = self.EMSL_JOB_SITE
         self.no_submit_states = self.JAWS_NO_SUBMIT_STATES + self.NO_SUBMIT_STATES
         self.dry_run = dry_run
 
@@ -176,6 +181,7 @@ class JawsRunner(JobRunnerABC):
             elif len(self.workflow.was_informed_by) == 1:
                 tag_value = self.workflow.was_informed_by[0] + "/" + self.workflow.workflow_execution_id
             
+            # This will work to schedule but shouldn't go to this block unless bug or new feature support
             else:
                 tag_value = ":".join(self.workflow.was_informed_by) + "/" + self.workflow.workflow_execution_id
 
@@ -297,6 +303,7 @@ class JawsRunner(JobRunnerABC):
         """ Set the metadata """
         self._metadata = metadata
 
+    @property
     def max_retries(self) -> int:
         """ Get the maximum number of retries - Set this at 1 for now """
         return DEFAULT_MAX_RETRIES
@@ -451,21 +458,57 @@ class WorkflowStateManager:
     LABEL_SUBMITTER_VALUE = "nmdcda"
     LABEL_PARAMETERS = ["release", "wdl", "git_repo"]
 
-    def __init__(self, state: Dict[str, Any] = None, opid: str = None):
+    def __init__(self, state: Dict[str, Any] = None, opid: str = None, site_config: SiteConfig | None = None):
         if state is None:
             state = {}
         self.cached_state = state
+        self.site_config = site_config
         if opid and "opid" in self.cached_state:
             raise ValueError("opid already set in job state")
         if opid:
             self.cached_state["opid"] = opid
 
+    def map_value(self, input_file:str) -> str:
+        """ 
+        Maps the input file/files to the results path, 
+        /global/cfs/cdirs/m3408/results/, if the URL is from 
+        https://data.microbiomedata.org/data/.
+
+        If there is no site_config or data_path_map, return the input
+        unchanged.
+        """
+        if not self.site_config:
+            return input_file
+
+        results_url = self.results_url
+        results_path = self.results_path
+        mapped = input_file
+
+        if not results_url or not results_path:
+            return input_file
+
+        if input_file.startswith(results_url):
+            rel = input_file[len(results_url):].lstrip("/")
+            mapped = os.path.join(results_path, rel)
+            logger.debug(f"Mapped URL → local path: {input_file} → {mapped}")
+        return mapped
+    
     def generate_workflow_inputs(self) -> Dict[str, str]:
         """ Generate inputs for the job runner from the workflow state """
         inputs = {}
         prefix = self.input_prefix
+        input_types = ("file", "files", "fq1", "fq2", "fastq1", "fastq2") # input file endings
+
         for input_key, input_val in self.inputs.items():
-            inputs[f"{prefix}.{input_key}"] = input_val
+            final_val = input_val
+            if input_key.endswith(input_types):
+                if isinstance(input_val, list):
+                    final_val = [self.map_value(v) for v in input_val]
+                else:
+                    final_val = self.map_value(input_val)
+
+            inputs[f"{prefix}.{input_key}"] = final_val
+
         return inputs
 
     def generate_workflow_labels(self) -> Dict[str, str]:
@@ -568,7 +611,6 @@ class WorkflowStateManager:
     def manifest(self) -> Optional[str]:
         return self.config.get("manifest", None)
     
-
     @property
     def wdl(self) -> Optional[str]:
         return self.config.get("wdl", None)
@@ -576,7 +618,6 @@ class WorkflowStateManager:
     @property
     def release(self) -> Optional[str]:
         return self.config.get("release", None)
-
 
     @property
     def workflow_execution_type(self) -> Optional[str]:
@@ -596,6 +637,18 @@ class WorkflowStateManager:
     @property
     def input_prefix(self) -> Optional[str]:
         return self.config.get("input_prefix", None)
+    
+    # url root
+    @property
+    def results_url(self) -> str:
+        """ Get the NMDC URL root: https://data.microbiomedata.org/data/ """
+        return self.site_config.results_url
+
+    # results root
+    @property
+    def results_path(self) -> str:
+        """ Get the results path if the URL is https://data.microbiomedata.org/data/ """
+        return self.site_config.results_path
 
     @property
     def inputs(self) -> Dict[str, str]:
@@ -684,7 +737,7 @@ class WorkflowJob:
     def __init__(self, site_config: SiteConfig, workflow_state: Dict[str, Any] = None,
                  job_metadata: Dict['str', Any] = None, opid: str = None, jaws_api: jaws_api.JawsApi = None, dry_run: bool = False) -> None:
         self.site_config = site_config
-        self.workflow = WorkflowStateManager(workflow_state, opid)
+        self.workflow = WorkflowStateManager(workflow_state, opid, site_config,)
         
         self.dry_run = dry_run
         # Use JawsRunner if jaws_api is provided, otherwise use CromwellRunner
@@ -768,7 +821,7 @@ class WorkflowJob:
     def url_root(self) -> str:
         """ Get the URL root """
         return self.site_config.url_root
-
+    
     @property
     def was_informed_by(self) -> list[str]:
         """ get the was_informed_by ID value """
@@ -781,15 +834,37 @@ class WorkflowJob:
     
     @property
     def as_workflow_execution_dict(self) -> Dict[str, Any]:
+        
         """
         Create a dictionary representation of the basic workflow execution attributes for a WorkflowJob.
+        Updated to use the resource defined from the completed job metadata
         """
+
+
+        # Note: below is runner agnostic: this resource map has fallback keys of "UNKNOWN" and "UNSUPPORTED_EMSL" for the cromwell jobrunner code
+        # for backwards compatibility. TODO to cleanup cromwell legacy code means we can simplify dict keys to
+        # self.job.DEFAULT_JOB_SITE and self.job.EMSL_JOB_SITE instead of getattr() in the future. -jlp 20260211
+        resource_map = {
+            getattr(self.job, "DEFAULT_JOB_SITE", "UNKNOWN"): getattr(ExecutionResourceEnum, "NERSC-Perlmutter", None),
+            getattr(self.job, "EMSL_JOB_SITE", "UNSUPPORTED_EMSL"): getattr(ExecutionResourceEnum, "EMSL-Tahoma", None),
+        }
+
+        job_resource = None
+        site_id = self.job.metadata.get("compute_site_id")
+        resource_member = resource_map.get(site_id)
+        if resource_member is not None:
+            job_resource = resource_member.text
+        
+        # Else fallback onto the site config value
+        else:
+            job_resource = self.execution_resource
+            
         base_dict = {
             "id": self.workflow_execution_id,
             "type": self.workflow.workflow_execution_type,
             "name": self.workflow.workflow_execution_name,
             "git_url": self.workflow.config["git_repo"],
-            "execution_resource": self.execution_resource,
+            "execution_resource": job_resource,
             "processing_institution": "NMDC",
             "was_informed_by": self.was_informed_by,
             "has_input": [dobj["id"] for dobj in self.workflow.config["input_data_objects"]],

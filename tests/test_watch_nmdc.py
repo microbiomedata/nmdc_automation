@@ -4,11 +4,13 @@ from pathlib import PosixPath, Path
 import pytest
 from pytest import fixture
 from unittest import mock
+from linkml_runtime.dumpers import yaml_dumper
+import yaml
 import requests_mock
 import shutil
 from unittest.mock import patch, PropertyMock, Mock, MagicMock
 
-from nmdc_schema.nmdc import Database
+from nmdc_schema.nmdc import Database, ExecutionResourceEnum
 from nmdc_automation.workflow_automation.watch_nmdc import (
     Watcher,
     FileHandler,
@@ -420,13 +422,13 @@ def test_job_manager_process_failed_job_1_failure(
 
 
 
-def test_job_manager_process_failed_job_2_failures(site_config, initial_state_file_1_failure, fixtures_dir):
+def test_job_manager_process_failed_job_2_failures(site_config, initial_state_file_1_failure, fixtures_dir, mock_jaws_api):
     # Arrange
     fh = FileHandler(site_config, initial_state_file_1_failure)
-    jm = JobManager(site_config, fh)
+    jm = JobManager(site_config, fh, jaws_api=mock_jaws_api)
     failed_job_state = json.load(open(fixtures_dir / "failed_job_state_2.json"))
     assert failed_job_state
-    failed_job = WorkflowJob(site_config, failed_job_state)
+    failed_job = WorkflowJob(site_config, failed_job_state, jaws_api=mock_jaws_api)
     jm.job_cache.append(failed_job)
     # Act
     jm.process_failed_job(failed_job)
@@ -657,3 +659,60 @@ def test_watcher_restore_from_checkpoint_and_report(site_config_file, fixtures_d
     assert rpt['wdl'] == "mbin_nmdc.wdl"
     assert rpt['last_status'] == "failed"
 
+@pytest.mark.parametrize("site_id, expected_resource", [
+    ("nmdc", "NERSC-Perlmutter"),
+    ("nmdc_tahoma", "EMSL-Tahoma"),
+    ("unknown_site", "FALLBACK_VALUE")
+])
+def test_watcher_validate_exec_resource_mapping(site_config, initial_state_file_1_failure, fixtures_dir, job_metadata_factory, mock_jaws_api, site_id, expected_resource):
+    '''
+    Cycle through the possible jaws compute_site_id metadata for a successful job and ensure it maps
+    to the appropriate exec resource enum for the workflow execution record. Also added a test for "unknown_site"
+    to support the fallback code to the site config resource value 
+    '''
+
+
+    modified_job_metadata = job_metadata_factory(fixtures_dir / "mags_jaws_status.json")
+    assert modified_job_metadata is not None
+
+    # inject the site_id to test
+    modified_job_metadata["compute_site_id"] = site_id
+
+    if expected_resource == "FALLBACK_VALUE":
+        # Pull the actual default from the config
+        expected_resource = site_config.config_data["site"]["resource"]
+    
+    # mock job.job.get_job_metadata - use fixture cromwell/succeded_metadata.json
+    #job_metadata = json.load(open(fixtures_dir / "mags_job_metadata.json"))
+    with patch('nmdc_automation.workflow_automation.wfutils.JawsRunner.get_job_metadata') as mock_get_metadata:
+        mock_get_metadata.return_value = modified_job_metadata
+
+        # Arrange
+        fh = FileHandler(site_config, initial_state_file_1_failure)
+        jm = JobManager(site_config, fh)
+        new_job_state = json.load(open(fixtures_dir / "mags_workflow_state.json"))
+        assert new_job_state
+        new_job = WorkflowJob(site_config, new_job_state, jaws_api=mock_jaws_api)
+        jm.job_cache.append(new_job)
+        # Act
+        db = jm.process_successful_job(new_job)
+        
+        # Assert
+        assert db
+        assert isinstance(db, Database)
+
+        # We only expect one workflow record
+        assert len(db.workflow_execution_set) == 1
+        workflow = db.workflow_execution_set[0]
+    
+        # Verify the execution_resource is a valid ExecutionResourceEnum instance
+        assert isinstance(workflow.execution_resource, ExecutionResourceEnum)
+
+        # Easier to check the value when converted to a dict
+        # which would also gets passed to the linkml validator
+        job_dict = yaml.safe_load(yaml_dumper.dumps(db))
+        workflow_dict = job_dict['workflow_execution_set'][0]
+        assert workflow_dict['execution_resource'] == expected_resource
+
+        # cleanup
+        jm.job_cache = []

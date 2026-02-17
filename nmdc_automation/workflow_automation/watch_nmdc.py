@@ -244,7 +244,6 @@ class JobManager:
                     continue
                 elif status in ("failed", "null"):
                     job.workflow.last_status = status
-                    job.workflow.failed_count += 1
                     failed_jobs.append(job)
                     continue
                 else:

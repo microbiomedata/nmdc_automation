@@ -1,0 +1,5 @@
+[project]
+nmdc_study_id = "nmdc:sty-11-abcd5d11"
+sequencing_project_name = "GROW"
+sequencing_project_description = "Study of GROW samples"
+jgi_proposal_id = 50341

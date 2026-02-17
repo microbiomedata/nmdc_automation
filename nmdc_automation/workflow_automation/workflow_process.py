@@ -25,7 +25,8 @@ def get_required_data_objects_map(api, workflows: List[WorkflowConfig]) -> Dict[
     # Build up a filter of what types are used
     required_types = {t for wf in workflows for t in wf.input_data_object_types}
     q = {"data_object_type": {"$in": list(required_types)}}
-    records = api.list_from_collection("data_object_set", q)
+    max_page_size = 1000  # max number of documents to include in the page
+    records = api.list_from_collection("data_object_set", q, max=max_page_size)
     required_data_object_map = {
         rec["id"]: DataObject(**rec)
         for rec in records
@@ -195,7 +196,7 @@ def get_current_workflow_process_nodes(
                         # Else this has one manifest ID associated with the data object
                         else:
                             if current_manifest not in manifest_map:
-                                logging.info(f"Manifest ID found: {current_manifest}. Processing associated data objects...")
+                                logging.debug(f"Manifest ID found: {current_manifest}. Processing associated data objects...")
                                 # Do we want to save manifest set IDs encountered from the DOs that do not match poolable_replicates?
                                 manifest_map[current_manifest] = {}
                                 
@@ -223,12 +224,26 @@ def get_current_workflow_process_nodes(
 
             workflow_process_nodes.add(wfp_node)
 
+    # Build the list of data_generation_id_sets to manifest id for non-dgns processing workflows
+    # so we can add the manifest property to wfp_nodes when was_informed_by > 1
+    dg_set_to_manifest_map = {} 
+    for manifest_id, manifest_data in manifest_map.items():
+        dg_ids_list = manifest_data.get('data_generation_set') 
+        
+        if dg_ids_list:
+            # 1. Sort the list and convert it to a hashable tuple
+            key_tuple = tuple(sorted(dg_ids_list)) #ex: ('id1', 'id2')
+            
+            if key_tuple not in dg_set_to_manifest_map:
+                dg_set_to_manifest_map[key_tuple] = manifest_id
+
+
     for wf in workflow_execution_workflows:
         q = {}
         if wf.git_repo:
             q = {"git_url": wf.git_repo}
         # override query with allowlist
-        if allowlist:  # TODO test this -jlp 20250718
+        if allowlist: 
             q = {"was_informed_by": {"$in": list(allowlist)}}
 
         #records = db[wf.collection].find(q)
@@ -240,11 +255,20 @@ def get_current_workflow_process_nodes(
                 continue
             if _is_missing_required_input_output(wf, rec, data_objects_by_id):
                 continue
+            
+            # Deprecated
             #Iterate through was_informed_by list and only if all are valid do we add the wpn
-            wib_set_valid = True
+            #wib_set_valid = True
+            #for wib_id in rec["was_informed_by"]:
+            #    if wib_id not in data_generation_ids:
+            #        wib_set_valid = False
+            
+            # For manifest sets, any was_informed_by ID could be in the allow list, which is stored in data_generation_ids
+            # so just check if any exist for the set to be valid. 
+            wib_set_valid = False
             for wib_id in rec["was_informed_by"]:
-                if wib_id not in data_generation_ids:
-                    wib_set_valid = False
+                if wib_id in data_generation_ids:
+                    wib_set_valid = True
             
             if wib_set_valid == True:
                 wfp_node = WorkflowProcessNode(rec, wf)
@@ -258,6 +282,15 @@ def get_current_workflow_process_nodes(
                     sorted_was_informed_by = sorted(rec["was_informed_by"])
                     # Join the sorted elements with "_" as the separator
                     current_found_rec_key = "_".join(sorted_was_informed_by)
+
+                    # Look for the manifest ID to add to the workflow process node
+                    # Normalize the list: sort and convert to tuple
+                    current_manifest = None
+                    key_tuple = tuple(sorted(rec["was_informed_by"])) # Result: ('id1', 'id2')
+                    if key_tuple in dg_set_to_manifest_map:
+                        current_manifest = dg_set_to_manifest_map[key_tuple]
+                    if current_manifest:
+                        wfp_node.add_to_manifest(current_manifest)
 
                 # if there is already a wfp_node added for this workflow type, check if version is more recent
                 # then add it and replace previous one.
@@ -314,9 +347,11 @@ def _resolve_relationships(current_nodes: List[WorkflowProcessNode], node_data_o
         # Go through its inputs
         for data_object_id in node.has_input:
             if data_object_id not in node_data_object_map:
-                # This really shouldn't happen
+                # Manifest sets will warn for associated data_objects
+                # found nodes that were added to the graph for manifest completeness but
+                # were not explicitly listed in the allow list. 
                 if data_object_id not in warned_objects:
-                    logging.warning(f"Missing data object {data_object_id}")
+                    logging.debug(f"Missing data object {data_object_id}")
                     warned_objects.add(data_object_id)
                 continue
             parent_node = node_data_object_map[data_object_id]
@@ -326,15 +361,19 @@ def _resolve_relationships(current_nodes: List[WorkflowProcessNode], node_data_o
                 logging.warning("Parent node is none")
                 continue
             # Let's make sure these came from the same source
-            # This is just a safeguard
-            if sorted(node.was_informed_by) != sorted(parent_node.was_informed_by):
-                logging.warning(
-                    "Mismatched informed by for "
-                    f"{data_object_id} in {node.id} "
-                    f"{node.was_informed_by} != "
-                    f"{parent_node.was_informed_by}"
-                )
-                continue
+            # This is just a safeguard. 
+            # Update 20260114: manifest workflows would compare a wf containing a was_informed_by list with multiple dgns_ids
+            # to its parent_node - a data_generation_set ID whose was_informed_by would be itself (array of 1) so
+            # this warning is not as useful. Added len comparison and moved logging to debug mode 
+            if len(node.was_informed_by) == len(parent_node.was_informed_by):
+                if sorted(node.was_informed_by) != sorted(parent_node.was_informed_by):
+                    logging.debug(
+                        "Mismatched informed by for "
+                        f"{data_object_id} in {node.id} "
+                        f"{node.was_informed_by} != "
+                        f"{parent_node.was_informed_by}"
+                    )
+                    continue
             # We only want to use it as a parent if it is the right
             # parent workflow. Some inputs may come from ancestors
             # further up
@@ -409,7 +448,7 @@ def _map_manifest_to_data_objects(api, manifest_id, manifest_to_data_objects: Di
     # 3. Execute the aggregation pipeline and get the results
     logging.debug(f"AGG:{manifest_agg}")
     resp = api.run_query(manifest_agg)
-    logging.info(f"queries:run response: {resp}")
+    logging.debug(f"queries:run response: {resp}")
 
     # If an empty result was return, aggregation did not work
     if len(resp) == 0:
@@ -484,7 +523,7 @@ def _map_manifest_to_data_generation_set(api, manifest_map):
     }
 
     resp = api.run_query(data_object_agg)
-    logging.info(f"queries:run response: {resp}")
+    logging.debug(f"queries:run response: {resp}")
         
     # Log any issues
     if len(resp) == 0:

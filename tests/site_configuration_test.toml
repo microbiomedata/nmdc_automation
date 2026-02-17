@@ -16,6 +16,10 @@ site = "Processing Site"
 url_root = "https://data.microbiomedata.org/data/dev"
 api_url = "http://localhost:8000"
 
+[data_path_map]
+results_path = "/global/cfs/cdirs/m3408/results/"
+results_url = "https://data.microbiomedata.org/data/"
+
 [state]
 watch_state = "State File"
 #agent_state = "/tmp/agent.state"  Commenting this out will default to _state/agent.state

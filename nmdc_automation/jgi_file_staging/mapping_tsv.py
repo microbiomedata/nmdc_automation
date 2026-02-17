@@ -6,34 +6,39 @@ import pandas
 import pandas as pd
 from pathlib import Path
 from argparse import ArgumentParser
-from pymongo.database import Database
 
-from nmdc_automation.db.nmdc_mongo import get_db
 from nmdc_automation.jgi_file_staging.jgi_file_metadata import get_access_token, get_request
+from nmdc_api_utilities.data_staging import JGISampleSearchAPI, JGISequencingProjectAPI
+from nmdc_automation.config import SiteConfig, ProjectConfig, StagingConfig
 
 logging.basicConfig(filename='mapping_tsv.log',
                     format='%(asctime)s.%(msecs)03d %(levelname)s {%(module)s} [%(funcName)s] %(message)s',
                     datefmt='%Y-%m-%d,%H:%M:%S', level=logging.DEBUG, force=True)
-def create_mapping_tsv(project_name: str, mdb: Database, study_id: str, mapping_file_path: pathlib.Path=None) -> None:
+def create_mapping_tsv(project_name: str, site_configuration: SiteConfig, staging_configuration: StagingConfig, mapping_file_path: pathlib.Path=None) -> None:
     """
     Creates mapping tsv file(s) for a given project
     :param project_name: Name of the project
-    :param mdb: MongoDB instance
-    :param study_id: study id of the project that will be used to get the proposal id
     :param mapping_file_path: path where to save the mapping tsv file
+    :param site_configuration: SiteConfig object
+    :param staging_configuration: StagingConfig object
     Not all studies have an associated proposal id
     1) get gold ids from the data_generation_set API
     2) for each gold id, get the gold analysis record
     """
     ACCESS_TOKEN = get_access_token()
-    study_df = get_gold_ids(study_id, ACCESS_TOKEN)
+    mapping_file_path = Path(staging_configuration.staging_dir, project_name) if not mapping_file_path else mapping_file_path
+    seq_project = JGISequencingProjectAPI(env=site_configuration.env, 
+                                          client_id=site_configuration.client_id, 
+                                          client_secret=site_configuration.client_secret
+                                          ).get_jgi_sequencing_project(project_name)
+    study_df = get_gold_ids(seq_project['nmdc_study_id'], ACCESS_TOKEN)
     study_df['gold_project'] = study_df.gold_sequencing_project_identifiers.apply(lambda x: x[0].split(':')[1])
     study_df = study_df.apply(
         lambda x: get_gold_analysis_project(x, ACCESS_TOKEN), axis=1)
     study_df = study_df.loc[pd.notna(study_df.gold_analysis_project), :]
 
     metag_study_df = study_df.loc[study_df.ap_type == 'Metagenome Analysis', ['id', 'gold_analysis_project']]
-    create_tsv_file(metag_study_df, project_name, 'metag', mdb, mapping_file_path)
+    create_tsv_file(metag_study_df, project_name, 'metag', mapping_file_path)
     metat_study_df = study_df.loc[study_df.ap_type == 'Metatranscriptome Analysis', ['id', 'gold_analysis_project']]
     if not metat_study_df.empty:
         new_row_list = []
@@ -46,37 +51,23 @@ def create_mapping_tsv(project_name: str, mdb: Database, study_id: str, mapping_
                 logging.exception(f"Index Error: {e, study_df.loc[study_df.id==row.id, 'gold_project']}")
                 new_row_list.append({'id': row.id, 'gold_analysis_project': None})
         metat_study_df = pd.DataFrame(new_row_list)
-        create_tsv_file(metat_study_df, project_name, 'metat', mdb, mapping_file_path)
+        create_tsv_file(metat_study_df, project_name, 'metat', mapping_file_path)
 
 
-def create_tsv_file(study_df: pandas.DataFrame, project_name: str, ap_type: str, mdb: Database,
-                    mapping_file_path: pathlib.Path = None):
+def create_tsv_file(study_df: pandas.DataFrame, project_name: str, ap_type: str,
+                    mapping_file_path: pathlib.Path) -> None:
     """
     Create mapping tsv file for either metaG or metaT analysis projects
     :param study_df: pandas DataFrame containing gold analysis records
     :param project_name: Name of the project
     :param ap_type: type of analysis project
-    :param mdb: MongoDB database object
     :param mapping_file_path: path where to save the mapping tsv file
     """
-    sequencing_project = mdb.sequencing_projects.find_one({'project_name': project_name})
-    mapping_file_path = Path(sequencing_project['analysis_projects_dir'], sequencing_project['project_name']) if not mapping_file_path else mapping_file_path
-    study_df['project_path'] = study_df.apply(lambda x: str(
-        Path(sequencing_project['analysis_projects_dir'], sequencing_project['project_name'],
-             f"analysis_files", x['gold_analysis_project']) if x[
-            'gold_analysis_project'] else None), axis=1)
+    study_df['project_path'] = study_df.apply(lambda x: str(mapping_file_path / "analysis_files" / x['gold_analysis_project']) if x['gold_analysis_project'] else None, axis=1)
     study_df = study_df[['id', 'gold_analysis_project', 'project_path']]
     study_df.columns = ['nucleotide_sequencing_id', 'project_id', 'project_path']
     study_df.to_csv(Path(mapping_file_path, f'{project_name}.{ap_type}.map.tsv'), sep='\t', index=False)
 
-
-def get_study_id(project_name: str, mdb: Database) -> str:
-    """
-    Given a proposal_id for a project, return the corresponding NMDC study id
-    """
-    sequencing_project = mdb.sequencing_projects.find_one({'project_name': project_name})
-
-    return sequencing_project['nmdc_study_id']
 
 def get_gold_ids(nmdc_study_id: str, ACCESS_TOKEN: str) -> pd.DataFrame:
     """
@@ -125,21 +116,14 @@ def get_gold_analysis_project(row: pd.Series, ACCESS_TOKEN: str) -> pd.Series:
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('project_name', help='The project name from MongoDB')
-    parser.add_argument('-s', '--study_id', default=None, help='NMDC study id')
+    parser.add_argument('site_config_file', help='Site config parameters for runtime_api')
+    parser.add_argument('staging_config_file', help='Config parameters for file staging')
     parser.add_argument('-f', '--file_path', default=None,
                         help='path where mapping tsv file is saved. default is <analysis_projects_dir>/<project_name>')
     args = vars((parser.parse_args()))
 
-    # Get the database connection
-    mdb = get_db()
-    if mdb is None:
-        logging.error("MongoDB connection failed")
-        sys.exit(1)
-    # Study ID is optional, if not provided, we try to determine it from the project name via the database
-    if args['study_id'] is None:
-        # Get the study ID from the database
-        sequencing_project = mdb.sequencing_projects.find_one({'project_name': args['project_name']})
-        args['study_id'] = sequencing_project['nmdc_study_id']
+    site_configuration = SiteConfig(args['site_config_file'])
+    staging_configuration = StagingConfig(args['staging_config_file'])
     # Create the mapping TSV file
 
-    create_mapping_tsv(args['project_name'], mdb, args['study_id'], args['file_path'])
+    create_mapping_tsv(args['project_name'],  args['file_path'], site_configuration, staging_configuration)
