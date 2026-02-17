@@ -21,3 +21,11 @@ valid_data/
 # Ignore `coverage.xml` file in this directory.
 /coverage.xml
 prof/
+
+*.ipynb
+.env/
+*.log
+*.txt
+.env
+nmdc_automation/jgi_file_staging/data
+nmdc_automation/jgi_file_staging/venv/

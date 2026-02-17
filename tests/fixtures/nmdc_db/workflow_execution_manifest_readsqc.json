@@ -1,0 +1,28 @@
+[
+  {
+  "id": "nmdc:wfrqc-15-8rcjpy94.1",
+  "type": "nmdc:ReadQcAnalysis",
+  "name": "Read QC for nmdc:wfrqc-15-8rcjpy94.1",
+  "has_input": [
+    "nmdc:dobj-11-ryqm4v52",
+    "nmdc:dobj-11-t63mfm30",
+    "nmdc:dobj-11-g8xx8612",
+    "nmdc:dobj-11-qseqfc93"
+  ],
+  "has_output": [
+    "nmdc:dobj-15-fkq3hr62",
+    "nmdc:dobj-15-xgvmvk15",
+    "nmdc:dobj-15-kfhkdy33"
+  ],
+  "processing_institution": "NMDC",
+  "git_url": "https://github.com/microbiomedata/ReadsQC",
+  "started_at_time": "2025-11-25 11:31:14",
+  "was_informed_by": [
+    "nmdc:dgns-11-qmpge038",
+    "nmdc:dgns-11-w99dsv77"
+  ],
+  "ended_at_time": "2025-11-25 13:41:21",
+  "execution_resource": "NERSC-Perlmutter",
+  "version": "v1.0.20"
+  }
+]

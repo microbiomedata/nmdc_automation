@@ -2,9 +2,13 @@ from nmdc_automation.api.nmdcapi import NmdcRuntimeApi as nmdcapi
 import json
 import os
 import time
-
+import re
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from unittest.mock import patch, PropertyMock, Mock
 from tests.fixtures.db_utils import load_fixture, reset_db
+
 
 #def test_basics(requests_mock, site_config_file, mock_api):
 def test_basics(monkeypatch, requests_mock, site_config_file, test_client):
@@ -274,4 +278,122 @@ def test_run_query_pagination(mock_run_query_single, site_config_file, mock_api_
     assert len(results) == expected_total_count
     
 
+def test_list_from_collection_pagination(monkeypatch, requests_mock, test_client):
+    n = test_client
+    
+    # Give the mock a real requests.session because when we call the real method, it will expect it
+    n.session = requests.Session()
 
+    collection = "data_object_set"
+
+    # Temporarily bind the REAL method to the mock instance
+    monkeypatch.setattr(n, "list_from_collection", nmdcapi.list_from_collection.__get__(n, nmdcapi))
+
+    # Define a sequence of responses:
+    # 1. Page 1 returns 2 items and a token for Page 2
+    # 2. Page 2 returns 1 item and no token
+    responses = [
+        {
+            "status_code": 200,
+            "json": {
+                "resources": [{"id": "obj1"}, {"id": "obj2"}],
+                "next_page_token": "token2"
+            }
+        },
+        {
+            "status_code": 200,
+            "json": {
+                "resources": [{"id": "obj3"}],
+                "next_page_token": None
+            }
+        }
+    ]
+
+    # need to pass the target pattern so it triggers the mock even if there are params appended
+    target_pattern = re.compile(f"{n._base_url}nmdcschema/{collection}.*")
+    requests_mock.register_uri('GET', target_pattern, responses)
+    
+    results = n.list_from_collection(collection)
+
+    # Assert
+    assert len(results) == 3
+    assert results[0]["id"] == "obj1"
+    assert results[2]["id"] == "obj3"
+    assert requests_mock.call_count == 2
+
+
+
+def test_actual_retry_delay_fast(site_config_file):
+    # instantiate the API
+    api = nmdcapi(site_config_file)
+    
+    # OVERRIDE the retry engine with a fast backoff
+    # keep 'total=6' so we verify it's still trying 6 times
+    fast_retries = Retry(
+        total=6,
+        backoff_factor=0.1,  # Reduced from 3 to 0.1
+        status_forcelist=[503, 504],
+        allowed_methods=None,
+        respect_retry_after_header=False
+    )
+    adapter = HTTPAdapter(max_retries=fast_retries)
+    api.session.mount("http://", adapter)
+    api.session.mount("https://", adapter)
+    
+    # Point to a dead port to trigger the retry engine
+    api._base_url = "http://localhost:9999/" 
+    
+    results = None
+    start_time = time.time()
+    try:
+        results = api.list_from_collection("data_object_set")
+        assert False, "Should have raised an error after failing to connect"
+    except Exception:
+        duration = time.time() - start_time
+    
+    # Assert it retried
+    # With 0.1 backoff, 6 retries should take roughly 6-7 seconds
+    assert duration > 2
+    
+    # Assert no results were returned
+    assert results is None
+    
+ 
+def test_list_from_collection_error_handling(monkeypatch, requests_mock, test_client):
+    n = test_client
+    # Give the mock a real requests.session because when we call the real method, it will expect it
+    n.session = requests.Session()
+
+    collection = "data_object_set"
+    
+    monkeypatch.setattr(n, "list_from_collection", nmdcapi.list_from_collection.__get__(n, nmdcapi))
+
+    # Simulate a successful first page followed by a 400 Bad Request (Invalid Token)
+    responses = [
+        {
+            "status_code": 200,
+            "json": {
+                "resources": [{"id": "obj1"}],
+                "next_page_token": "bad_token"
+            }
+        },
+        {
+            "status_code": 400,
+            "text": "Invalid Token"
+        }
+    ]
+
+    # need to pass the target pattern so it triggers the mock even if there are params appended
+    target_pattern = re.compile(f"{n._base_url}nmdcschema/{collection}.*")
+    requests_mock.get(target_pattern, responses, complete_qs=False)
+
+    try:
+        n.list_from_collection(collection)
+        assert False, "The code should have raised a RuntimeError"
+    except RuntimeError as e:
+        assert "Crawl failed at token" in str(e)
+        assert "400 Client Error" in str(e.__cause__)
+        
+    
+    # Verify it actually tried to fetch the second page before crashing
+    assert requests_mock.call_count == 2
