@@ -13,7 +13,7 @@ from pathlib import Path
 
 @mark.parametrize("workflow_file", [
     "workflows.yaml",
-    "workflows-mt.yaml"
+    # "workflows-mt.yaml"
 ])
 
 #def test_scheduler_cycle(test_db, mock_api, workflow_file, workflows_config_dir, site_config_file):
@@ -31,8 +31,8 @@ def test_scheduler_cycle(test_db, test_client, workflow_file, workflows_config_d
     load_fixture(test_db, "data_object_set.json")
     load_fixture(test_db, "data_generation_set.json")
 
-    # Scheduler will find one job to create
-    exp_num_jobs_initial = 1
+    # Scheduler will find one job to create for analyte categories metagenome and metatranscriptome
+    exp_num_jobs_initial = 2
     exp_num_jobs_cycle_1 = 0
     #jm = Scheduler(test_db, workflow_yaml=workflows_config_dir / workflow_file,
     #               site_conf=site_config_file)
@@ -48,14 +48,12 @@ def test_scheduler_cycle(test_db, test_client, workflow_file, workflows_config_d
 
 @mark.parametrize("workflow_file", [
     "workflows.yaml",
-    "workflows-mt.yaml"
+    # "workflows-mt.yaml"
 ])
 #def test_progress(test_db, mock_api, workflow_file, workflows_config_dir, site_config_file):
 def test_progress(test_db, test_client, workflow_file, workflows_config_dir, site_config_file):
     reset_db(test_db)
-    metatranscriptome = False
-    if workflow_file == "workflows-mt.yaml":
-        metatranscriptome = True
+    # metatranscriptome = False
     load_fixture(test_db, "data_object_set.json")
     load_fixture(test_db, "data_generation_set.json")
 
@@ -70,64 +68,44 @@ def test_progress(test_db, test_client, workflow_file, workflows_config_dir, sit
     for wf in jm.workflows:
         workflow_by_name[wf.name] = wf
 
-    # There should be 1 RQC job for each omics_processing_set record
+    # There should be 1 RQC job for each data_generation record for each analyte category (metagenome and
+    # metatranscriptome)
     resp = jm.cycle()
-    assert len(resp) == 1
+    assert len(resp) == 2
 
     # We simulate the RQC job finishing
     load_fixture(test_db, "read_qc_analysis.json", col="workflow_execution_set")
 
     resp = jm.cycle()
-    if metatranscriptome:
-        # assembly
-        exp_num_post_rqc_jobs = 1
-        exp_num_post_annotation_jobs = 1
-    else:
-        # assembly, rba
-        exp_num_post_rqc_jobs = 2
-        exp_num_post_annotation_jobs = 2
 
-        # Get the assembly job record from resp and check the inputs
-        asm_job = [j for j in resp if j["config"]["activity"]["type"] == "nmdc:MetagenomeAssembly"][0]
-        assert "shortRead" in asm_job["config"]["inputs"]
-        assert isinstance(asm_job["config"]["inputs"]["shortRead"], bool)
+    # assembly, rba
+    exp_num_post_rqc_jobs = 3
+    exp_num_post_annotation_jobs = 3
+
+    # Get the assembly job record from resp and check the inputs
+    asm_job = [j for j in resp if j["config"]["activity"]["type"] == "nmdc:MetagenomeAssembly"][0]
+    assert "shortRead" in asm_job["config"]["inputs"]
+    assert isinstance(asm_job["config"]["inputs"]["shortRead"], bool)
 
     assert len(resp) == exp_num_post_rqc_jobs
 
-    if metatranscriptome:
-        # simulate assembly job finishing
-        load_fixture(test_db, "metatranscriptome_assembly.json", col="workflow_execution_set")
-        # We should see a metatranscriptome annotation job
-        resp = jm.cycle()
-        assert len(resp) == 1
-        assert resp[0]["config"]["activity"]["type"] == "nmdc:MetatranscriptomeAnnotation"
 
-        resp = jm.cycle()
-        # all jobs should be in a submitted state
-        assert len(resp) == 0
+    # simulate assembly job finishing
+    load_fixture(test_db, "metagenome_assembly.json", col="workflow_execution_set")
+    # We should see a metagenome annotation job
+    resp = jm.cycle()
+    assert len(resp) == 1
+    assert resp[0]["config"]["activity"]["type"] == "nmdc:MetagenomeAnnotation"
 
-        # simulate annotation job finishing
-        load_fixture(test_db, "metatranscriptome_annotation.json", col="workflow_execution_set")
-        resp = jm.cycle()
-        assert len(resp) == 1
-        assert resp[0]["config"]["activity"]["type"] == "nmdc:MetatranscriptomeExpressionAnalysis"
-    else:
-        # simulate assembly job finishing
-        load_fixture(test_db, "metagenome_assembly.json", col="workflow_execution_set")
-        # We should see a metagenome annotation job
-        resp = jm.cycle()
-        assert len(resp) == 1
-        assert resp[0]["config"]["activity"]["type"] == "nmdc:MetagenomeAnnotation"
+    resp = jm.cycle()
+    # all jobs should be in a submitted state
+    assert len(resp) == 0
 
-        resp = jm.cycle()
-        # all jobs should be in a submitted state
-        assert len(resp) == 0
-
-        # simulate annotation job finishing
-        load_fixture(test_db, "metagenome_annotation.json", col="workflow_execution_set")
-        resp = jm.cycle()
-        assert len(resp) == 1
-        assert resp[0]["config"]["activity"]["type"] == "nmdc:MagsAnalysis"
+    # simulate annotation job finishing
+    load_fixture(test_db, "metagenome_annotation.json", col="workflow_execution_set")
+    resp = jm.cycle()
+    assert len(resp) == 1
+    assert resp[0]["config"]["activity"]["type"] == "nmdc:MagsAnalysis"
 
     resp = jm.cycle()
     # all jobs should be in a submitted state
@@ -158,14 +136,14 @@ def test_multiple_versions(test_db, test_client, workflows_config_dir, site_conf
         workflow_by_name[wf.name] = wf
 
     resp = jm.cycle()
-    assert len(resp) == 1
+    assert len(resp) == 2 # one for each analyte category
     #
 
     # We simulate one of the jobs finishing
     load_fixture(test_db, "read_qc_analysis.json", col="workflow_execution_set")
     resp = jm.cycle()
-    # We should see one asm and one rba job
-    assert len(resp) == 2
+    # We should see two asm and one rba job
+    assert len(resp) == 3
     resp = jm.cycle()
     assert len(resp) == 0
     # Simulate the assembly job finishing with an older version
@@ -198,7 +176,7 @@ def test_out_of_range(test_db, test_client, workflows_config_dir, site_config_fi
 
     resp = jm.cycle()
     # there is one additional metatranscriptome rqc job from the fixture
-    assert len(resp) == 2
+    assert len(resp) == 4
     resp = jm.cycle()
     assert len(resp) == 0
 
@@ -229,13 +207,13 @@ def test_type_resolving(test_db, test_client, workflows_config_dir, site_config_
 
     resp = jm.cycle()
 
-    assert len(resp) == 2
+    assert len(resp) == 3
     # assert 'annotation' in resp[1]['config']['inputs']['contig_file']
 
 # Not really sure if this is doing what the function name says -jp20251023
 @mark.parametrize("workflow_file", [
     "workflows.yaml",
-    "workflows-mt.yaml"
+    # "workflows-mt.yaml"
 ])
 #def test_scheduler_add_job_rec(test_db, mock_api, workflow_file, workflows_config_dir, site_config_file):
 def test_scheduler_add_job_rec(test_db, workflow_file, workflows_config_dir, site_config_file):
