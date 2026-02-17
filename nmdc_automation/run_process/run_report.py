@@ -25,10 +25,10 @@ logging.basicConfig(level=logging.DEBUG,
 logger = logging.getLogger(__name__)
 WF_TYPES = [
     "nmdc:ReadQcAnalysis",
+    "nmdc:ReadBasedTaxonomyAnalysis",
     "nmdc:MetagenomeAssembly", 
     "nmdc:MetagenomeAnnotation",
-    "nmdc:MagsAnalysis",
-    "nmdc:ReadBasedTaxonomyAnalysis"
+    "nmdc:MagsAnalysis"
 ]
 
 @click.group()
@@ -170,18 +170,12 @@ def study_report(site_config, study_id, write_files, outdir, pipeline, wf_type, 
 
 
 def print_results_table(runs: List[dict], wf_types: List[str], title: str = "Results"):
-    """
-    Print a formatted table of workflow execution results.
-    
-    :param runs: List of run groups to display
-    :param wf_types: List of workflow types being checked
-    :param title: Title for the table
-    """
+    """Print a formatted table of workflow execution results."""
     max_width = len(max(wf_types, key=len))
     columns = ['wfex_type', 'job_wfex_type', 'missing_wfex', 'incomplete_jobs']
     widths = {'n_dgs': 7, **{col: max_width for col in columns}}
     
-    header = " ".join(f"{col:<{widths[col]}}" for col in ['n_dgs'] + columns)
+    header = f"    {'n_dgs':<{widths['n_dgs']}} " + " ".join(f"{col:<{widths[col]}}" for col in columns)
     separator = "=" * len(header)
     
     print(f"\n{separator}")
@@ -190,16 +184,18 @@ def print_results_table(runs: List[dict], wf_types: List[str], title: str = "Res
     print(header)
     print("-" * len(header))
     
-    for run in runs:
+    for group_idx, run in enumerate(runs):
         max_len = max(len(run["_id"].get(col, [])) for col in columns)
         
         for i in range(max_len):
-            row_values = {
-                'n_dgs': run['n_dgs'] if i == 0 else "",
-                **{col: run["_id"].get(col, [])[i] if i < len(run["_id"].get(col, [])) else "" 
-                   for col in columns}
-            }
-            print(" ".join(f"{str(row_values[col]):<{widths[col]}}" for col in ['n_dgs'] + columns))
+            # Show [0], [1], etc. on first row only
+            prefix = f"[{group_idx}]" if i == 0 else "   "
+            n_dgs_val = run['n_dgs'] if i == 0 else ""
+            col_vals = [run["_id"].get(col, [])[i] if i < len(run["_id"].get(col, [])) else "" 
+                       for col in columns]
+            
+            print(f"{prefix} {str(n_dgs_val):<{widths['n_dgs']}} " + \
+                  " ".join(f"{str(val):<{widths[col]}}" for val, col in zip(col_vals, columns)))
         
         print("-" * len(header))
 
@@ -218,6 +214,7 @@ def write_output_files(study_id: str, complete_runs: List[dict],
     :return: Path to output directory
     """
     # Determine output directory
+    study_id = study_id.replace(":", "-")
     if outdir:
         output_dir = Path(outdir)
     else:
@@ -248,7 +245,8 @@ def write_output_files(study_id: str, complete_runs: List[dict],
         
         # Also write individual files for each incomplete group
         for i, data in enumerate(incomplete_runs):
-            (output_dir / f"incomplete_group_{i}.json").write_text(
+            file_name = f"incomplete_group_{i}.json"
+            (output_dir / file_name).write_text(
                 json.dumps(data, indent=2)
             )
     
@@ -279,7 +277,7 @@ def run_aggregation(runtime_api, study_id: str, pipeline: Union[str, List[dict],
         "pipeline": pipeline
     }
     
-    logger.info(f"Query payload: {json.dumps(payload, indent=2)}")
+    logger.debug(f"Query payload: {json.dumps(payload, indent=2)}")
     
     # function takes a dictionary
     query_response = runtime_api.run_query(payload)

@@ -25,6 +25,7 @@ An automation framework for running sequential metagenome analysis jobs and maki
       - [Workflow Definitions](#workflow-definitions)
   - [Quick Start](#quick-start)
     - [Running the Scheduler on NERSC Rancher2](#running-the-scheduler-on-nersc-rancher2)
+      - [Managing Allow Lists](#managing-allow-lists)
     - [Running the Watcher on NERSC Perlmutter](#running-the-watcher-on-nersc-perlmutter)
   - [Processing a Study](#processing-a-study)
     - [1. Get the Study ID](#1-get-the-study-id)
@@ -132,6 +133,28 @@ The Scheduler is a Dockerized application running on [Rancher](https://rancher2.
 7. `cat sched-[dev/prod].log` or `tail sched-[dev/prod].log` to monitor Scheduler activity.
    - By default, calling `./run_scheduler.sh` deletes `sched-[dev/prod].log` and restarts the Scheduler.
 
+#### Managing Allow Lists
+
+The `/conf/submit_to_scheduler/` directory on the prod Scheduler contains saved allow lists for tracking multiple studies. Use the naming convention:
+
+`t[###]_[general_study_name]_[one_word_note]_YYYYMMDD.lst`
+
+Example: `t1372_mendota_mags_20260212.lst`
+
+**Workflow:**
+1. Save your Data Generation IDs to a file in `/conf/submit_to_scheduler/`
+2. When ready to schedule, concatenate files and overwrite `/conf/allow.lst`:
+```bash
+   cat [list1] [list2] > /conf/allow.lst
+```
+3. Restart the Scheduler
+
+**Important notes:**
+- The allow list is only read once at Scheduler startup
+- The Scheduler keeps checking previously-seen IDs even after the file changes
+- If downstream workflows stop scheduling despite no errors, the Scheduler may need the upstream IDs re-submitted (it checks for downstream processes only after reading an ID from the allow list)
+- Do not rely on the file contents to track active IDs — keep your own records in `/submit_to_scheduler/`
+  
 ---
 
 ### Running the Watcher on NERSC Perlmutter

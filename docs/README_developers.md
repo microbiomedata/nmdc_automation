@@ -35,7 +35,12 @@ For operational instructions (running the Scheduler and Watcher in production, h
   - [Development Workflow](#development-workflow)
     - [Branching](#branching)
     - [Pull Requests](#pull-requests)
+  - [Working with Workflows](#working-with-workflows)
+    - [Understanding the Workflow YAML](#understanding-the-workflow-yaml)
     - [Bumping Workflow Versions](#bumping-workflow-versions)
+    - [Selecting Test Records for Development](#selecting-test-records-for-development)
+    - [Bumping NMDC Schema Version](#bumping-nmdc-schema-version)
+    - [Debugging JAWS Jobs](#debugging-jaws-jobs)
   - [Testing](#testing)
   - [Safety Notes for Production](#safety-notes-for-production)
 
@@ -223,19 +228,51 @@ url = "https://jaws.api"
 
 ### YAML Workflow Definitions
 
-Describes workflows with inputs, outputs, children, versions, and WDL references.
+Describes workflows with inputs, outputs, children, versions, and WDL references. The default file is [nmdc_automation/config/workflows/workflows.yaml](../nmdc_automation/config/workflows/workflows.yaml). 
+
+<details><summary>Interleaved RQC workflow entry</summary>
 
 ```yaml
-- name: ReadsQC
-  type: reads_qc
-  version: 1.2.0
-  inputs:
-    - SequencingData
-  outputs:
-    - ReadsQCData
-  children:
-    - Assembly
+  - Name: Reads QC
+    Type: nmdc:ReadQcAnalysis
+    Enabled: True
+    Analyte Category: Metagenome
+    Git_repo: https://github.com/microbiomedata/ReadsQC
+    Version: v1.0.14-alpha.2
+    WDL: rqcfilter.wdl
+    Collection: workflow_execution_set
+    Filter Input Objects:
+    - Metagenome Raw Reads
+    Predecessors:
+    - Sequencing Interleaved
+    Input_prefix: rqcfilter
+    Inputs:
+      input_files: do:Metagenome Raw Reads
+      proj: "{workflow_execution_id}"
+      shortRead: true
+      interleaved: true
+    Workflow Execution:
+      name: "Read QC for {id}"
+      input_read_bases: "{outputs.stats.input_read_bases}"
+      input_read_count: "{outputs.stats.input_read_count}"
+      output_read_bases: "{outputs.stats.output_read_bases}"
+      output_read_count: "{outputs.stats.output_read_count}"
+      type: nmdc:ReadQcAnalysis
+    Outputs:
+      - output: filtered_final
+        name: Reads QC result fastq (clean data)
+        data_object_type: Filtered Sequencing Reads
+        description: Reads QC for {id}
+      - output: filtered_stats_final
+        name: Reads QC summary statistics
+        data_object_type: QC Statistics
+        description: Reads QC summary for {id}
+      - output: rqc_info
+        name: File containing read filtering information
+        data_object_type: Read Filtering Info File
+        description: Read filtering info for {id}
 ```
+</details>
 
 ### Environment Variables
 
@@ -424,12 +461,213 @@ For schema type code mappings, refer to the [NMDC Schema documentation](https://
 - Include schema updates if applicable.
 - Run `poetry update` and commit the updated `poetry.lock` before merging.
 
+---
+
+## Working with Workflows
+
+### Understanding the Workflow YAML
+
+Automation runs a series of workflows that are configured in the `workflows.yaml` file. Each workflow entry specifies:
+
+- **Workflow metadata:** Name, type, version, git repository, and WDL file path
+- **Inputs and outputs:** Data object types required and produced (defined by [nmdc-schema](https://microbiomedata.github.io/nmdc-schema/)). Used to generate input JSON files for JAWS. 
+- **Workflow execution fields:** Database fields that will be populated (see the "Workflow Execution" section of the schema docs)
+
+The YAML entries map directly to the WDL workflow definitions. Variable names must match between the YAML and WDL for workflows to be processed correctly.
+
+**Example mapping:**
+
+| YAML (workflows.yaml) | WDL (workflow file) | Schema field |
+|---|---|---|
+| `input_files` | `input_files` | `has_input` |
+| `proj` | `project` or `proj` | workflow execution ID |
+
+**Key resources:**
+- NMDC Schema docs: https://microbiomedata.github.io/nmdc-schema/ (e.g., [ReadQcAnalysis](https://microbiomedata.github.io/nmdc-schema/ReadQcAnalysis/))
+- Each workflow's WDL file has clear `input` and `output` sections — review these to understand data flow
+
 ### Bumping Workflow Versions
 
-1. Update the version in `workflows.yaml`.
-2. Update relevant test fixtures.
-3. Dry-run the scheduler to verify.
-4. Submit a sample run on `dev` using the new pre-release image.
+Each workflow (ReadsQC, Assembly, Annotation, etc.) has its own git repository with independent development and releases. When a new workflow version is released, test it in automation before deploying to production.
+
+**Process:**
+
+1. **Create a feature branch** in `nmdc_automation`:
+   ```bash
+   git checkout -b ticketnum-readsqc-v1.0.22
+   ```
+
+2. **Update `workflows.yaml`:**
+   ```yaml
+   - Name: Reads QC
+     Version: v1.0.22  # was v1.0.14-alpha.2
+     Git_repo: https://github.com/microbiomedata/ReadsQC
+     # ... rest of config
+   ```
+
+3. **Update test fixtures** in `tests/` to match the new version and any output schema changes. This is moreso for major changes in input and output files.
+
+4. **Dry-run the scheduler locally:**
+   ```bash
+   DRYRUN=1 ALLOWLISTFILE=test_allow.lst python -m nmdc_automation.workflow_automation.sched \
+       site_configuration_local.toml \
+       workflows.yaml
+   ```
+
+5. **Create a release candidate** (e.g., `0.17.0-rc.1`) — see the [Release Documentation](https://github.com/microbiomedata/infra-admin/blob/main/releases/nmdc-automation.md).
+
+6. **Select a test Data Generation record** (see [Selecting Test Records](#selecting-test-records-for-development) below).
+
+7. **Run on dev:** Deploy the release candidate to the dev Scheduler and Watcher, add the test ID to the dev `allow.lst`, and monitor the run.
+
+8. **Verify results:** Check that the workflow execution completes successfully and outputs are correctly posted to the dev database.
+
+9. **Merge and release:** Once validated, merge the PR and cut an official release.
+
+### Selecting Test Records for Development
+
+To test workflow changes or schema updates on the dev environment without affecting production data:
+
+1. **Choose a known-good record** that ran successfully in production recently. This ensures you're testing with valid inputs.
+
+2. **Delete existing workflow executions** for that record in the dev database using the [delete workflow executions endpoint](https://api-dev.microbiomedata.org/docs#/workflows/delete_workflow_executions_workflows_workflow_executions_delete):
+   - This removes all workflow execution records and associated jobs for the Data Generation ID
+   - The dev database is overwritten by prod with every release, so no cleanup is needed afterward
+
+3. **Add the Data Generation ID** to the dev `allow.lst` and restart the dev Scheduler.
+
+4. **Monitor the run** through the dev Watcher logs and JAWS.
+
+**Example:**
+```bash
+# 1. Use API to delete existing executions for nmdc:dgns-11-abc123
+# (via the API endpoint)
+
+# 2. Add to dev allow.lst on Rancher
+echo "nmdc:dgns-11-abc123" >> /conf/allow.lst
+
+# 3. Restart dev Scheduler
+./run_scheduler.sh
+```
+
+### Bumping NMDC Schema Version
+
+When the `nmdc-schema` package releases a new version, update the dependency in `pyproject.toml`:
+
+1. **Update `pyproject.toml`:**
+   ```toml
+   [tool.poetry.dependencies]
+   nmdc-schema = "^11.16.0"  # was ^11.15.0
+   ```
+
+   The `^` (caret) allows compatible updates: `^11.16.0` will install `11.16.0`, `11.16.1`, etc., but not `11.17.0` or `12.0.0`. See [Poetry dependency specification](https://python-poetry.org/docs/dependency-specification/) for details.
+
+2. **Run `poetry update`:**
+   ```bash
+   poetry update
+   ```
+
+   Poetry will resolve the new schema version and any transitive dependency changes. The `poetry.lock` file will reflect the exact versions installed. For example, specifying `^11.16.0` might result in `11.16.1` if patches have been released.
+
+3. **Review the changes:**
+   ```bash
+   git diff poetry.lock
+   ```
+
+4. **Update test fixtures** if the schema changes affect workflow execution fields or data object types.
+
+5. **Test locally:**
+   ```bash
+   make test
+   ```
+
+6. **Commit both files:**
+   ```bash
+   git add pyproject.toml poetry.lock
+   git commit -m "Bump nmdc-schema to ^11.16.0"
+   ```
+
+7. **Follow the release process** to deploy and test on dev before merging to `main`.
+
+### Debugging JAWS Jobs
+
+When a job fails in JAWS, use the workflow root directory to trace errors and inspect intermediate files.
+
+**Steps:**
+
+1. **Get the JAWS job ID** from the Watcher `agent.state` file or MongoDB `jobs` collection.
+
+2. **Check job status:**
+   ```bash
+   jaws status <job_id>
+   ```
+
+   <details><summary>Example output:</summary>
+
+   ```json
+    {
+      "compute_site_id": "nmdc",
+      "cpu_hours": null,
+      "cromwell_run_id": "6987bea6-8cde-4e08-9611-0d6727ae279d",
+      "id": 166534,
+      "input_site_id": "nmdc",
+      "json_file": "interleave.json",
+      "output_dir": null,
+      "result": null,
+      "status": "queued",
+      "status_detail": "At least one task has requested resources but no tasks have started running yet",
+      "submitted": "2026-02-16 14:53:24",
+      "tag": null,
+      "team_id": "nmdc",
+      "updated": "2026-02-16 14:54:01",
+      "user_id": "nmdcda",
+      "wdl_file": "interleave_rqcfilter.wdl",
+      "workflow_name": "nmdc_rqcfilter",
+      "workflow_root": "/pscratch/sd/n/nmjaws/nmdc-prod/cromwell-executions/nmdc_rqcfilter/6987bea6-8cde-4e08-9611-0d6727ae279d"
+    }
+   ```
+   </details>
+
+1. **Navigate to the `workflow_root` directory:** 
+   ```bash
+   cd /pscratch/sd/n/nmjaws/nmdc-prod/cromwell-executions/nmdc_assembly/0fddc559-833e-4e14-9fa5-1e3d485b232d
+   ```
+   If you're navigating via VSCode, you can do a `cmd+click` on the path, depending on OS.
+
+2. **Explore the execution directory structure:**
+   - `call-<task_name>/` — subdirectories for each WDL task
+   - `call-<task_name>/execution/` — contains:
+     - `stdout` and `stderr` — task output and errors
+     - `script` — the actual command that was run
+     - Input and output files for the task
+   - `call-<task_name>/inputs/` — symlinks to input files
+
+3. **Check common failure points:**
+   - **Input files:** Verify they exist and are not corrupted
+   - **stderr:** Look for error messages from the tool
+   - **stdout:** Check for unexpected output or warnings
+   - **script:** Confirm the command looks correct and parameters match expectations
+   - **Resource limits:** Look for out-of-memory or timeout errors
+
+4. **Example investigation:**
+   ```bash
+   # Check the stage task stderr
+   cat call-stage/execution/stderr
+   
+   # Verify input file integrity
+   ls -lh call-stage/inputs/
+   
+   # Check what command was actually run
+   cat call-stage/execution/script
+   ```
+
+5. **Common issues:**
+   - **Download failures:** Input file URLs are unreachable or corrupted
+   - **Resource exhaustion:** Job ran out of memory or disk space
+   - **Tool errors:** The underlying scientific tool (SPAdes, Prodigal, etc.) failed due to bad input or a bug
+   - **Workflow bugs:** Incorrect WDL logic or parameter passing
+
+For systemic issues (bad WDL logic, schema mismatches), file an issue in the workflow's git repository. For transient issues (download errors, quota), retry the job.
 
 ---
 

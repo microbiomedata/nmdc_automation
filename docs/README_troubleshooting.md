@@ -8,6 +8,7 @@
   - [Checking Workflow Status](#checking-workflow-status)
     - [Using the Study Report Script](#using-the-study-report-script)
     - [MongoDB Aggregation Query](#mongodb-aggregation-query)
+    - [Interpreting Workflow Status](#interpreting-workflow-status)
   - [Diagnosing Common Issues](#diagnosing-common-issues)
     - [Scheduler Not Creating Jobs](#scheduler-not-creating-jobs)
     - [Watcher Not Picking Up Jobs](#watcher-not-picking-up-jobs)
@@ -82,6 +83,15 @@ A Python script generates a workflow completion report for a given study. Run fr
 python nmdc_automation/run_process/run_report.py study-report \
     site_configuration_nersc_prod.toml \
     nmdc:sty-11-hht5sb92
+
+# or
+
+python -m nmdc_automation.run_process.run_report study-report ./site_configuration_nersc_prod.toml nmdc:sty-11-hht5sb92
+```
+
+For more script options, such as writing out the JSONs to file, run 
+```
+python -m nmdc_automation.run_process.run_report study-report --help
 ```
 
 <details><summary>Example output:</summary>
@@ -96,21 +106,134 @@ python nmdc_automation/run_process/run_report.py study-report \
 }
 2026-02-16 14:21:00,582 INFO: Found 7 categories of incomplete data generations
 
-===================================================================================================================================
-Incomplete Runs
-===================================================================================================================================
-n_dgs   wfex_type                      job_wfex_type                  missing_wfex                   incomplete_jobs               
------------------------------------------------------------------------------------------------------------------------------------
-3       nmdc:ReadQcAnalysis            nmdc:ReadBasedTaxonomyAnalysis nmdc:MetagenomeAnnotation      nmdc:ReadBasedTaxonomyAnalysis
-        nmdc:MetagenomeAssembly        nmdc:MetagenomeAnnotation      nmdc:MagsAnalysis              nmdc:MetagenomeAnnotation     
-                                                                      nmdc:ReadBasedTaxonomyAnalysis                               
------------------------------------------------------------------------------------------------------------------------------------
-2       nmdc:ReadQcAnalysis            nmdc:ReadBasedTaxonomyAnalysis nmdc:MagsAnalysis              nmdc:ReadBasedTaxonomyAnalysis
-        nmdc:MetagenomeAssembly        nmdc:MetagenomeAnnotation      nmdc:ReadBasedTaxonomyAnalysis                               
-        nmdc:MetagenomeAnnotation                                                                                                  
------------------------------------------------------------------------------------------------------------------------------------
+=======================================================================================================================================
+  Incomplete Runs
+=======================================================================================================================================
+    n_dgs   wfex_type                      job_wfex_type                  missing_wfex                   incomplete_jobs               
+---------------------------------------------------------------------------------------------------------------------------------------
+[0] 3       nmdc:ReadQcAnalysis            nmdc:ReadBasedTaxonomyAnalysis nmdc:ReadBasedTaxonomyAnalysis nmdc:ReadBasedTaxonomyAnalysis
+            nmdc:MetagenomeAssembly        nmdc:MetagenomeAnnotation      nmdc:MetagenomeAnnotation      nmdc:MetagenomeAnnotation     
+                                                                          nmdc:MagsAnalysis                                            
+---------------------------------------------------------------------------------------------------------------------------------------
+[1] 2       nmdc:ReadQcAnalysis            nmdc:ReadBasedTaxonomyAnalysis nmdc:ReadBasedTaxonomyAnalysis nmdc:ReadBasedTaxonomyAnalysis
+            nmdc:MetagenomeAssembly        nmdc:MetagenomeAnnotation      nmdc:MagsAnalysis                                            
+            nmdc:MetagenomeAnnotation                                                                                                  
+---------------------------------------------------------------------------------------------------------------------------------------
 ...                                                                    
 2026-02-16 14:21:00,609 INFO: Files written to /[current working directory]/nmdc:sty-11-hht5sb92_report_2026-02-16/
+```
+</details>
+
+<details><summary>Example incomplete jobs JSON</summary>
+
+`nmdc:sty-11-hht5sb92_report_2026-02-16/incomplete_group_0.json`
+```
+{
+  "_id": {
+    "wfex_type": [
+      "nmdc:ReadQcAnalysis",
+      "nmdc:MetagenomeAssembly"
+    ],
+    "job_wfex_type": [
+      "nmdc:ReadBasedTaxonomyAnalysis",
+      "nmdc:MetagenomeAnnotation"
+    ],
+    "missing_wfex": [
+      "nmdc:MetagenomeAnnotation",
+      "nmdc:MagsAnalysis",
+      "nmdc:ReadBasedTaxonomyAnalysis"
+    ],
+    "incomplete_jobs": [
+      "nmdc:ReadBasedTaxonomyAnalysis",
+      "nmdc:MetagenomeAnnotation"
+    ]
+  },
+  "n_dgs": 3,
+  "executions": [
+    {
+      "id": "nmdc:omprc-11-h87sah29",
+      "wfex_id": [
+        "nmdc:wfrqc-11-1n9w1236.1",
+        "nmdc:wfmgas-11-fbrh0g36.1"
+      ],
+      "wfex_end": [
+        "2025-09-09T16:08:26.017797+00:00",
+        "2025-09-09T16:08:26.081531+00:00"
+      ],
+      "job_id": [
+        "nmdc:54addd02-9dc0-11f0-ad25-86125b21c123",
+        "nmdc:33b8363a-9dd7-11f0-ad25-86125b21c123"
+      ],
+      "job_wfid": [
+        "nmdc:wfrbt-11-2c1hjb89.1",
+        "nmdc:wfmgan-11-w6s5kp69.1"
+      ],
+      "job_start": [
+        {
+          "$date": "2025-09-30T05:43:02Z"
+        },
+        {
+          "$date": "2025-09-30T08:26:45Z"
+        }
+      ]
+    },
+    {
+      "id": "nmdc:omprc-11-yke6pj76",
+      "wfex_id": [
+        "nmdc:wfrqc-11-bmsq0s69.1",
+        "nmdc:wfmgas-11-g40a3z61.1"
+      ],
+      "wfex_end": [
+        "2025-09-09T16:07:00.043946+00:00",
+        "2025-09-09T16:07:00.013760+00:00"
+      ],
+      "job_id": [
+        "nmdc:412ee45e-9ddb-11f0-ad25-86125b21c123",
+        "nmdc:5b90025c-9dc6-11f0-ad25-86125b21c123"
+      ],
+      "job_wfid": [
+        "nmdc:wfrbt-11-9rhsta76.1",
+        "nmdc:wfmgan-11-809f0336.1"
+      ],
+      "job_start": [
+        {
+          "$date": "2025-09-30T08:55:46Z"
+        },
+        {
+          "$date": "2025-09-30T06:26:11Z"
+        }
+      ]
+    },
+    {
+      "id": "nmdc:omprc-11-ghjeyv93",
+      "wfex_id": [
+        "nmdc:wfrqc-11-q8z15930.1",
+        "nmdc:wfmgas-11-ad0g8s78.1"
+      ],
+      "wfex_end": [
+        "2025-09-09T16:15:29.728910+00:00",
+        "2025-09-09T16:15:29.718732+00:00"
+      ],
+      "job_id": [
+        "nmdc:607e6434-9dc6-11f0-ad25-86125b21c123",
+        "nmdc:52a12aba-9dd8-11f0-ad25-86125b21c123"
+      ],
+      "job_wfid": [
+        "nmdc:wfrbt-11-ptpz1779.1",
+        "nmdc:wfmgan-11-x9jgdz59.1"
+      ],
+      "job_start": [
+        {
+          "$date": "2025-09-30T06:26:19Z"
+        },
+        {
+          "$date": "2025-09-30T08:34:47Z"
+        }
+      ]
+    }
+  ],
+  "complete": false
+}
 ```
 </details>
 
@@ -122,6 +245,31 @@ Again, to aid with the long command, an alias has been set in the `~/.bashrc` fi
 alias study-report='python -m nmdc_automation.run_process.run_report study-report site_configuration_nersc_prod.toml' # study_id
 ```
 </details>
+
+The most useful set of options to run with the study report would be `study-report [study_id] --show incomplete --write-files`. From there, the data generation set records can be gathered for a group to submit using command line `jq` commands. The following examples are based off the "Incomplete Runs" table and JSON above.
+
+```
+  # collect annotation jobs collection IDs to release
+  >> jq -r '.executions[].job_id[1]' incomplete_group_0.json # > failed_anno.jobs.lst # optionally pipe to file
+    nmdc:33b8363a-9dd7-11f0-ad25-86125b21c123
+    nmdc:5b90025c-9dc6-11f0-ad25-86125b21c123
+    nmdc:52a12aba-9dd8-11f0-ad25-86125b21c123
+
+  # collect both annotation and rbt jobs to release.
+  >> jq -r '.executions[].job_id[0,1]' incomplete_group_0.json # > failed_rba_anno.jobs.lst
+    nmdc:54addd02-9dc0-11f0-ad25-86125b21c123
+    nmdc:412ee45e-9ddb-11f0-ad25-86125b21c123
+    nmdc:607e6434-9dc6-11f0-ad25-86125b21c123
+    nmdc:33b8363a-9dd7-11f0-ad25-86125b21c123
+    nmdc:5b90025c-9dc6-11f0-ad25-86125b21c123
+    nmdc:52a12aba-9dd8-11f0-ad25-86125b21c123
+
+  # collect data generation set IDs for scheduler
+  >> jq -r '.executions[].id' incomplete_group_0.json #  > failed_rba_anno.dgs.lst
+    nmdc:omprc-11-h87sah29
+    nmdc:omprc-11-yke6pj76
+    nmdc:omprc-11-ghjeyv93
+```
 
 ### MongoDB Aggregation Query
 
@@ -281,6 +429,26 @@ The following aggregation retrieves DataGeneration records grouped by what workf
 
 The query groups DataGeneration IDs by the combination of workflow executions present in `workflow_execution_set` (completed runs in good standing) and jobs in the `jobs` collection (runs that have been submitted, which may have errored if they are not also in `workflow_execution_set`). Replace `nmdc:sty-11-hht5sb92` with the study ID you are investigating.
 
+### Interpreting Workflow Status
+
+Once you've run the study report or aggregation query, use this decision tree to determine the appropriate action:
+
+| What you see | What it means | Action |
+|---|---|---|
+| **No jobs, no workflow executions** | The Scheduler has never created jobs for these Data Generations | Add the Data Generation IDs to `allow.lst` and restart the Scheduler |
+| **Jobs exist, no workflow executions** | Jobs were created and claimed, but either failed or are still running | Check JAWS status or `agent.state` for existing jobs. If failed, see [Job Failures](#job-failures). If still running, monitor progress. |
+| **Jobs exist, partial workflow executions** | Some workflows completed successfully, others failed or are missing | Identify which workflow types are missing. Check if their input requirements are met. If inputs exist but jobs weren't created, verify version compatibility in `workflows.yaml`. |
+| **Workflow executions exist, jobs array is empty** | Workflows completed successfully without going through the automation system | This is normal for manually-run or imported workflows. No action needed unless you need to re-run them. |
+| **Jobs have non-empty `claims` array** | Jobs are currently being processed by a Watcher, or were claimed but the Watcher died | Check if the Watcher is still running. If not, use the release endpoint to free the jobs. See [Releasing Jobs](#releasing-jobs). |
+| **Jobs show `failed_count > 0` in agent.state** | Jobs have failed at least once and may have been retried | Check JAWS logs for the failure reason. If transient (download error, quota), retry may succeed. If systemic (bad input, workflow bug), investigate root cause. |
+
+**Common ambiguous cases:**
+
+- **Downstream jobs keep failing:** This can happen if there are truncated files or poor quality data upstream. Check the QC stats and input files. If the data is poor quality and cannot continue to be rerun, you will need to mark the workflows with a `has_failure_categorization`. 
+- **Multiple jobs for the same workflow type:** This indicates retries or manual resubmissions. Check `created_at` timestamps to identify the most recent attempt, and verify only one is active in JAWS.
+- **Jobs exist but no corresponding workflow execution, and job is marked `done: true`:** The job completed in JAWS but failed to post results to the database. Check Watcher logs for API errors or permission issues during the post-run step.
+- **JAWS job result is null, but status is done** If the jobs had been in queue for a while, the inputs may have been cleared from intermediate directories before they were able to be submitted for a run. Release the job ID to let the job reschedule with JAWS. 
+  
 ---
 
 ## Diagnosing Common Issues
@@ -326,6 +494,8 @@ Check in this order:
    jaws resubmit <jaws_jobid>
    ```
    > **Note:** `jaws resubmit` updates the job only within JAWS. It does **not** update the Scheduler or the NMDC database. For a full pipeline resubmission, use the release endpoint described below.
+For more in-depth JAWS troubleshooting, see [Debugging JAWS Jobs](README_developers.md#debugging-jaws-jobs).
+
 
 ### Scheduler Connection Error
 
