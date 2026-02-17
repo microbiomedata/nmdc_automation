@@ -1,0 +1,45 @@
+[
+    {
+        "id": "nmdc:dgns-11-qmpge038",
+        "name": "Surface water microbial communities - ARIK.20140805.AMC.SESTON.1-DNA1",
+        "ncbi_project_name": "PRJNA406977",
+        "processing_institution": "Battelle",
+        "type": "nmdc:NucleotideSequencing",
+        "analyte_category": "metagenome",
+        "associated_studies": [
+            "nmdc:sty-11-hht5sb92"
+        ],
+        "has_input": [
+            "nmdc:procsm-12-h63qmv56"
+        ],
+        "has_output": [
+            "nmdc:dobj-11-ryqm4v52",
+            "nmdc:dobj-11-g8xx8612"
+        ],
+
+        "instrument_used": [
+            "nmdc:inst-14-xz5tb342"
+        ]
+    },
+    {
+        "id": "nmdc:dgns-11-w99dsv77",
+        "name": "Surface water microbial communities - ARIK.20140805.AMC.SESTON.1-DNA1",
+        "ncbi_project_name": "PRJNA406977",
+        "processing_institution": "Battelle",
+        "type": "nmdc:NucleotideSequencing",
+        "analyte_category": "metagenome",
+        "associated_studies": [
+            "nmdc:sty-11-hht5sb92"
+        ],
+        "has_input": [
+            "nmdc:procsm-12-h63qmv56"
+        ],
+        "has_output": [
+            "nmdc:dobj-11-t63mfm30",
+            "nmdc:dobj-11-qseqfc93"
+        ],
+        "instrument_used": [
+            "nmdc:inst-14-xz5tb342"
+        ]
+    }
+]

@@ -1,0 +1,122 @@
+[
+    {
+        "data_object_type": "Metagenome Raw Read 2",
+        "description": "sequencing results for BMI_HCNKKBGX5_Tube75_R2",
+        "id": "nmdc:dobj-11-0sa6c392",
+        "in_manifest": [
+        "nmdc:manif-11-58zpr543"
+        ],
+        "name": "BMI_HCNKKBGX5_Tube75_R2.fastq.gz",
+        "type": "nmdc:DataObject",
+        "url": "https://storage.neonscience.org/neon-microbial-raw-seq-files/2023/BMI_HCNKKBGX5_mms_R2/BMI_HCNKKBGX5_Tube75_R2.fastq.gz",
+        "data_category": "instrument_data"
+    },
+    {
+        "data_object_type": "Metagenome Raw Read 2",
+        "description": "sequencing results for BMI_HL7HTBGX7_Tube1250_R2",
+        "id": "nmdc:dobj-11-3ers8b92",
+        "in_manifest": [
+        "nmdc:manif-11-pwx0je07"
+        ],
+        "name": "BMI_HL7HTBGX7_Tube1250_R2.fastq.gz",
+        "type": "nmdc:DataObject",
+        "url": "https://storage.neonscience.org/neon-microbial-raw-seq-files/2023/BMI_HL7HTBGX7_mms_R2/BMI_HL7HTBGX7_Tube1250_R2.fastq.gz",
+        "data_category": "instrument_data"
+    },
+    {
+        "data_object_type": "Metagenome Raw Read 1",
+        "description": "sequencing results for BMI_HHWLYBGX5_Tube75_R1",
+        "id": "nmdc:dobj-11-64rj8m39",
+        "in_manifest": [
+        "nmdc:manif-11-58zpr543"
+        ],
+        "name": "BMI_HHWLYBGX5_Tube75_R1.fastq.gz",
+        "type": "nmdc:DataObject",
+        "url": "https://storage.neonscience.org/neon-microbial-raw-seq-files/2023/BMI_HHWLYBGX5_mms_R1/BMI_HHWLYBGX5_Tube75_R1.fastq.gz",
+        "data_category": "instrument_data"
+    },
+    {
+        "data_object_type": "Metagenome Raw Read 1",
+        "description": "sequencing results for BMI_HFWM2BGX7_Tube1250_R1",
+        "id": "nmdc:dobj-11-7s44xn97",
+        "in_manifest": [
+        "nmdc:manif-11-pwx0je07"
+        ],
+        "name": "BMI_HFWM2BGX7_Tube1250_R1.fastq.gz",
+        "type": "nmdc:DataObject",
+        "url": "https://storage.neonscience.org/neon-microbial-raw-seq-files/2023/BMI_HFWM2BGX7_mms_R1/BMI_HFWM2BGX7_Tube1250_R1.fastq.gz",
+        "data_category": "instrument_data"
+    },
+    {
+        "data_object_type": "Metagenome Raw Read 1",
+        "description": "sequencing results for BMI_HL7HTBGX7_Tube1250_R1",
+        "id": "nmdc:dobj-11-b89zv749",
+        "in_manifest": [
+        "nmdc:manif-11-pwx0je07"
+        ],
+        "name": "BMI_HL7HTBGX7_Tube1250_R1.fastq.gz",
+        "type": "nmdc:DataObject",
+        "url": "https://storage.neonscience.org/neon-microbial-raw-seq-files/2023/BMI_HL7HTBGX7_mms_R1/BMI_HL7HTBGX7_Tube1250_R1.fastq.gz",
+        "data_category": "instrument_data"
+    },
+    {
+        "data_object_type": "Metagenome Raw Read 2",
+        "description": "sequencing results for BMI_HLGJLBGX5_Tube75_R2",
+        "id": "nmdc:dobj-11-ej147r72",
+        "in_manifest": [
+        "nmdc:manif-11-58zpr543"
+        ],
+        "name": "BMI_HLGJLBGX5_Tube75_R2.fastq.gz",
+        "type": "nmdc:DataObject",
+        "url": "https://storage.neonscience.org/neon-microbial-raw-seq-files/2023/BMI_HLGJLBGX5_mms_R2/BMI_HLGJLBGX5_Tube75_R2.fastq.gz",
+        "data_category": "instrument_data"
+    },
+    {
+        "data_object_type": "Metagenome Raw Read 1",
+        "description": "sequencing results for BMI_HLGJLBGX5_Tube75_R1",
+        "id": "nmdc:dobj-11-s8f2vp66",
+        "in_manifest": [
+        "nmdc:manif-11-58zpr543"
+        ],
+        "name": "BMI_HLGJLBGX5_Tube75_R1.fastq.gz",
+        "type": "nmdc:DataObject",
+        "url": "https://storage.neonscience.org/neon-microbial-raw-seq-files/2023/BMI_HLGJLBGX5_mms_R1/BMI_HLGJLBGX5_Tube75_R1.fastq.gz",
+        "data_category": "instrument_data"
+    },
+    {
+        "data_object_type": "Metagenome Raw Read 2",
+        "description": "sequencing results for BMI_HHWLYBGX5_Tube75_R2",
+        "id": "nmdc:dobj-11-xabgmn88",
+        "in_manifest": [
+        "nmdc:manif-11-58zpr543"
+        ],
+        "name": "BMI_HHWLYBGX5_Tube75_R2.fastq.gz",
+        "type": "nmdc:DataObject",
+        "url": "https://storage.neonscience.org/neon-microbial-raw-seq-files/2023/BMI_HHWLYBGX5_mms_R2/BMI_HHWLYBGX5_Tube75_R2.fastq.gz",
+        "data_category": "instrument_data"
+    },
+    {
+        "data_object_type": "Metagenome Raw Read 2",
+        "description": "sequencing results for BMI_HFWM2BGX7_Tube1250_R2",
+        "id": "nmdc:dobj-11-xnjewp15",
+        "in_manifest": [
+        "nmdc:manif-11-pwx0je07"
+        ],
+        "name": "BMI_HFWM2BGX7_Tube1250_R2.fastq.gz",
+        "type": "nmdc:DataObject",
+        "url": "https://storage.neonscience.org/neon-microbial-raw-seq-files/2023/BMI_HFWM2BGX7_mms_R2/BMI_HFWM2BGX7_Tube1250_R2.fastq.gz",
+        "data_category": "instrument_data"
+    },
+    {
+        "data_object_type": "Metagenome Raw Read 1",
+        "description": "sequencing results for BMI_HCNKKBGX5_Tube75_R1",
+        "id": "nmdc:dobj-11-zc1bdk42",
+        "in_manifest": [
+        "nmdc:manif-11-58zpr543"
+        ],
+        "name": "BMI_HCNKKBGX5_Tube75_R1.fastq.gz",
+        "type": "nmdc:DataObject",
+        "url": "https://storage.neonscience.org/neon-microbial-raw-seq-files/2023/BMI_HCNKKBGX5_mms_R1/BMI_HCNKKBGX5_Tube75_R1.fastq.gz",
+        "data_category": "instrument_data"
+    }
+]

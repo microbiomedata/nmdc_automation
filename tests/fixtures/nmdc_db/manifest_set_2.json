@@ -1,0 +1,12 @@
+[
+    {
+        "id": "nmdc:manif-11-58zpr543",
+        "manifest_category": "poolable_replicates",
+        "type": "nmdc:Manifest"
+    },
+    {
+        "id": "nmdc:manif-11-pwx0je07",
+        "manifest_category": "poolable_replicates",
+        "type": "nmdc:Manifest"
+    }
+]

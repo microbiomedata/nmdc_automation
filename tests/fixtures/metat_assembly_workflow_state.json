@@ -9,7 +9,7 @@
       "wdl": "metaT_assembly.wdl",
       "activity_id": "nmdc:wfmtas-12-g8a36789.1",
       "activity_set": "workflow_execution_set",
-      "was_informed_by": "nmdc:dgns-11-6tsbsj80",
+      "was_informed_by": ["nmdc:dgns-11-6tsbsj80"],
       "trigger_activity": "nmdc:wfrqc-12-ctc9vt05.1",
       "iteration": 1,
       "input_prefix": "metatranscriptome_assy",

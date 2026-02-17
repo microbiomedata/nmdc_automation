@@ -310,8 +310,7 @@ class ImportMapper:
         """
 
         filter = {
-            'was_informed_by': self.data_generation_id,
-            'type': {"$ne": "nmdc:MetagenomeSequencing"}
+            'was_informed_by': self.data_generation_id
         }
         workflow_execution_recs = self.runtime_api.find_planned_processes(filter)
         for workflow_execution in workflow_execution_recs:

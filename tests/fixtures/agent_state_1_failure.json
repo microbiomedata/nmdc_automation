@@ -10,7 +10,7 @@
             "wdl": "mbin_nmdc.wdl",
             "activity_id": "nmdc:wfmag-11-g7msr323.1",
             "activity_set": "mags_activity_set",
-            "was_informed_by": "nmdc:omprc-11-9cdxha98",
+            "was_informed_by": ["nmdc:omprc-11-9cdxha98"],
             "trigger_activity": "nmdc:wfmgan-11-jv8kx789.1",
             "iteration": 1,
             "input_prefix": "nmdc_mags",
@@ -209,7 +209,7 @@
             ]
         },
         "activity_id": "nmdc:wfmag-11-g7msr323.1",
-        "last_status": "Failed",
+        "last_status": "failed",
         "done": false,
         "failed_count": 1,
         "start": "2024-09-16T19:33:32.562412+00:00",

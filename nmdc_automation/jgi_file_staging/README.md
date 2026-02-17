@@ -1,3 +1,11 @@
+## Table of Contents
+- [Table of Contents](#table-of-contents)
+  - [JGI Data Staging](#jgi-data-staging)
+    - [SOP](#sop)
+    - [Connect to mongodb:](#connect-to-mongodb)
+    - [POC](#poc)
+
+
 ### JGI Data Staging
 
 1. create project in mongodb
@@ -43,3 +51,6 @@ Mongodb is used to track the metadata and the status of the files.
 
 #### Connect to mongodb:
 shifter --image mongo:4 --module none mongo mongo-loadbalancer.nmdc-dev.production.svc.spin.nersc.org:27017/workflow -u mongo-user -p --authenticationDatabase admin
+
+#### POC
+- Mark Flynn <mflynn@lanl.gov>

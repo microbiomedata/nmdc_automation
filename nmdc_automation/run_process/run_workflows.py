@@ -89,7 +89,8 @@ def resubmit(ctx, operation_ids, all_failures, submit):
         logger.info(f"Found {len(failed_jobs)} failed jobs")
 
         for job in failed_jobs:
-            msg =f"Job {job.opid} for {job.was_informed_by} / {job.workflow_execution_id} Status: {job.job_status}"
+            if len(job.was_informed_by)==1:
+                msg =f"Job {job.opid} for {job.was_informed_by[0]} / {job.workflow_execution_id} Status: {job.job_status}"
 
             if submit:
                 logger.info(f"Resubmitting {msg}")
@@ -101,7 +102,8 @@ def resubmit(ctx, operation_ids, all_failures, submit):
         for opid in operation_ids:
             job = watcher.job_manager.find_job_by_opid(opid)
             if job:
-                msg = f"Job for {job.was_informed_by} / {job.workflow_execution_id} Status: {job.job_status}"
+                if len(job.was_informed_by) == 1:
+                    msg = f"Job for {job.was_informed_by[0]} / {job.workflow_execution_id} Status: {job.job_status}"
                 if submit:
                     logger.info(f"Resubmitting {msg}")
                     job.job.submit_job()

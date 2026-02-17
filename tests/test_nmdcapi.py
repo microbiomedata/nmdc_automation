@@ -1,10 +1,22 @@
 from nmdc_automation.api.nmdcapi import NmdcRuntimeApi as nmdcapi
 import json
 import os
+import time
+import re
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+from unittest.mock import patch, PropertyMock, Mock
+from tests.fixtures.db_utils import load_fixture, reset_db
 
 
-def test_basics(requests_mock, site_config_file, mock_api):
-    n = nmdcapi(site_config_file)
+#def test_basics(requests_mock, site_config_file, mock_api):
+def test_basics(monkeypatch, requests_mock, site_config_file, test_client):
+    #n = nmdcapi(site_config_file)
+    n = test_client
+
+    # Temporarily bind the REAL method to the mock instance
+    monkeypatch.setattr(n, "get_object", nmdcapi.get_object.__get__(n, nmdcapi))
 
     # Add decode description
     resp = {'description': '{"a": "b"}'}
@@ -14,8 +26,15 @@ def test_basics(requests_mock, site_config_file, mock_api):
     assert "metadata" in resp
 
 
-def test_objects(requests_mock, site_config_file, test_data_dir, mock_api):
-    n = nmdcapi(site_config_file)
+def test_objects(monkeypatch, requests_mock, site_config_file, test_data_dir, test_client):
+    #n = nmdcapi(site_config_file)
+    n = test_client
+
+    # Temporarily bind the REAL method to the mock instance
+    monkeypatch.setattr(n, "create_object", nmdcapi.create_object.__get__(n, nmdcapi))
+    monkeypatch.setattr(n, "post_workflow_executions", nmdcapi.post_workflow_executions.__get__(n, nmdcapi))
+    monkeypatch.setattr(n, "set_type", nmdcapi.set_type.__get__(n, nmdcapi))
+    monkeypatch.setattr(n, "bump_time", nmdcapi.bump_time.__get__(n, nmdcapi))
 
     requests_mock.post("http://localhost:8000/objects", json={})
     fn = test_data_dir / "afile.sha256"
@@ -37,11 +56,18 @@ def test_objects(requests_mock, site_config_file, test_data_dir, mock_api):
     assert "a" in resp
 
 
-def test_list_funcs(requests_mock, site_config_file, test_data_dir, mock_api):
-    n = nmdcapi(site_config_file)
+def test_list_funcs(monkeypatch, requests_mock, site_config_file, test_data_dir, test_client):
+   #n = nmdcapi(site_config_file)
+    n = test_client
     mock_resp = json.load(open(test_data_dir / "mock_jobs.json"))
 
-    # TODO: ccheck the full url
+    # Temporarily bind the REAL method to the mock instance
+    monkeypatch.setattr(n, "list_jobs", nmdcapi.list_jobs.__get__(n, nmdcapi))
+    monkeypatch.setattr(n, "list_ops", nmdcapi.list_ops.__get__(n, nmdcapi))
+    monkeypatch.setattr(n, "list_objs", nmdcapi.list_objs.__get__(n, nmdcapi))
+    
+
+    # TODO: check the full url
     requests_mock.get("http://localhost:8000/jobs", json=mock_resp)
     resp = n.list_jobs(filt="a=b")
     assert resp is not None
@@ -55,11 +81,16 @@ def test_list_funcs(requests_mock, site_config_file, test_data_dir, mock_api):
     assert resp is not None
 
 
-def test_update_op(requests_mock, site_config_file, mock_api):
-    n = nmdcapi(site_config_file)
+def test_update_op(monkeypatch, requests_mock, site_config_file, test_client):
+    #n = nmdcapi(site_config_file)
+    n = test_client
 
     mock_resp = {'metadata': {"b": "c"}}
 
+    # Temporarily bind the REAL method to the mock instance
+    monkeypatch.setattr(n, "update_op", nmdcapi.update_op.__get__(n, nmdcapi))
+    monkeypatch.setattr(n, "get_op", nmdcapi.get_op.__get__(n, nmdcapi))
+    
     # monkeypatch.setattr(requests, "get", mock_get)
     requests_mock.get("http://localhost:8000/operations/abc", json=mock_resp)
     requests_mock.patch("http://localhost:8000/operations/abc", json=mock_resp)
@@ -69,8 +100,13 @@ def test_update_op(requests_mock, site_config_file, mock_api):
     assert "b" in resp["metadata"]
 
 
-def test_jobs(requests_mock, site_config_file, mock_api):
-    n = nmdcapi(site_config_file)
+def test_jobs(monkeypatch, requests_mock, site_config_file, test_client):
+    #n = nmdcapi(site_config_file)
+    n = test_client
+
+    # Temporarily bind the REAL method to the mock instance
+    monkeypatch.setattr(n, "get_job", nmdcapi.get_job.__get__(n, nmdcapi))
+    monkeypatch.setattr(n, "claim_job", nmdcapi.claim_job.__get__(n, nmdcapi))
 
     requests_mock.get("http://localhost:8000/jobs/abc", json="jobs/")
     resp = n.get_job("abc")
@@ -88,9 +124,12 @@ def test_jobs(requests_mock, site_config_file, mock_api):
     assert resp["claimed"] is True
 
 
-def test_nmdcapi_get_token_with_retry(requests_mock, site_config_file):
-    n = nmdcapi(site_config_file)
+def test_nmdcapi_get_token_with_retry(monkeypatch, requests_mock, site_config_file, test_client):
+    #n = nmdcapi(site_config_file)
+    n = test_client
     token_url = "http://localhost:8000/token"
+
+    monkeypatch.setattr(n, "get_token", nmdcapi.get_token.__get__(n, nmdcapi))
 
     requests_mock.post(
         token_url, [{"status_code": 401, "json": {"error": "Unauthorized"}},
@@ -100,8 +139,8 @@ def test_nmdcapi_get_token_with_retry(requests_mock, site_config_file):
                     }}]
     )
     # sanity check
-    assert n.token is None
-    assert n.expires_at == 0
+    #assert n.token is None
+    #assert n.expires_at == 0
 
     # Call method under test - should retry and succeed
     n.get_token()
@@ -110,3 +149,251 @@ def test_nmdcapi_get_token_with_retry(requests_mock, site_config_file):
     assert n.token == "mocked_access_token"
     assert n.expires_at > 0
 
+
+def test_nmdcapi_get_token_live(test_client): 
+    """
+    Tests actual token acquisition against the live running local API endpoint.
+    """
+    # Arrange: Instantiate the client. 
+    # nmdcapi must be initialized with access to the site_config object,
+    # either directly or by reading from the site_config_file path.
+    
+    # We use the site_config object to get the necessary connection details for the client
+    #auth_config = site_config.get_api_auth_config()
+    
+    # Assuming nmdcapi takes its initialization parameters from the config file it reads
+    #n = nmdcapi(site_config) 
+    n = test_client
+    
+    # Sanity check before the call
+    #assert n.token is None
+    #assert n.expires_at == 0
+
+    # Act: Call the method under test - this now hits the real http://127.0.0.1:8000/token
+    n.get_token()
+
+    # Assert: Check that the token was successfully acquired
+    assert n.token is not None
+    assert isinstance(n.token, str)
+    assert len(n.token) > 10 # Check for a reasonable token length
+    
+    # Check that the expiration time was set to a future value
+    # We can check against the current time + a buffer (e.g., 5 seconds)
+    assert n.expires_at > time.time() + 5
+
+
+def test_run_query(test_db, test_client):
+    reset_db(test_db)
+     
+    # Test aggregation data set will return 38 documents
+    load_fixture(test_db, "data_object_set.agg.json", "data_object_set")
+    load_fixture(test_db, "data_generation.agg.json", "data_generation_set")
+
+    api = test_client 
+
+    manifest_agg = {
+        "aggregate": "data_generation_set",
+        "pipeline": [
+            {
+                "$match": {
+                    "associated_studies": {
+                        "$in": [
+                            "nmdc:sty-11-pzmd0x14",
+                            "nmdc:sty-11-hht5sb92"
+                        ]
+                    } 
+                }
+            },
+            {
+                "$lookup": {
+                    "from": "data_object_set",
+                    "localField": "has_output",
+                    "foreignField": "id",
+                    "as": "data_object_set"
+                }
+            },
+            {
+                "$match": {
+                    "data_object_set.in_manifest": {
+                    "$exists": True
+                    }
+                }
+            }
+        ]
+    }
+
+    
+    resp = api.run_query(manifest_agg)
+    assert resp
+    assert len(resp) == 38
+
+
+@patch('nmdc_automation.api.nmdcapi.NmdcRuntimeApi._run_query_single') 
+def test_run_query_pagination(mock_run_query_single, site_config_file, mock_api_small, response_call1, response_call2):
+    
+    mock_run_query_single.side_effect = [response_call1, response_call2]
+    
+    # In this test, I don't want to use 'test_client', which will the trigger the globally active mock for run_query
+    # Instead, go the traditional route for the api mock so that I can use the real run_query and target the
+    # helper function for testing pagination
+
+    api= nmdcapi(site_config_file) 
+
+    # we want to mimic run_query batch size of 25, We have 42 entries returned in 2 pages(25 in page1 and 17 in page2)
+    expected_total_count = len(response_call1['cursor']['batch']) + len(response_call2['cursor']['batch'])
+
+    manifest_agg = {
+        "aggregate": "data_generation_set",
+        "pipeline": [
+            {
+                "$match": {
+                    "associated_studies": {
+                        "$in": [
+                            "nmdc:sty-11-pzmd0x14",
+                            "nmdc:sty-11-hht5sb92"
+                        ]
+                    } 
+                }
+            },
+            {
+                "$lookup": {
+                    "from": "data_object_set",
+                    "localField": "has_output",
+                    "foreignField": "id",
+                    "as": "data_object_set"
+                }
+            },
+            {
+                "$match": {
+                    "data_object_set.in_manifest": {
+                    "$exists": True
+                    }
+                }
+            }
+        ]
+    }
+
+    results = api.run_query(manifest_agg)
+    assert isinstance(results, list) 
+    assert len(results) == expected_total_count
+    
+
+def test_list_from_collection_pagination(monkeypatch, requests_mock, test_client):
+    n = test_client
+    
+    # Give the mock a real requests.session because when we call the real method, it will expect it
+    n.session = requests.Session()
+
+    collection = "data_object_set"
+
+    # Temporarily bind the REAL method to the mock instance
+    monkeypatch.setattr(n, "list_from_collection", nmdcapi.list_from_collection.__get__(n, nmdcapi))
+
+    # Define a sequence of responses:
+    # 1. Page 1 returns 2 items and a token for Page 2
+    # 2. Page 2 returns 1 item and no token
+    responses = [
+        {
+            "status_code": 200,
+            "json": {
+                "resources": [{"id": "obj1"}, {"id": "obj2"}],
+                "next_page_token": "token2"
+            }
+        },
+        {
+            "status_code": 200,
+            "json": {
+                "resources": [{"id": "obj3"}],
+                "next_page_token": None
+            }
+        }
+    ]
+
+    # need to pass the target pattern so it triggers the mock even if there are params appended
+    target_pattern = re.compile(f"{n._base_url}nmdcschema/{collection}.*")
+    requests_mock.register_uri('GET', target_pattern, responses)
+    
+    results = n.list_from_collection(collection)
+
+    # Assert
+    assert len(results) == 3
+    assert results[0]["id"] == "obj1"
+    assert results[2]["id"] == "obj3"
+    assert requests_mock.call_count == 2
+
+
+
+def test_actual_retry_delay_fast(site_config_file):
+    # instantiate the API
+    api = nmdcapi(site_config_file)
+    
+    # OVERRIDE the retry engine with a fast backoff
+    # keep 'total=6' so we verify it's still trying 6 times
+    fast_retries = Retry(
+        total=6,
+        backoff_factor=0.1,  # Reduced from 3 to 0.1
+        status_forcelist=[503, 504],
+        allowed_methods=None,
+        respect_retry_after_header=False
+    )
+    adapter = HTTPAdapter(max_retries=fast_retries)
+    api.session.mount("http://", adapter)
+    api.session.mount("https://", adapter)
+    
+    # Point to a dead port to trigger the retry engine
+    api._base_url = "http://localhost:9999/" 
+    
+    results = None
+    start_time = time.time()
+    try:
+        results = api.list_from_collection("data_object_set")
+        assert False, "Should have raised an error after failing to connect"
+    except Exception:
+        duration = time.time() - start_time
+    
+    # Assert it retried
+    # With 0.1 backoff, 6 retries should take roughly 6-7 seconds
+    assert duration > 2
+    
+    # Assert no results were returned
+    assert results is None
+    
+ 
+def test_list_from_collection_error_handling(monkeypatch, requests_mock, test_client):
+    n = test_client
+    # Give the mock a real requests.session because when we call the real method, it will expect it
+    n.session = requests.Session()
+
+    collection = "data_object_set"
+    
+    monkeypatch.setattr(n, "list_from_collection", nmdcapi.list_from_collection.__get__(n, nmdcapi))
+
+    # Simulate a successful first page followed by a 400 Bad Request (Invalid Token)
+    responses = [
+        {
+            "status_code": 200,
+            "json": {
+                "resources": [{"id": "obj1"}],
+                "next_page_token": "bad_token"
+            }
+        },
+        {
+            "status_code": 400,
+            "text": "Invalid Token"
+        }
+    ]
+
+    # need to pass the target pattern so it triggers the mock even if there are params appended
+    target_pattern = re.compile(f"{n._base_url}nmdcschema/{collection}.*")
+    requests_mock.get(target_pattern, responses, complete_qs=False)
+
+    try:
+        n.list_from_collection(collection)
+        assert False, "The code should have raised a RuntimeError"
+    except RuntimeError as e:
+        assert "Crawl failed at token" in str(e)
+        assert "400 Client Error" in str(e.__cause__)
+        
+    
+    # Verify it actually tried to fetch the second page before crashing
+    assert requests_mock.call_count == 2

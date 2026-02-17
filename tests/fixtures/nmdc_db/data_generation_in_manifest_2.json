@@ -1,0 +1,50 @@
+[
+    {
+        "id": "nmdc:dgns-11-2gqg1f77",
+        "name": "Benthic microbial communities - CUPE.20160629.AMC.EPILITHON.2-DNA1",
+        "ncbi_project_name": "PRJNA406976",
+        "processing_institution": "Battelle",
+        "type": "nmdc:NucleotideSequencing",
+        "analyte_category": "metagenome",
+        "associated_studies": [
+        "nmdc:sty-11-pzmd0x14"
+        ],
+        "has_input": [
+        "nmdc:procsm-12-4tg65k76"
+        ],
+        "has_output": [
+        "nmdc:dobj-11-0sa6c392",
+        "nmdc:dobj-11-ej147r72",
+        "nmdc:dobj-11-xabgmn88",
+        "nmdc:dobj-11-zc1bdk42",
+        "nmdc:dobj-11-s8f2vp66",
+        "nmdc:dobj-11-64rj8m39"
+        ],
+        "instrument_used": [
+        "nmdc:inst-14-xz5tb342"
+        ]
+    },
+    {
+        "id": "nmdc:dgns-11-syrtkh58",
+        "name": "Benthic microbial communities - LECO.20170726.AMC.EPILITHON.2-DNA1",
+        "ncbi_project_name": "PRJNA406976",
+        "processing_institution": "Battelle",
+        "type": "nmdc:NucleotideSequencing",
+        "analyte_category": "metagenome",
+        "associated_studies": [
+        "nmdc:sty-11-pzmd0x14"
+        ],
+        "has_input": [
+        "nmdc:procsm-12-xmsz8q59"
+        ],
+        "has_output": [
+        "nmdc:dobj-11-3ers8b92",
+        "nmdc:dobj-11-b89zv749",
+        "nmdc:dobj-11-xnjewp15",
+        "nmdc:dobj-11-7s44xn97"
+        ],
+        "instrument_used": [
+        "nmdc:inst-14-xz5tb342"
+        ]
+    }
+]
