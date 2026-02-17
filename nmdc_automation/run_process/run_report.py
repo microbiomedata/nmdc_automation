@@ -279,7 +279,7 @@ def run_aggregation(runtime_api, study_id: str, pipeline: Union[str, List[dict],
         "pipeline": pipeline
     }
     
-    logger.debug(f"Query payload: {json.dumps(payload, indent=2)}")
+    logger.info(f"Query payload: {json.dumps(payload, indent=2)}")
     
     # function takes a dictionary
     query_response = runtime_api.run_query(payload)

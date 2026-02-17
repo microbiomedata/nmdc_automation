@@ -76,114 +76,206 @@ Host perlmutter*.nersc.gov saul*.nersc.gov dtn*.nersc.gov
 
 ### Using the Study Report Script
 
-A Python script generates a workflow completion report for a given study. Run from the NERSC prod environment:
+A Python script generates a workflow completion report for a given study. Run from the NERSC prod environment or from your local if you have the credentials to:
 
 ```bash
 python nmdc_automation/run_process/run_report.py study-report \
-    ../site_configuration_nersc_prod.toml \
+    site_configuration_nersc_prod.toml \
     nmdc:sty-11-hht5sb92
 ```
 
-Example output:
+<details><summary>Example output:</summary>
 
 ```
-2026-01-25 16:11:33,516 INFO: Generating report for study nmdc:sty-11-hht5sb92 from ../site_configuration_nersc_prod.toml
-2026-01-25 16:11:34,353 INFO: Found 185 Un-pooled Data Generation IDs
-2026-01-25 16:11:53,440 INFO: Workflow status found: {
-  "Done": 102,
-  "Not done": 83
+> python -m nmdc_automation.run_process.run_report study-report ./site_configuration_nersc_prod.toml nmdc:sty-11-hht5sb92 --write-files
+2026-02-16 14:20:44,538 INFO: Generating report for study nmdc:sty-11-hht5sb92
+2026-02-16 14:21:00,581 INFO: Workflow status: {
+  "complete": 378,
+  "incomplete": 92,
+  "total": 470
 }
-2026-01-25 16:11:53,441 INFO: 83 Data generations not done:
-nmdc:omprc-12-6a2d5s20
-nmdc:dgns-11-v88j5a32
-...
-```
+2026-02-16 14:21:00,582 INFO: Found 7 categories of incomplete data generations
 
-> **Known limitation:** The report script does not account for DataGenerations that failed ReadsQC but passed MAGs. These will be counted as "not done" even if MAGs completed successfully. Until this is resolved, cross-reference the report output against the MongoDB aggregation query below for a full picture.
+===================================================================================================================================
+Incomplete Runs
+===================================================================================================================================
+n_dgs   wfex_type                      job_wfex_type                  missing_wfex                   incomplete_jobs               
+-----------------------------------------------------------------------------------------------------------------------------------
+3       nmdc:ReadQcAnalysis            nmdc:ReadBasedTaxonomyAnalysis nmdc:MetagenomeAnnotation      nmdc:ReadBasedTaxonomyAnalysis
+        nmdc:MetagenomeAssembly        nmdc:MetagenomeAnnotation      nmdc:MagsAnalysis              nmdc:MetagenomeAnnotation     
+                                                                      nmdc:ReadBasedTaxonomyAnalysis                               
+-----------------------------------------------------------------------------------------------------------------------------------
+2       nmdc:ReadQcAnalysis            nmdc:ReadBasedTaxonomyAnalysis nmdc:MagsAnalysis              nmdc:ReadBasedTaxonomyAnalysis
+        nmdc:MetagenomeAssembly        nmdc:MetagenomeAnnotation      nmdc:ReadBasedTaxonomyAnalysis                               
+        nmdc:MetagenomeAnnotation                                                                                                  
+-----------------------------------------------------------------------------------------------------------------------------------
+...                                                                    
+2026-02-16 14:21:00,609 INFO: Files written to /[current working directory]/nmdc:sty-11-hht5sb92_report_2026-02-16/
+```
+</details>
+
+Again, to aid with the long command, an alias has been set in the `~/.bashrc` file to simply call using `study-report [study_id]`.
+
+<details><summary>Study report alias</summary>
+
+```
+alias study-report='python -m nmdc_automation.run_process.run_report study-report site_configuration_nersc_prod.toml' # study_id
+```
+</details>
 
 ### MongoDB Aggregation Query
 
-The following aggregation retrieves DataGeneration records grouped by what workflow executions and jobs exist for them. It is useful for identifying gaps in the pipeline — records that are missing expected workflow executions or have jobs that may have errored.
+The following aggregation retrieves DataGeneration records grouped by what workflow executions and jobs exist for them. It is useful for identifying gaps in the pipeline — records that are missing expected workflow executions or have jobs that may have errored. This can be used either via the [queries endpoint](https://api.microbiomedata.org/docs#/Metadata%20access/run_query_queries_run_post) on the runtime API, or in the Aggregations tab of `data_generation_set` on MongoDB Compass using just the portion in "pipeline".
 
 <details><summary>Full aggregation pipeline</summary>
 
 ```javascript
-[
-  {
-    $match: {
-      associated_studies: "nmdc:sty-11-hht5sb92",
-      analyte_category: "metagenome"
-    }
-  },
-  {
-    $lookup: {
-      from: "data_object_set",
-      localField: "has_output",
-      foreignField: "id",
-      as: "data_object_set"
-    }
-  },
-  {
-    $lookup: {
-      from: "workflow_execution_set",
-      localField: "id",
-      foreignField: "was_informed_by",
-      pipeline: [{ $sort: { type: 1 } }],
-      as: "workflow_execution_set"
-    }
-  },
-  {
-    $lookup: {
-      from: "jobs",
-      localField: "id",
-      foreignField: "config.was_informed_by",
-      pipeline: [{ $sort: { "config.activity.type": 1 } }],
-      as: "jobs"
-    }
-  },
-  {
-    $match: {
-      $or: [
-        {
-          $expr: {
-            $lt: [{ $size: "$workflow_execution_set" }, 5]
+{
+  "aggregate": "data_generation_set",
+  "pipeline": [
+    {
+      "$match": {
+        "associated_studies": "nmdc:sty-11-hht5sb92",
+        "analyte_category": "metagenome"
+      }
+    },
+    {
+      "$lookup": {
+        "from": "data_object_set",
+        "localField": "has_output",
+        "foreignField": "id",
+        "as": "data_object_set"
+      }
+    },
+    {
+      "$lookup": {
+        "from": "workflow_execution_set",
+        "localField": "id",
+        "foreignField": "was_informed_by",
+        "pipeline": [
+          {
+            "$sort": {
+              "type": -1
+            }
           }
+        ],
+        "as": "workflow_execution_set"
+      }
+    },
+    {
+      "$lookup": {
+        "from": "jobs",
+        "localField": "id",
+        "foreignField": "config.was_informed_by",
+        "pipeline": [
+          {
+            "$sort": {
+              "config.activity.type": -1
+            }
+          }
+        ],
+        "as": "jobs"
+      }
+    },
+    {
+      "$match": {
+        "$or": [
+          {
+            "$expr": {
+              "$lt": [
+                {
+                  "$size": "$workflow_execution_set"
+                },
+                5
+              ]
+            }
+          },
+          {
+            "workflow_execution_set": {
+              "$not": {
+                "$elemMatch": {
+                  "type": "nmdc:ReadQcAnalysis"
+                }
+              }
+            }
+          },
+          {
+            "workflow_execution_set": {
+              "$not": {
+                "$elemMatch": {
+                  "type": "nmdc:ReadBasedTaxonomyAnalysis"
+                }
+              }
+            }
+          },
+          {
+            "workflow_execution_set": {
+              "$not": {
+                "$elemMatch": {
+                  "type": "nmdc:MetagenomeAssembly"
+                }
+              }
+            }
+          },
+          {
+            "workflow_execution_set": {
+              "$not": {
+                "$elemMatch": {
+                  "type": "nmdc:MetagenomeAnnotation"
+                }
+              }
+            }
+          },
+          {
+            "workflow_execution_set": {
+              "$not": {
+                "$elemMatch": {
+                  "type": "nmdc:MagsAnalysis"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "$match": {
+        "data_object_set.in_manifest": {
+          "$exists": false
         },
-        {
-          workflow_execution_set: {
-            $not: { $elemMatch: { type: "nmdc:MagsAnalysis" } }
-          }
+        "workflow_execution_set.qc_status": {
+          "$exists": false
+        },
+        "workflow_execution_set.qc_comment": {
+          "$exists": false
+        },
+        "has_output": {
+          "$exists": true
         }
-      ]
-    }
-  },
-  {
-    $match: {
-      "data_object_set.in_manifest": { $exists: false },
-      "workflow_execution_set.qc_status": { $exists: false },
-      "workflow_execution_set.qc_comment": { $exists: false },
-      has_output: { $exists: true }
-    }
-  },
-  {
-    $group: {
-      _id: {
-        wfex_type: "$workflow_execution_set.type",
-        job_wfex_type: "$jobs.config.activity.type"
-      },
-      executions: {
-        $push: {
-          id: "$id",
-          wfex_id: "$workflow_execution_set.id",
-          wfex_end: "$workflow_execution_set.ended_at_time",
-          job_id: "$jobs.id",
-          job_wfid: "$jobs.config.activity_id",
-          job_start: "$jobs.created_at"
+      }
+    },
+    {
+      "$group": {
+        "_id": {
+          "wfex_type": "$workflow_execution_set.type",
+          "job_wfex_type":
+            "$jobs.config.activity.type"
+        },
+        "executions": {
+          "$push": {
+            "id": "$id",
+            "wfex_id": "$workflow_execution_set.id",
+            "wfex_end":
+              "$workflow_execution_set.ended_at_time",
+            "job_id": "$jobs.id",
+            "job_wfid": "$jobs.config.activity_id",
+            "job_start": "$jobs.created_at"
+          }
         }
       }
     }
-  }
-]
+  ]
+}
 ```
 </details>
 
@@ -205,7 +297,7 @@ Check in this order:
    ```js
    db.workflow_execution_set.find({ "was_informed_by": "nmdc:example-id" })
    ```
-3. **Version incompatibility** — Check that the workflow version in `workflows.yaml` is compatible with what is already in the DB (same major.minor). Use `FORCE=1` to override if needed.
+3. **Version incompatibility** — Check that the workflow version in `workflows.yaml` is compatible with what is already in the DB (same major.minor). Use `FORCE=1` to override if needed. (not recently tested)
 4. **Job already exists** — Check the `jobs` collection for an existing job for this node. The Scheduler will not create a duplicate.
 
 ### Watcher Not Picking Up Jobs
@@ -216,7 +308,7 @@ Check in this order:
 
 ### Job Failures
 
-1. Inspect the `agent.state` file for the job's `last_status` and `failed_count`.
+1. Inspect the `agent.state` file for the job's `last_status` and `failed_count`. 
 2. Check the JAWS status:
    ```bash
    jaws status <jaws_jobid>

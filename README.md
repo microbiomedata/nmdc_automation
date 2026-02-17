@@ -26,6 +26,10 @@ An automation framework for running sequential metagenome analysis jobs and maki
   - [Quick Start](#quick-start)
     - [Running the Scheduler on NERSC Rancher2](#running-the-scheduler-on-nersc-rancher2)
     - [Running the Watcher on NERSC Perlmutter](#running-the-watcher-on-nersc-perlmutter)
+  - [Processing a Study](#processing-a-study)
+    - [1. Get the Study ID](#1-get-the-study-id)
+    - [2. Check Workflow Status](#2-check-workflow-status)
+    - [3. Take Action Based on Results](#3-take-action-based-on-results)
   - [Reference: Job \& State Records](#reference-job--state-records)
     - [Job Document Schema](#job-document-schema)
     - [Watcher State File](#watcher-state-file)
@@ -248,6 +252,58 @@ Watcher code and config files are in `/global/homes/n/nmdcda/nmdc_automation/[de
    tail watcher-[dev/prod].log
    ```
    By default, calling `./run_watcher_[dev/prod].sh` deletes `watcher-[dev/prod].log` and restarts the Watcher.
+
+---
+
+## Processing a Study
+
+When a GitHub ticket requests processing for a new study, follow this workflow:
+
+### 1. Get the Study ID
+
+Note the study ID from the GitHub ticket (e.g., `nmdc:sty-11-hht5sb92`).
+
+### 2. Check Workflow Status
+
+Run the study report script to see which Data Generations are complete and which are missing workflow executions:
+
+```bash
+python nmdc_automation/run_process/run_report.py study-report \
+    site_configuration_nersc_prod.toml \
+    nmdc:sty-11-hht5sb92
+```
+
+Or use the alias if you're on Perlmutter as `nmdcda`:
+
+```bash
+study-report nmdc:sty-11-hht5sb92
+```
+
+The report shows:
+- How many Data Generations are complete vs. incomplete
+- Which Data Generation IDs are missing expected workflow executions
+- Categories of incomplete runs (grouped by workflow execution and job types)
+
+See [Using the Study Report Script](docs/README_troubleshooting.md#using-the-study-report-script) for detailed output examples.
+
+### 3. Take Action Based on Results
+
+**If Data Generations are missing jobs entirely** (no workflow executions or jobs exist):
+
+1. Add the Data Generation IDs to `allow.lst` in the Scheduler (see [Running the Scheduler](#running-the-scheduler-on-nersc-rancher2)).
+2. Restart the Scheduler — it will create jobs for these IDs on the next cycle.
+
+**If jobs exist but are stuck in a claimed state:**
+
+Use the [API release endpoint](https://api.microbiomedata.org/docs#/jobs/release_job_jobs__job_id__release_post) to release them back to the queue. See [Releasing Jobs](docs/README_troubleshooting.md#releasing-jobs) for details.
+
+**If jobs failed in JAWS:**
+
+Check the JAWS status and Watcher state file to diagnose the failure. See [Job Failures](docs/README_troubleshooting.md#job-failures) for troubleshooting steps.
+
+**If the situation is ambiguous or requires deeper investigation:**
+
+Use the MongoDB aggregation query to see the complete picture of which workflow executions and jobs exist for each Data Generation. See [Interpreting Workflow Status](docs/README_troubleshooting.md#interpreting-workflow-status) for a detailed decision tree.
 
 ---
 
