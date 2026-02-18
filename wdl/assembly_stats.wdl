@@ -143,7 +143,6 @@ task upload_stats {
                 "u": {"\$set": stats},
                 "limit": 1}]
             }
-    print(headers)
     print(update_query)
 
     response = requests.post(

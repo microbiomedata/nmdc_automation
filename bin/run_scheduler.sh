@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Default values
-WORKSPACE="prod"
+WORKSPACE="TEST"
 LIST="/conf/allow.lst"
 CONF="/conf/site_configuration.toml"
 PID_FILE="/conf/sched-${WORKSPACE}.pid"
@@ -19,6 +19,8 @@ YAML=$(grep 'workflows_config' "$CONF" | sed 's/.*= *"\(.*\)"/\1/' || true)
 # Global state flags
 DEBUG=0
 DRYRUN=0
+FORCE=0
+MOCK_MINT=0
 CLEANED_UP=0
 RESTARTING=0
 MISMATCH=0
@@ -59,7 +61,9 @@ show_help() {
   echo "  -l, --logfile PATH     Path to log file           (default: $LOG_FILE)" 
   echo "  -L, --logfull PATH     Path to full log file      (default: $FULL_LOG_FILE)" 
   echo "  -d, --debug            Enable debug mode          (increases logging)"
-  echo "  -n, --dryrun           Enable dryrun mode         (nothing schedules)" 
+  echo "  -k, --mock             Use fake IDs for testing   (no real API minting)" 
+  echo "  -n, --dryrun           Jobs not inserted into MongoDB" 
+  echo "  -f, --force            Ignore version compatibility checks" 
   echo "  -m, --mute             Silence Slack notifs" 
   echo "  -t, --test             Run wrapper in test mode" 
   echo "  -ta, --actual          Run wrapper in test mode with sched code" 
@@ -81,6 +85,8 @@ while [[ $# -gt 0 ]]; do
         -L|--logfull)   FULL_LOG_FILE="$2"; shift 2 ;;
         -d|--debug)     DEBUG=1; shift ;;
         -n|--dryrun)    DRYRUN=1; shift ;;
+        -k|--mock)      MOCK_MINT=1; shift ;;
+        -f|--force)     FORCE=1; shift ;;
         -m|--mute)      MUTE=1; shift ;;
         -t|--test)      TEST=1; shift ;;
         -ta|--actual)   TEST=1; ACTUAL=1; shift ;;
@@ -108,6 +114,8 @@ export NMDC_WORKFLOW_YAML_FILE="$YAML"
 export NMDC_SITE_CONF="$CONF"
 export NMDC_LOG_LEVEL=INFO # info by default every time. 
 export DRYRUN="$DRYRUN"
+export FORCE="$FORCE"
+export MOCK_MINT="$MOCK_MINT"
 export SKIPLISTFILE="$SKIP"
 export ALLOWLISTFILE="$LIST"
 

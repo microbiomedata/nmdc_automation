@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Default values
-WORKSPACE="prod"
+WORKSPACE="TEST"
 CONF="/global/homes/n/nmdcda/nmdc_automation/${WORKSPACE}/site_configuration_nersc_${WORKSPACE}.toml"
 HOST=$(hostname)
 LOG_FILE="watcher-${WORKSPACE}.log"

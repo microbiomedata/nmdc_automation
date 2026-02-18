@@ -6,7 +6,7 @@
 #SBATCH --ntasks=1  
 #SBATCH --time=1-00:00:00  
 #SBATCH --constraint=cpu
-#SBATCH --mem=4GB                       # uses around 1 gb max
+#SBATCH --mem=4GB                       # requests 4 GB RAM (typical usage ~1 GB)
 #SBATCH --mail-type=ALL                 ### Mail events (NONE, BEGIN, END, FAIL, REQUEUE, ALL)
 #SBATCH --mail-user=USER@email.gov        ### Where to send mail
 #SBATCH --output=OUT/extract_%j.out
@@ -23,7 +23,7 @@ cromwell-load(){
 
 input_file="$1"
 echo "$input_file"
-# auth bearer from api using nmdcda client creds
+# auth bearer from api using nmdcda client creds, can use queries endpoint to generate
 auth=""
 
 # Read CSV file line by line

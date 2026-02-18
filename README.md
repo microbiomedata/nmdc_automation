@@ -104,16 +104,18 @@ Workflow definitions in a `.yaml` file describe each analysis step, specifying:
 
 ## Quick Start
 
-Both the Scheduler and the Watcher are run with `nohup` (No Hangup) to prevent termination when the terminal session ends. This causes `stdout` and `stderr` to be written to `nohup.out` in addition to the per-session `*[dev/prod].log` and running `*[dev/prod]_full.log` files. The `nohup.out` files are cleared manually by the user at each (re)start; the per-session logs are automatically overwritten each time.
+Both the Scheduler and the Watcher are run with `nohup` (No Hangup) to prevent termination when the terminal session ends. This causes `stdout` and `stderr` to be written to `nohup.out` in addition to the per-session `*{dev|prod}.log` and running `*{dev|prod}_full.log` files. The `nohup.out` files are cleared manually by the user at each (re)start; the per-session logs are automatically overwritten each time.
 
 ### Running the Scheduler on NERSC Rancher2
 
 The Scheduler is a Dockerized application running on [Rancher](https://rancher2.spin.nersc.gov).
 
-1. On Rancher, go to **Deployments**, select **Production** from the clusters list, and find the Scheduler in either `nmdc` or `nmdc-dev`.
+1. In [SPIN Rancher](https://rancher2.spin.nersc.gov), navigate to the correct cluster:
+   - Production: **Workloads → Deployments → Namespace: `nmdc`**
+   - Dev / pre-release testing: **Workloads → Deployments → Namespace: `nmdc-dev`**
    - Verify the image is running the correct version for prod, or the desired release candidate for dev.
    - See [Release Documentation](https://github.com/microbiomedata/infra-admin/blob/main/releases/nmdc-automation.md) for more information.
-2. Click on the Scheduler and select **Run Shell**.
+2. Find the `scheduler` deployment and select **Execute Shell** from the three dot dropdown.
 3. `cd /conf` — all following actions take place in this directory.
 4. Update `allow.lst` with the Data Generation IDs to schedule:
    1. Copy the list of Data Generation IDs to your clipboard.
@@ -130,8 +132,39 @@ The Scheduler is a Dockerized application running on [Rancher](https://rancher2.
       - Run without `nohup` only for troubleshooting or development.
       - `./run_scheduler.sh -h` to see all running options.
       - `[-d/--debug]` for more verbose logging.
-7. `cat sched-[dev/prod].log` or `tail sched-[dev/prod].log` to monitor Scheduler activity.
-   - By default, calling `./run_scheduler.sh` deletes `sched-[dev/prod].log` and restarts the Scheduler.
+7. `cat sched-{dev|prod}.log` or `tail sched-{dev|prod}.log` to monitor Scheduler activity.
+   - By default, calling `./run_scheduler.sh` deletes `sched-{dev|prod}.log` and restarts the Scheduler.
+  
+<details><summary>Startup script options</summary>
+
+```
+Usage: ./run_scheduler.sh [COMMAND] [--allowlist PATH] [--yaml PATH] [--toml PATH] [OPTIONS]
+
+Commands:
+  stop                   Stop the running scheduler
+  status                 Show scheduler status
+  By default, if no command is called, scheduler will start
+
+Options:
+  -a, --allowlist PATH   Path to allowlist file     (default: /conf/allow.lst)
+  -w, --workflows PATH   Path to workflow YAML file (default: )
+  -c, --config PATH      Path to site config CONF   (default: /conf/site_configuration.toml)
+  -p, --port PORT        MongoDB port number        (default: 27017)
+  -s, --skiplist PATH    Path to skiplist file      (default: )
+  -i, --pidfile PATH     Path to PID file           (default: /conf/sched-prod.pid)
+  -l, --logfile PATH     Path to log file           (default: /conf/sched-prod.log)
+  -L, --logfull PATH     Path to full log file      (default: /conf/sched-prod_full.log)
+  -d, --debug            Enable debug mode          (increases logging)
+  -k, --mock             Use fake IDs for testing   (no real API minting)
+  -n, --dryrun           Jobs not inserted into MongoDB
+  -f, --force            Ignore version compatibility checks
+  -m, --mute             Silence Slack notifs
+  -t, --test             Run wrapper in test mode
+  -ta, --actual          Run wrapper in test mode with sched code
+  -h, --help             Show this help message
+```
+</details>
+
 
 #### Managing Allow Lists
 
@@ -161,17 +194,17 @@ Example: `t1372_mendota_mags_20260212.lst`
 
 The Watcher is a Python application running on a login node on Perlmutter. All instructions below assume you are logged in as `nmdcda@perlmutter.nersc.gov`. For initial access setup, see [Onboarding & Access Setup](docs/README_troubleshooting.md#onboarding--access-setup).
 
-Watcher code and config files are in `/global/homes/n/nmdcda/nmdc_automation/[dev/prod]`.
+Watcher code and config files are in `/global/homes/n/nmdcda/nmdc_automation/{dev|prod}`.
 
 1. Navigate to the login node where the Watcher was last run:
    ```bash
-   cat ~/nmdc_automation/[dev/prod]/host-[dev/prod].last
+   cat ~/nmdc_automation/{dev|prod}/host-{dev|prod}.last
    ssh login[node #]
    ```
 
 2. Ensure you have the desired version of `nmdc_automation`:
    ```bash
-   cd ~/nmdc_automation/[dev/prod]/nmdc_automation
+   cd ~/nmdc_automation/{dev|prod}/nmdc_automation
    git status                        # check current tag
    git fetch --all --prune
    git checkout tags/[release-version]
@@ -205,17 +238,17 @@ Watcher code and config files are in `/global/homes/n/nmdcda/nmdc_automation/[de
     ```
     </details>
 
-    <details><summary>Shortcut: auto-[dev/prod] function</summary>
+    <details><summary>Shortcut: auto-{dev|prod} function</summary>
 
-    A function in `~/.bashrc` of the `nmdcda` account combines steps 2–3. Once you are on the correct login node, call `auto-[dev/prod]` to run them automatically:
+    A function in `~/.bashrc` of the `nmdcda` account combines steps 2–3. Once you are on the correct login node, call `auto-{dev|prod}` to run them automatically:
 
     ```bash
-    auto-[dev/prod]() {
+    auto-{dev|prod}() {
         eval "$__conda_setup"
-        cd /global/homes/n/nmdcda/nmdc_automation/[dev/prod]/nmdc_automation
+        cd /global/homes/n/nmdcda/nmdc_automation/{dev|prod}/nmdc_automation
         poetry install
         eval $(poetry env activate)
-        cd /global/homes/n/nmdcda/nmdc_automation/[dev/prod]/
+        cd /global/homes/n/nmdcda/nmdc_automation/{dev|prod}/
     }
     ```
 
@@ -232,7 +265,7 @@ Watcher code and config files are in `/global/homes/n/nmdcda/nmdc_automation/[de
 
 5. Check for an existing Watcher process:
    ```bash
-   ./run_watcher_[dev/prod].sh status
+   ./run_watcher_{dev|prod}.sh status
    ```
 
     <details><summary>Example status output</summary>
@@ -258,23 +291,45 @@ Watcher code and config files are in `/global/homes/n/nmdcda/nmdc_automation/[de
 
 6. To stop the Watcher without restarting (you must be on the correct login node):
    ```bash
-   ./run_watcher_[dev/prod].sh stop
+   ./run_watcher_{dev|prod}.sh stop
    ```
-   This terminates all associated processes. Note: the `run_watcher_[dev/prod].sh` script handles stopping and restarting automatically; manual `kill -9` is no longer necessary.
+   This terminates all associated processes. Note: the `run_watcher_{dev|prod}.sh` script handles stopping and restarting automatically; manual `kill -9` is no longer necessary.
 
 7. Start or restart the Watcher:
    ```bash
    rm nohup.out                              # optional but recommended
-   nohup ./run_watcher_[dev/prod].sh &
+   nohup ./run_watcher_{dev|prod}.sh &
    ```
    - Run without `nohup` only for troubleshooting or development.
-   - `./run_watcher_[dev/prod].sh -h` to see all running options.
+   - `./run_watcher_{dev|prod}.sh -h` to see all running options.
 
 8. Monitor Watcher activity:
    ```bash
-   tail watcher-[dev/prod].log
+   tail watcher-{dev|prod}.log
    ```
-   By default, calling `./run_watcher_[dev/prod].sh` deletes `watcher-[dev/prod].log` and restarts the Watcher.
+   By default, calling `./run_watcher_{dev|prod}.sh` deletes `watcher-{dev|prod}.log` and restarts the Watcher.
+
+<details><summary>Startup script options</summary>
+
+```
+Usage: ./run_watcher.sh [COMMAND] [--conf PATH] [OPTIONS]
+
+Commands:
+  stop                   Stop the running watcher
+  status                 Show watcher status
+
+Options:
+  -c, --conf PATH        Path to site config TOML   (default: /global/homes/n/nmdcda/nmdc_automation/TEST/site_configuration_nersc_TEST.toml)
+  -i, --pidfile PATH     Path to PID file           (default: watcher-TEST.pid)
+  -s, --hostfile PATH    Path to host name file     (default: host-TEST.last)
+  -l, --logfile PATH     Path to log file           (default: watcher-TEST.log)
+  -L, --logfull PATH     Path to full log file      (default: watcher-TEST_full.log)
+  -m, --mute             Silence Slack notifs
+  -t, --test             Run wrapper in test mode
+  -ta, --actual           Run wrapper in test mode with watcher code
+  -h, --help             Show this help message
+```
+</details>
 
 ---
 

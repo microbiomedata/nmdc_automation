@@ -42,6 +42,7 @@ For operational instructions (running the Scheduler and Watcher in production, h
     - [Bumping NMDC Schema Version](#bumping-nmdc-schema-version)
     - [Debugging JAWS Jobs](#debugging-jaws-jobs)
   - [Testing](#testing)
+    - [Startup scripts](#startup-scripts)
   - [Safety Notes for Production](#safety-notes-for-production)
 
 ---
@@ -688,6 +689,11 @@ poetry run pytest tests/test_file.py
 ```
 
 Integration tests require a running MongoDB instance with seeded data. Full integration test setup documentation is pending.
+
+### Startup scripts
+
+The startup scripts for the [scheduler](../bin/run_scheduler.sh) and [watcher](../bin/run_watcher.sh) are shell scripts that use Slack apps (formerly webhooks) for up/down messaging. Both scripts write to long running log files that are not to be cleared unless otherwise indicated by product owners. The links for Slack integration are located in the configurate TOML files. In the case they are changed on the Slack end, the channels they send to have the apps and integrations pinned for easy navigation. For those with permissions, navigate to **[Slack API](https://api.slack.com/apps) → Your Apps → `incoming-notifs` → Incoming Webhooks** to change or copy the links to the TOML. 
+
 
 ---
 

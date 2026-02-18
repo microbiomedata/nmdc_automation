@@ -20,7 +20,8 @@ from nmdc_automation.config import SiteConfig
 
 
 logging.basicConfig(level=logging.DEBUG,
-    format="%(asctime)s %(levelname)s: %(message)s"
+    format="%(asctime)s %(levelname)s: %(message)s",
+    datefmt="%Y-%m-%dT%H:%M:%S%z"
                     )
 logger = logging.getLogger(__name__)
 WF_TYPES = [
