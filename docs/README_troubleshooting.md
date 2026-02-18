@@ -523,4 +523,27 @@ requests.exceptions.ConnectionError: ('Connection aborted.', RemoteDisconnected(
 
 If a job is stuck in a claimed state and needs to be released back to the queue, use the [API release endpoint](https://api.microbiomedata.org/docs#/jobs/release_job_jobs__job_id__release_post).
 
-> **TODO:** Replace the direct API call in the release bash script with `db_tools.py release_jobs(config, id_list_file)`. Verify whether the ID list file requires quoted IDs.
+> **TODO:** 
+> - Replace the direct API call in the release bash script with `db_tools.py release_jobs(config, id_list_file)`. Verify whether the ID list file requires quoted IDs. 
+> - Use better API practices for backfilling statistics
+> - how to make [has_failure_categorization](https://github.com/microbiomedata/nmdc_automation/issues/666)
+> - changesheets
+
+<details><summary>Changesheet example</summary>
+
+| id | action | attribute | value |
+|-|-|-|-|
+| nmdc:wfrqc-11-h3b6rm23.1 | update | qc_status | fail |
+|  | update | qc_comment | not enough reads |
+|  | update | has_failure_categorization | listItem |
+| listItem | update | type | nmdc:FailureCategorization |
+| listItem | update | qc_failure_where | NucleotideSequencing |
+| listItem | update | qc_failure_what | low_read_count |
+| nmdc:wfrbt-11-s51zws90.1 | update | qc_status | fail |
+|  | update | qc_comment | not enough reads |
+|  | update | has_failure_categorization | listItem |
+| listItem | update | type | nmdc:FailureCategorization |
+| listItem | update | qc_failure_where | NucleotideSequencing |
+| listItem | update | qc_failure_what | low_read_count |
+
+</details>

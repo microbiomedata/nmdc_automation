@@ -674,7 +674,7 @@ For systemic issues (bad WDL logic, schema mismatches), file an issue in the wor
 
 ## Testing
 
-Unit tests live in `tests/`. Run with:
+With each change to the automation code itself, the unit tests should be updated, if any exist. Unit tests live in `tests/`. You can run the full set of them with:
 
 ```bash
 make test
@@ -688,7 +688,10 @@ To run a specific test file:
 poetry run pytest tests/test_file.py
 ```
 
-Integration tests require a running MongoDB instance with seeded data. Full integration test setup documentation is pending.
+For more pytest options, please refer to [pytest documentation](https://docs.pytest.org/en/latest/how-to/usage.html#specifying-tests-selecting-tests).
+
+
+Integration tests require a running MongoDB instance with seeded data. This can be done by making a clone of the database and spinning up a local instance of the [NMDC Server](https://github.com/microbiomedata/nmdc-server). 
 
 ### Startup scripts
 
@@ -704,3 +707,7 @@ The startup scripts for the [scheduler](../bin/run_scheduler.sh) and [watcher](.
 - Back up site configs and allow/skip lists before editing.
 - Check your poetry environment when switching branches, especially after schema dependency changes.
 - `jaws resubmit <id>` will update the job in JAWS but will **not** update the Scheduler or NMDC database. Use the API release endpoint for full resubmission through the normal pipeline.
+
+> **TODO:** 
+> - Full integration test setup documentation.
+> - link to schema and api documentation where relevant 
