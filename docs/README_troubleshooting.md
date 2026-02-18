@@ -33,7 +33,6 @@ The following access and credentials are required before running anything in the
 
 **MongoDB**
 - Access to the dev and prod MongoDB tunnels via MongoDB Compass
-- See the [MongoDB access guide](https://docs.google.com/document/d/11h21epiEX2HVM8pUNYPw8dzx_9p0Rx8BkpHcDk62Utc/edit?tab=t.0#heading=h.qyxkoy9mt63k) (internal)
 
 **NMDC Runtime API**
 - NMDCDA client credentials for the runtime API
