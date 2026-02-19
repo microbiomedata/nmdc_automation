@@ -32,11 +32,11 @@ LAST_ALERT_TIME=0
 SCHED_PID=""
 TAIL_PID=""
 OLD_PID=""
-KILL_PID=""
+KILL_PID="NA"
 LAST_ALERT=""
 LAST_ERROR=""
 ALERT_PATTERN=""
-IGNORE_PATTERN="The above exception was the direct cause of the following exception:|During handling of the above exception, another exception occurred:"
+IGNORE_PATTERN="The above exception was the direct cause of the following exception:|During handling of the above exception, another exception occurred:|error-footer"
 COMMAND=""   # default start/restart scheduler when script called
 TRACEBACK_LINES=()
 ERROR_SUMMARY=""
@@ -64,7 +64,7 @@ show_help() {
   echo "  -k, --mock             Use fake IDs for testing   (no real API minting)" 
   echo "  -n, --dryrun           Jobs not inserted into MongoDB" 
   echo "  -f, --force            Ignore version compatibility checks" 
-  echo "  -m, --mute             Silence Slack notifs" 
+  echo "  -m, --mute             Silence Slack notifications" 
   echo "  -t, --test             Run wrapper in test mode" 
   echo "  -ta, --actual          Run wrapper in test mode with sched code" 
   echo "  -h, --help             Show this help message"
@@ -231,6 +231,12 @@ if [[ "${COMMAND}" == "stop" || "${COMMAND}" == "status" ]]; then
             && echo "No PID file found; scheduler may not be running" \
             || echo "Scheduler not running"
     fi
+    HELP=1
+    exit 0
+fi
+
+if [ ! -s "$LIST" ]; then
+    echo "'$LIST' is empty or does not exist."
     HELP=1
     exit 0
 fi

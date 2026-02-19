@@ -66,24 +66,19 @@ def study_report(site_config, study_id, write_files, outdir, pipeline, wf_type, 
     """
     Generate a workflow completion report for a specific study.
 
-    Analyzes data generation sets to identify complete and incomplete workflow
-    executions, showing which workflows are missing and which jobs have been
-    attempted.
+    Analyzes data generation sets to identify complete and incomplete workflow executions, showing which workflows are missing and which jobs have been attempted.
 
-    Examples: \n
-      Basic usage - show all incomplete runs:\n
+    \b
+    Examples: 
+      Basic usage - show all incomplete runs:
         $ study-report config.yaml STUDY123
-
-      Show only complete runs: \n
+      Show only complete runs:
         $ study-report config.yaml STUDY123 --show complete
-
-      Write output files: \n
+      Write output files:
         $ study-report config.yaml STUDY123 --write-files
-
-      Check specific workflows: \n
+      Check specific workflows:
         $ study-report config.yaml STUDY123 --wf-type nmdc:MagsAnalysis --wf-type nmdc:ReadBasedTaxonomyAnalysis
-
-      Check metatranscriptome data with bad QC: \n
+      Check metatranscriptome data with bad QC:
         $ study-report config.yaml STUDY123 --analyte-category metatranscriptome --bad-qc
     """
     logger.info(f"Generating report for study {study_id}")

@@ -111,19 +111,19 @@ Both the Scheduler and the Watcher are run with `nohup` (No Hangup) to prevent t
 The Scheduler is a Dockerized application running on [Rancher](https://rancher2.spin.nersc.gov).
 
 1. In [SPIN Rancher](https://rancher2.spin.nersc.gov), navigate to the correct cluster:
-   - Production: **Workloads → Deployments → Namespace: `nmdc`**
-   - Dev / pre-release testing: **Workloads → Deployments → Namespace: `nmdc-dev`**
-   - Verify the image is running the correct version for prod, or the desired release candidate for dev.
+   - Production: **Cluster: `production` → Workloads → Deployments → Namespace: `nmdc` → scheduler**
+   - Development / pre-release testing: **Cluster: `production` → Workloads → Deployments → Namespace: `nmdc-dev` → scheduler**
+   - Verify the image is running the correct version for production instance, or the desired release candidate for development instance.
    - See [Release Documentation](https://github.com/microbiomedata/infra-admin/blob/main/releases/nmdc-automation.md) for more information.
 2. Find the `scheduler` deployment and select **Execute Shell** from the three dot dropdown.
 3. `cd /conf` — all following actions take place in this directory.
 4. Update `allow.lst` with the Data Generation IDs to schedule:
    1. Copy the list of Data Generation IDs to your clipboard.
-   2. `rm allow.lst` to remove the existing list.
-   3. `cat > allow.lst` to start writing to file.
-   4. Paste your IDs (`Command+V`).
-   5. Press `Return` to ensure a blank line at the end.
-   6. Press `Control+D` to terminate the `cat` command.
+   2. \* `cat > allow.lst` to overwrite existing allow list, or `cat >> allow.lst` to append.
+      - \*See [Managing Allow Lists](#managing-allow-lists)
+   3. Paste your IDs (`Command+V`).
+   4. Press `Return` to ensure a blank line at the end.
+   5. Press `Control+D` to terminate the `cat` command.
 5. `./run_scheduler.sh status` to check if anything is currently running.
    - `./run_scheduler.sh stop` to manually terminate the process without restarting.
 6. Start or restart the Scheduler:
@@ -177,16 +177,17 @@ Example: `t1372_mendota_mags_20260212.lst`
 **Workflow:**
 1. Save your Data Generation IDs to a file in `/conf/submit_to_scheduler/`
 2. When ready to schedule, concatenate files and overwrite `/conf/allow.lst`:
-```bash
-   cat [list1] [list2] > /conf/allow.lst
-```
+    ```bash
+    cat [list1] [list2] > /conf/allow.lst
+    ```
 3. Restart the Scheduler
 
 **Important notes:**
-- The allow list is only read once at Scheduler startup
-- The Scheduler keeps checking previously-seen IDs even after the file changes
-- If downstream workflows stop scheduling despite no errors, the Scheduler may need the upstream IDs re-submitted (it checks for downstream processes only after reading an ID from the allow list)
-- Do not rely on the file contents to track active IDs — keep your own records in `/submit_to_scheduler/`
+- An empty allow list will not start the Scheduler. 
+- The allow list is only read once at Scheduler startup.
+- The Scheduler will only check the last submitted list of IDs. If the allow list file changes without being resubmitted to the Scheduler, the changes will not be seen.
+- If downstream workflows stop scheduling despite no errors, the Scheduler may need the upstream IDs re-submitted (it checks for downstream processes only after reading an ID from the allow list).
+- Do not rely on the file contents to track active IDs — keep your own records in `/conf/submit_to_scheduler/`.
   
 ---
 

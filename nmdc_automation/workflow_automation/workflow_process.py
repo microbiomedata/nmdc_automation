@@ -159,6 +159,8 @@ def get_current_workflow_process_nodes(
 
     # default query for data_generation_set records filtered by analyte category
     q = {"analyte_category": analyte_category}
+
+    # I think the cycling should start here, not from querying all data objects. 20260219 KL
     # override query with allowlist
     if allowlist:
         q["id"] = {"$in": list(allowlist)}

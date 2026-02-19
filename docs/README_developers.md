@@ -231,7 +231,15 @@ url = "https://jaws.api"
 
 Describes workflows with inputs, outputs, children, versions, and WDL references. The default file is [nmdc_automation/config/workflows/workflows.yaml](../nmdc_automation/config/workflows/workflows.yaml). 
 
-<details><summary>Interleaved RQC workflow entry</summary>
+<details><summary>YAML and WDL example</summary>
+
+<table>
+<tr>
+<th>Interleaved RQC workflow YAML entry</th>
+<th>Interleaved RQC WDL</th>
+</tr>
+<tr>
+<td>
 
 ```yaml
   - Name: Reads QC
@@ -239,7 +247,7 @@ Describes workflows with inputs, outputs, children, versions, and WDL references
     Enabled: True
     Analyte Category: Metagenome
     Git_repo: https://github.com/microbiomedata/ReadsQC
-    Version: v1.0.14-alpha.2
+    Version: v1.0.22
     WDL: rqcfilter.wdl
     Collection: workflow_execution_set
     Filter Input Objects:
@@ -273,7 +281,50 @@ Describes workflows with inputs, outputs, children, versions, and WDL references
         data_object_type: Read Filtering Info File
         description: Read filtering info for {id}
 ```
+
+</td>
+<td>
+
+```bash
+workflow rqcfilter{
+  input {
+    Array[String]? input_files
+    Array[String]? input_fq1
+    Array[String]? input_fq2
+    Array[String]? accessions
+    File?          reference
+    String         proj
+    Boolean        interleaved
+    Boolean        shortRead
+    Boolean?       chastityfilter_flag
+  }
+
+  ...
+
+  output {
+    Array[File]? sra_fastq_files = sra2fastq.outputFiles
+    File? filtered_final = if (is_shortReads) then ShortReadsQC.filtered_final else LongReadsQC.filtered_final
+    File? filtered_stats_final = if (is_shortReads) then ShortReadsQC.filtered_stats_final else LongReadsQC.filtered_stats1
+    File? filtered_stats2_final = if (is_shortReads) then ShortReadsQC.filtered_stats2_final else LongReadsQC.filtered_stats2
+    File? rqc_info = if (is_shortReads) then ShortReadsQC.rqc_info else LongReadsQC.rqc_info
+    File? stats = if (is_shortReads) then ShortReadsQC.qa_json else LongReadsQC.stats
+  }
+}
+###########
+qa_json = {
+    "input_read_bases": rqc_stats['inputBases'],
+    "input_read_count": rqc_stats['inputReads'],
+    "output_read_bases": rqc_stats['outputBases'],
+    "output_read_count": rqc_stats['outputReads']
+}
+```
+
+</td>
+</tr>
+</table>
+
 </details>
+
 
 ### Environment Variables
 
@@ -708,6 +759,9 @@ The startup scripts for the [scheduler](../bin/run_scheduler.sh) and [watcher](.
 - Check your poetry environment when switching branches, especially after schema dependency changes.
 - `jaws resubmit <id>` will update the job in JAWS but will **not** update the Scheduler or NMDC database. Use the API release endpoint for full resubmission through the normal pipeline.
 
-> **TODO:** 
+---
+---
+
+> **Documentation TO-DO:** 
 > - Full integration test setup documentation.
 > - link to schema and api documentation where relevant 

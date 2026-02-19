@@ -5,6 +5,11 @@
 - [NMDC Automation — Troubleshooting \& Onboarding](#nmdc-automation--troubleshooting--onboarding)
   - [Table of Contents](#table-of-contents)
   - [Onboarding \& Access Setup](#onboarding--access-setup)
+    - [NERSC Access](#nersc-access)
+    - [SPIN / Rancher](#spin--rancher)
+    - [MongoDB](#mongodb)
+    - [NMDC Runtime API](#nmdc-runtime-api)
+    - [JAWS Token (development and testing only)](#jaws-token-development-and-testing-only)
   - [Checking Workflow Status](#checking-workflow-status)
     - [Using the Study Report Script](#using-the-study-report-script)
     - [MongoDB Aggregation Query](#mongodb-aggregation-query)
@@ -22,34 +27,54 @@
 
 The following access and credentials are required before running anything in the NMDC automation system. Work through these roughly in priority order — the JAWS token is only needed if you will be doing active development and testing.
 
-**NERSC access**
-- Personal user account on Perlmutter
-- Access as the `nmdcda` shared account
-- Recommended: configure the [sshproxy script](https://docs.nersc.gov/connect/mfa/#sshproxy) for MFA-free SSH sessions
+### NERSC Access
 
-**SPIN / Rancher**
-- Required to access and manage the Scheduler container
-- You may need to complete a [SPIN training](https://docs.nersc.gov/services/spin/#get-started) before access is granted
+NERSC credentials are used to access both the Watcher (Perlmutter) and the Scheduler (SPIN/Rancher).
 
-**MongoDB**
-- Access to the dev and prod MongoDB tunnels via MongoDB Compass
+**What you need:**
+- **NERSC account:** If you don't have one, [request an account](https://docs.nersc.gov/accounts/#obtaining-an-account). This gives you a personal user account on Perlmutter for development and testing.
+- **Access to the `nmdcda` shared account:** Required for running the Watcher or troubleshooting data processing in production. Request access from the NMDC automation lead.
+- **SSH proxy setup (recommended):** Configure the [sshproxy script](https://docs.nersc.gov/connect/mfa/#sshproxy) for MFA-free SSH sessions. This key must be refreshed daily before connecting to Perlmutter.
 
-**NMDC Runtime API**
-- NMDCDA client credentials for the runtime API
+<details><summary>SSH Proxy Aliases</summary>
 
-**VSCode Remote Explorer** (recommended for beginners)
+Add these aliases to your `~/.bashrc` or shell configuration file:
+```bash
+alias sshproxy='/path/to/sshproxy.sh -u [your-username]'
+alias sshproxydev='/path/to/sshproxy.sh -u [your-username] -c nmdcda'
+```
+
+Usage example:
+```bash
+>> sshproxy
+Enter the password+OTP for [your-username]: 
+Successfully obtained ssh key /Users/[your-username]/.ssh/nersc
+Key /Users/[your-username]/.ssh/nersc is valid: from 2026-02-17T10:04:00 to 2026-02-18T10:05:05
+
+>> sshproxydev
+Enter the password+OTP for [your-username]: 
+Successfully obtained ssh key /Users/[your-username]/.ssh/nmdcda
+Key /Users/[your-username]/.ssh/nmdcda is valid: from 2026-02-17T10:04:00 to 2026-02-18T10:05:33
+```
+</details>
+
+
+**VSCode Remote Explorer** (recommended for beginners):
 - Set up Remote Explorer to connect to `nmdcda@perlmutter.nersc.gov`
-- Direct SSH also works: `ssh -i .ssh/nmdcda nmdcda@perlmutter.nersc.gov`
+- Alternatively, use direct SSH: `ssh -i .ssh/nmdcda nmdcda@perlmutter.nersc.gov`
 
 <details><summary>SSH configuration snippet</summary>
 
-```
+Add this to your `~/.ssh/config` file to enable VSCode Remote Explorer access without needing to SSH from the terminal:
+```bash
+# Set up remote connection to personal account
 Host perlmutter.nersc.gov
-  HostName perlmutter.nersc.gov
+  HostName perlmutter*.nersc.gov saul*.nersc.gov dtn*.nersc.gov
   User [your-username]
 
+# Set up remote connection to NMDCDA shared account
 Host nmdcda
-  HostName saul.nersc.gov
+  HostName perlmutter*.nersc.gov saul*.nersc.gov dtn*.nersc.gov
   IdentityFile ~/.ssh/nmdcda
   ForwardAgent yes
   User nmdcda
@@ -65,10 +90,32 @@ Host perlmutter*.nersc.gov saul*.nersc.gov dtn*.nersc.gov
     IdentitiesOnly yes
     ForwardAgent yes
 ```
+
 </details>
 
-**JAWS token** (development and testing only)
-- See the [JAWS configuration guide](https://jaws-docs.jgi.doe.gov/en/latest/jaws/jaws_config.html)
+
+### SPIN / Rancher
+
+- **Purpose:** Required to access and manage the Scheduler container
+- **Credentials:** Uses your NERSC/Perlmutter account
+- **Access request:** Contact the NMDC automation lead and NERSC support. You may need to complete a [SPIN training](https://docs.nersc.gov/services/spin/#get-started) before access is granted.
+
+### MongoDB
+
+- **Purpose:** Access to the dev and prod MongoDB databases via MongoDB Compass
+- **Access request:** Contact NMDC runtime administrators
+
+### NMDC Runtime API
+
+- **Purpose:** NMDCDA client credentials for the runtime API
+- **Access request:** Contact the NMDC automation lead and runtime admin
+
+### JAWS Token (development and testing only)
+
+- **Purpose:** Required for submitting and monitoring workflow jobs during development
+- **Access:** Via NERSC/Perlmutter. Request a token from the JAWS admin.
+- **Configuration:** See the [JAWS configuration guide](https://jaws-docs.jgi.doe.gov/en/latest/jaws/jaws_config.html)
+  
 
 ---
 
@@ -79,9 +126,7 @@ Host perlmutter*.nersc.gov saul*.nersc.gov dtn*.nersc.gov
 A Python script generates a workflow completion report for a given study. Run from the NERSC prod environment or from your local if you have the credentials to:
 
 ```bash
-python nmdc_automation/run_process/run_report.py study-report \
-    site_configuration_nersc_prod.toml \
-    nmdc:sty-11-hht5sb92
+python nmdc_automation/run_process/run_report.py study-report site_configuration_nersc_prod.toml nmdc:sty-11-hht5sb92
 
 # or
 
@@ -92,6 +137,58 @@ For more script options, such as writing out the JSONs to file, run
 ```
 python -m nmdc_automation.run_process.run_report study-report --help
 ```
+
+<details><summary>Study Report options</summary>
+
+```
+Usage: run_report.py study-report [OPTIONS] SITE_CONFIG STUDY_ID
+
+  Generate a workflow completion report for a specific study.
+
+  Analyzes data generation sets to identify complete and incomplete workflow executions, showing which workflows are missing and which jobs have been attempted.
+
+  Examples:
+
+    Basic usage - show all incomplete runs:
+
+      $ study-report config.yaml STUDY123
+
+    Show only complete runs:
+
+      $ study-report config.yaml STUDY123 --show complete
+
+    Write output files:
+
+      $ study-report config.yaml STUDY123 --write-files
+
+    Check specific workflows:
+
+      $ study-report config.yaml STUDY123 --wf-type nmdc:MagsAnalysis --wf-
+      type nmdc:ReadBasedTaxonomyAnalysis
+
+    Check metatranscriptome data with bad QC:
+
+      $ study-report config.yaml STUDY123 --analyte-category metatranscriptome
+      --bad-qc
+
+Options:
+  --write-files                   Write output files
+  --outdir PATH                   Output directory (auto-generated if not specified)
+  --analyte-category [metagenome|metatranscriptome|metaproteome]
+                                  Analyte category to filter  [default: metagenome]
+  --manifest / --no-manifest      Filter by manifest presence
+  --good-qc / --bad-qc            Filter by QC status
+  --dg-output / --no-dg-output    Require data generation output
+  --wf-type TEXT                  Workflow types to check (repeatable). Defaults to all 5 standard workflows.
+  --len-wfe INTEGER               Expected number of workflow executions [default: 5]
+  --show [all|incomplete|complete]
+                                  Filter results display  [default: all]
+  --pipeline TEXT                 Custom MongoDB pipeline as JSON string
+  --aggregate TEXT                MongoDB collection to aggregate  [default: data_generation_set]
+  --help                          Show this message and exit.
+```
+</details>
+
 
 <details><summary>Example output:</summary>
 
@@ -236,7 +333,7 @@ python -m nmdc_automation.run_process.run_report study-report --help
 ```
 </details>
 
-Again, to aid with the long command, an alias has been set in the `~/.bashrc` file to simply call using `study-report [study_id]`.
+Again, to aid with the long command, an alias has been set in the `nmdcda` Perlmutter `~/.bashrc` file to simply call using `study-report [study_id]`.
 
 <details><summary>Study report alias</summary>
 
@@ -245,8 +342,11 @@ alias study-report='python -m nmdc_automation.run_process.run_report study-repor
 ```
 </details>
 
-The most useful set of options to run with the study report would be `study-report [study_id] --show incomplete --write-files`. From there, the data generation set records can be gathered for a group to submit using command line `jq` commands. The following examples are based off the "Incomplete Runs" table and JSON above.
+The most useful set of options to run with the study report would be `study-report [study_id] --show incomplete --write-files`. From there, the data generation set records can be gathered for a group to submit using command line `jq` commands. 
 
+<details><summary>Example JQ commands</summary>
+
+The following examples are based off the "Incomplete Runs" table and JSON above.
 ```
   # collect annotation jobs collection IDs to release
   >> jq -r '.executions[].job_id[1]' incomplete_group_0.json # > failed_anno.jobs.lst # optionally pipe to file
@@ -269,6 +369,7 @@ The most useful set of options to run with the study report would be `study-repo
     nmdc:omprc-11-yke6pj76
     nmdc:omprc-11-ghjeyv93
 ```
+</details>
 
 ### MongoDB Aggregation Query
 
@@ -520,9 +621,13 @@ requests.exceptions.ConnectionError: ('Connection aborted.', RemoteDisconnected(
 
 ## Releasing Jobs
 
-If a job is stuck in a claimed state and needs to be released back to the queue, use the [API release endpoint](https://api.microbiomedata.org/docs#/jobs/release_job_jobs__job_id__release_post).
+If a job is stuck in a claimed state and needs to be released back to the queue, use the [API release endpoint](https://api.microbiomedata.org/docs#/jobs/release_job_jobs__job_id__release_post). At the moment of writing, the endpoint does not take lists. To remedy that, look into using either `db_tools.py release_jobs(config, id_list_file)` or the [release jobs script](../bin/release_jobs.sh).
 
-> **TODO:** 
+
+---
+---
+
+> **Documentation TO-DO:** 
 > - Replace the direct API call in the release bash script with `db_tools.py release_jobs(config, id_list_file)`. Verify whether the ID list file requires quoted IDs. 
 > - Use better API practices for backfilling statistics
 > - how to make [has_failure_categorization](https://github.com/microbiomedata/nmdc_automation/issues/666)
