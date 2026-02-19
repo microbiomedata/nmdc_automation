@@ -107,13 +107,15 @@ Host perlmutter*.nersc.gov saul*.nersc.gov dtn*.nersc.gov
 
 ### NMDC Runtime API
 
-- **Purpose:** NMDCDA client credentials for the runtime API
+- **Purpose:** Required to access specific API endpoints
+- **Credentials:** NMDCDA client credentials
 - **Access request:** Contact the NMDC automation lead and runtime admin
 
 ### JAWS Token (development and testing only)
 
 - **Purpose:** Required for submitting and monitoring workflow jobs during development
-- **Access:** Via NERSC/Perlmutter. Request a token from the JAWS admin.
+- **Credentials:** Via NERSC/Perlmutter. 
+- **Access request:** Contact the JAWS administrators to request a token.
 - **Configuration:** See the [JAWS configuration guide](https://jaws-docs.jgi.doe.gov/en/latest/jaws/jaws_config.html)
   
 
