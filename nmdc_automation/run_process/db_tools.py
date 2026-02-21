@@ -197,6 +197,7 @@ def release_jobs(config_file, id_list_file):
 
     # Read the job IDs from the file
     with open(id_list_file, 'r') as f:
+        # see if we need to also remove quotes.
         job_ids = [line.strip() for line in f if line.strip()]
     logger.info(f"Found {len(job_ids)} job IDs to release")
     for job_id in job_ids:

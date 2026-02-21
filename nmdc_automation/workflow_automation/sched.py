@@ -20,7 +20,9 @@ _WF_YAML_ENV = "NMDC_WORKFLOW_YAML_FILE"
 
 
 # configure logging
-logging.basicConfig(level=logging.INFO)
+# uses local system time, which is currently UTC on Rancher. 20260219 KL
+logging.basicConfig(level=logging.INFO,
+                    format="%(asctime)s %(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -511,6 +513,9 @@ def main(site_conf, wf_file):  # pragma: no cover
             for line in f:
                 allowlist.add(line.rstrip())
         logger.info(f"Read {len(allowlist)} items")
+        if len(allowlist) <= 0:
+            logger.error(f"Empty allow list submitted. Scheduler not started.")
+            sys.exit(1)
         for item in allowlist:
             logger.info(f"Allowing: {item}")
 
