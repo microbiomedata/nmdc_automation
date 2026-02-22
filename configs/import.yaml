@@ -91,7 +91,7 @@ Workflows:
     Import: false
     Type: nmdc:MetagenomeAnnotation
     Git_repo: https://github.com/microbiomedata/mg_annotation
-    Version: v1.0.4
+    Version: v1.2.0
     Collection: workflow_execution_set
     WorkflowExecutionRange: MetagenomeAnnotation
     Inputs:
@@ -105,6 +105,7 @@ Workflows:
       - Functional Annotation GFF
       - Annotation KEGG Orthology
       - Annotation Enzyme Commission
+      - Scaffold Lineage tsv
       - Clusters of Orthologous Groups (COG) Annotation GFF
       - Pfam Annotation GFF
       - TIGRFam Annotation GFF
@@ -121,6 +122,12 @@ Workflows:
       - Gene Phylogeny tsv
       - Crispr Terms
       - Annotation Statistics
+      - Contig Mapping File
+      - Annotation Info File
+      - Assembly Contigs
+      - Virus Summary
+      - Plasmid Summary
+      - GeNomad Aggregated Classification
 
 
   - Name: MAGs
@@ -393,6 +400,36 @@ Data Objects:
       output_of: nmdc:MetagenomeAnnotation
       multiple: false
       action: rename
+    - data_object_type: Virus Summary
+      description: Virus Summary for {id}
+      name: TSV summary of virus annotation 
+      data_category: processed_data
+      import_suffix: _virus_summary\.tsv$
+      nmdc_suffix: _virus_summary.tsv
+      input_to: []
+      output_of: nmdc:MetagenomeAnnotation
+      multiple: false
+      action: rename    
+    - data_object_type: Plasmid Summary
+      description: Plasmid Summary for {id}
+      name: TSV summary of plasmid annotation 
+      data_category: processed_data
+      import_suffix: _plasmid_summary\.tsv$
+      nmdc_suffix: _plasmid_summary.tsv
+      input_to: []
+      output_of: nmdc:MetagenomeAnnotation
+      multiple: false
+      action: rename  
+    - data_object_type: GeNomad Aggregated Classification
+      description: GeNomad aggregated classification for {id}
+      name: TSV of chromosome, plasmid, and virus scores
+      data_category: processed_data
+      import_suffix: _aggregated_classification\.tsv$
+      nmdc_suffix: _aggregated_classification.tsv
+      input_to: []
+      output_of: nmdc:MetagenomeAnnotation
+      multiple: false
+      action: rename    
     - data_object_type: Filtered Sequencing Reads
       description: Reads QC for {id}
       name: Reads QC result fastq (clean data)
