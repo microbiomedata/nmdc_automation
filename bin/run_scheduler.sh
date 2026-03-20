@@ -19,8 +19,8 @@ YAML=$(grep 'workflows_config' "$CONF" | sed 's/.*= *"\(.*\)"/\1/' || true)
 # Global state flags
 DEBUG=0
 DRYRUN=0
-FORCE=0
-MOCK_MINT=0
+[ -n "${FORCE:-}" ] && export FORCE="$FORCE"
+[ -n "${MOCK_MINT:-}" ] && export MOCK_MINT="$MOCK_MINT"
 CLEANED_UP=0
 RESTARTING=0
 MISMATCH=0
