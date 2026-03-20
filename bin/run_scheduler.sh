@@ -19,8 +19,8 @@ YAML=$(grep 'workflows_config' "$CONF" | sed 's/.*= *"\(.*\)"/\1/' || true)
 # Global state flags
 DEBUG=0
 DRYRUN=0
-FORCE=0
-MOCK_MINT=0
+[ -n "${FORCE:-}" ] && export FORCE="$FORCE"
+[ -n "${MOCK_MINT:-}" ] && export MOCK_MINT="$MOCK_MINT"
 CLEANED_UP=0
 RESTARTING=0
 MISMATCH=0
@@ -114,8 +114,6 @@ export NMDC_WORKFLOW_YAML_FILE="$YAML"
 export NMDC_SITE_CONF="$CONF"
 export NMDC_LOG_LEVEL=INFO # info by default every time. 
 export DRYRUN="$DRYRUN"
-export FORCE="$FORCE"
-export MOCK_MINT="$MOCK_MINT"
 export SKIPLISTFILE="$SKIP"
 export ALLOWLISTFILE="$LIST"
 
