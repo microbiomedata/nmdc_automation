@@ -35,8 +35,11 @@
     "associated_studies" : [
         "nmdc:sty-11-test002"
     ],
-    "add_date" : "2018-07-12",
-    "mod_date" : "2021-06-18",
+      "provenance_metadata": {
+        "type": "nmdc:ProvenanceMetadata",
+        "add_date": "2021-03-31T00:00:00Z",
+        "mod_date": "2023-01-25T00:00:00Z"
+      },
     "ncbi_project_name" : "NCBI Project Name",
     "analyte_category": "metatranscriptome",
     "processing_institution": "JGI",
