@@ -1,6 +1,9 @@
 [
     {
-      "add_date": "2022-03-25",
+      "provenance_metadata": {
+        "type": "nmdc:ProvenanceMetadata",
+        "add_date": "2021-03-31T00:00:00Z"
+      },
       "gold_sequencing_project_identifiers": [
         "gold:Gp0618275"
       ],
