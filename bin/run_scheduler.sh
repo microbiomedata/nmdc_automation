@@ -113,7 +113,6 @@ export MONGO_PORT="$PORT"
 export NMDC_WORKFLOW_YAML_FILE="$YAML"
 export NMDC_SITE_CONF="$CONF"
 export NMDC_LOG_LEVEL=INFO # info by default every time. 
-export MOCK_MINT="$MOCK_MINT"
 export SKIPLISTFILE="$SKIP"
 export ALLOWLISTFILE="$LIST"
 
