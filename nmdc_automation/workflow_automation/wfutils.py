@@ -210,7 +210,7 @@ class JawsRunner(JobRunnerABC):
                 self.job_id = response['run_id']
                 logger.info(f"Submitted job {response['run_id']}")
                 logger.info(f"Starting wait period to allow job to be registered in jaws")
-                time.sleep(60)  # wait for a minute to allow the job to be registered in jaws
+                time.sleep(10)  # wait for 10 seconds to allow the job to be registered in jaws
             else:
                 logger.info(f"Dry run: skipping jaws job submission")
                 self.job_id = "dry_run"                
