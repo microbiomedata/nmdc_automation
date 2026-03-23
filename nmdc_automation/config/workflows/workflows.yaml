@@ -315,7 +315,6 @@ Workflows:
       product_names_file: do:Product Names
       gene_phylogeny_file: do:Gene Phylogeny tsv
       lineage_file: do:Scaffold Lineage tsv
-      seqtype: "short_reads"
       map_file: do:Contig Mapping File
     Optional Inputs:
       - map_file
