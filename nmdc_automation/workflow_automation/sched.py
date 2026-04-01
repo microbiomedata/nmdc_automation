@@ -318,18 +318,70 @@ class Scheduler:
     @lru_cache(maxsize=128)
     def get_existing_jobs(self, wf: WorkflowConfig):
         """
-        Get the existing jobs for a workflow, including cancelled jobs
+        # we return an existing job if an exact version match was found,
+        # no other version is currently running, 
+        # and no existing version is newer than our current config (so that we don't schedule 
+        # a downgraded new job record). 
         """
         existing_jobs = set()
-        # Filter by git_repo and version
-        # Find all existing jobs for this workflow
-        q = {"config.git_repo": wf.git_repo, "config.release": wf.version}
-        #for j in self.db.jobs.find(q):
+
+        def get_v_obj(v_str):
+            # strips 'b' and 'v' to match within_range format
+            v_clean = v_str.lstrip("b").lstrip("v")
+            return Version.parse(v_clean)
+
+        current_v = get_v_obj(wf.version)
+        
+        q = {"config.git_repo": wf.git_repo}
+        
         for j in self.api.list_jobs(q):
             # the assumption is that a job in any state has been triggered by an activity
             # that was the result of an existing (completed) job
             act = j["config"]["trigger_activity"]
-            existing_jobs.add(act)
+            job_version_str = j["config"].get("release")
+            job_v = get_v_obj(job_version_str)
+            claims = j.get("claims", [])
+
+            
+            # If the exact version (e.g. v2.0.1) exists, return it
+            if job_version_str == wf.version:
+                existing_jobs.add(act)
+                continue
+            
+            #
+            # Look for active jobs to avoid directory collisions
+            #
+
+            # A job with a different version that is unclaimed should be returned
+            if not claims:
+                existing_jobs.add(act)
+                continue
+            
+            # Check for any jobs for this activity that are currently active
+            # that may have a different version, i.e running before the current
+            # config deployed a new version to schedule. In this case, we don't want it 
+            # to schedule on top of it, so return it as an existing job
+            is_active = False
+            for claim in claims:
+                op_id = claim.get("op_id")
+                if op_id:
+                    op_obj = self.api.get_op(op_id)
+                    if op_obj.get("done") is False:
+                        is_active = True
+                        break # Stop checking claims for this job
+            if is_active:
+                existing_jobs.add(act)
+                continue
+            
+            # prevent scheduling of version downgrades
+            # If we reach here, the version is different and it is NOT active.
+            # we only allow a new job if wf.version > all existing versions for this activity id
+            # if we find an existing job that is > the wf.version, then we return that job
+            if job_v > current_v:
+                existing_jobs.add(act)
+                continue
+
+        # If no blockers found, it gets here and is empty set
         return existing_jobs
 
     def find_new_jobs(self, wfp_node: WorkflowProcessNode, manifest_map: Dict[str, List[str]], all_jobs: List[SchedulerJob]) -> List[SchedulerJob]:
