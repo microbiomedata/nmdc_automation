@@ -15,7 +15,8 @@ VALID_EMPTY_GROUPS = [
         "file_types": ["Crispr Terms", "CRT Annotation GFF"]
     }
 ]
-# Valid only if assembly produced no data
+
+# Valid only if MAGs produced no data
 VALID_EMPTY_MAG_PLOTS = [ "Metagenome Bins Heatmap", "Metagenome Bins Barplot"]
     
 # Validation helper functions
