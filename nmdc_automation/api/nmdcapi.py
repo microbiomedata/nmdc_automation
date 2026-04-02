@@ -3,6 +3,7 @@
 import json
 import sys
 import os
+from time import sleep as _sleep
 from os.path import join, dirname
 from urllib.parse import urlencode
 from pydantic import BaseModel
@@ -259,45 +260,59 @@ class NmdcRuntimeApi:
 
     def list_from_collection(self, collection, filt=None, projection=None, max=100):
         url = f"{self._base_url}nmdcschema/{collection}"
+        max_attempts = 3 # Defining max_attempts to retrieve from collection in case of API instability
+        attempt = 0
 
-        params = {
-                "max_page_size": max
-        }
+        # loop the pagination attempts 
+        while attempt < max_attempts:
+        
+            params = {
+                    "max_page_size": max
+            }
 
-        if filt:
-            #url += "&filter=%s" % (json.dumps(filt))
-            params["filter"] = json.dumps(filt)
-        if projection:
-            #url += "&projection=%s" % (projection)
-            params["projection"] = json.dumps(projection)
+            if filt:
+                #url += "&filter=%s" % (json.dumps(filt))
+                params["filter"] = json.dumps(filt)
+            if projection:
+                #url += "&projection=%s" % (projection)
+                params["projection"] = json.dumps(projection)
 
-        results = []
-        while True:
+            results = []
             try:
-                resp_obj = self.session.get(url, headers=self.header, params=params, timeout=(10, 60))
-            
-                resp_obj.raise_for_status()
-                resp = resp_obj.json()
-
-                if "resources" not in resp:
-                    logging.warning(f"Unexpected response format: {resp}")
-                    break
-                results.extend(resp["resources"])
+                while True:
+                    resp_obj = self.session.get(url, headers=self.header, params=params, timeout=(10, 60))
                 
-                # Handle pagination
-                next_token = resp.get("next_page_token")
-                if not next_token:
-                    break
-            
-                params["page_token"] = next_token
+                    resp_obj.raise_for_status()
+                    resp = resp_obj.json()
 
-            except (requests.exceptions.RequestException, json.JSONDecodeError) as e:
-                # log where it died and raise runtime error because we don't want it to return partial records
-                logging.error("--- Session Terminated ---")
-                logging.error(f"Reason: {type(e).__name__} - {e}")
-                logging.error(f"Resume Token: {params.get('page_token', 'initial')}")
-                raise RuntimeError(f"Crawl failed at token {params.get('page_token', 'initial')}. Data is incomplete.") from e
+                    if "resources" not in resp:
+                        msg = f"Unexpected response format: {resp}"
+                        logging.error(msg)
+                        raise ValueError(msg)
+                    results.extend(resp["resources"])
+                    
+                    # Handle pagination
+                    next_token = resp.get("next_page_token")
+                    # No more pages to process, return results
+                    if not next_token:
+                        return results
+                
+                    params["page_token"] = next_token
 
+            except (requests.exceptions.RequestException, json.JSONDecodeError, ValueError) as e:
+                attempt += 1
+                logging.warning(f"--- API Instability Detected (Attempt {attempt}/{max_attempts}) ---")
+                logging.warning(f"Error: {type(e).__name__} | Last Token: {params.get('page_token', 'initial')}")
+                
+                if attempt < max_attempts:
+                    # exponential backoff: 10s, 20s
+                    wait_time = 10 * attempt 
+                    logging.info(f"Restarting fetch in {wait_time}s to clear poisoned token...")
+                    _sleep(wait_time)
+                    
+                else:
+                    logging.error("Max retries reached. Terminating to prevent partial data processing.")
+                    raise RuntimeError(f"Crawl failed after {max_attempts} full restarts.") from e
         
         return results
     
