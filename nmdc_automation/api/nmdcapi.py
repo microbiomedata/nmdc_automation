@@ -267,7 +267,7 @@ class NmdcRuntimeApi:
         while attempt < max_attempts:
         
             params = {
-                    "max_page_size": max
+                "max_page_size": max
             }
 
             if filt:
