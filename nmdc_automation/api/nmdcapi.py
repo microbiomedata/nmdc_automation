@@ -305,8 +305,8 @@ class NmdcRuntimeApi:
                 logging.warning(f"Error: {type(e).__name__} | Last Token: {params.get('page_token', 'initial')}")
                 
                 if attempt < max_attempts:
-                    # exponential backoff: 10s, 20s
-                    wait_time = 10 * attempt 
+                    # backoff linearly: 10s, 20s with added 10s infrastructure buffer
+                    wait_time = 10 + (10 * attempt)
                     logging.info(f"Restarting fetch in {wait_time}s to clear poisoned token...")
                     _sleep(wait_time)
                     
