@@ -2,6 +2,7 @@ from nmdc_automation.workflow_automation.sched import Scheduler, SchedulerJob, M
 from pytest import mark
 import pytest
 from unittest.mock import patch, MagicMock
+import copy
 
 from nmdc_automation.workflow_automation.workflow_process import load_workflow_process_nodes
 from nmdc_automation.workflow_automation.workflows import load_workflow_configs
@@ -603,9 +604,7 @@ def test_scheduler_cycle_manifest_multi(test_db, test_client, workflows_config_d
     This currently uses a modified dev site config so that the dev-api gets called to test the
     aggregations whereas other unit tests mock the api for minting IDs, else it will hang
     TO DO: replace live dev aggregation call for stability of offline testing 
-    Results: One manifest job is scheduled, a second dgns for the same manifest is skipped, and a
-    non-manifest MAGs:v1.3.16 for nmdc:wfmgan-11-6x59p192.2 is created
-    note: site_config_file_dev_api before
+    Results: Two separate manifest jobs are scheduled
     """
     exp_rqc_git_repos = [
         "https://github.com/microbiomedata/ReadsQC",
@@ -835,4 +834,66 @@ def test_scheduler_mock_minter(test_db, test_client, workflows_config_dir, site_
         resp = jm.cycle()
         
         assert jm.api.minter.called
-        
+
+
+def test_no_schedule_minor_upgrade_of_running_job(test_db, test_client, workflows_config_dir, site_config_file):
+    """
+    Test that if a v2.0.0 MAG job is scheduled then currently running, the scheduler does NOT 
+    create a v2.0.1 job for the same activity.
+    """
+    reset_db(test_db)
+    load_fixture(test_db, "data_objects_2.json", "data_object_set")
+    load_fixture(test_db, "data_generation_2.json", "data_generation_set")
+    load_fixture(test_db, "workflow_execution_2.json", "workflow_execution_set")
+
+    
+
+    # Ensure no jobs exist yet
+    test_db.jobs.delete_many({})
+
+    # Initialize scheduler with a workflow file that includes MAGs v2.0.1
+    jm = Scheduler(workflow_yaml=workflows_config_dir / "workflows.yaml",
+                   site_conf=site_config_file,
+                   api=test_client)
+    
+    # enforce that the workflow version for MAGs is v2.0.0 version to start 
+    # (we override the value loaded from workflows.yaml so the test stays static)
+    mags_wf = None
+    parent_wf = None
+    for wf in jm.workflows:
+        for child in wf.children:
+            if "MAGs" in child.name:
+                child.version = "v2.0.0" # force baseline
+                mags_wf = child
+                parent_wf = wf
+                break
+    
+    assert mags_wf is not None, "Could not find MAGs workflow in config"
+
+    resp = jm.cycle()
+    
+    assert len(resp) == 1
+    job_rec = resp[0]
+    
+    # Printing the details as requested
+    print(f"\n[SCHEDULER] Created Job ID: {job_rec['id']}")
+    print(f"[SCHEDULER] Workflow: {job_rec['workflow']['id']}")
+    print(f"[SCHEDULER] Release: {job_rec['config']['release']}")
+    
+    assert job_rec["config"]["release"] == "v2.0.0"
+
+    
+    # Now create a new mags to run of wf v2.0.1 mag instance, i.e., simulate the reployment of a new scheduler with update mag version (while 2.0.0 job is running)
+    new_mags_instance = copy.copy(mags_wf)
+    new_mags_instance.version = "v2.0.1"
+    parent_wf.children = [new_mags_instance]
+
+    resp_2 = jm.cycle()
+    
+    
+    # if len(resp_2) > 0, the scheduler failed to see the v2.0.0 job as a conflict.
+    if len(resp_2) > 0:
+        print(f"[ERROR] Bug detected: Scheduled {resp_2[0]['workflow']['id']} while v2.0.0 is running!")
+    
+    # scheduler does not create a v2.0.1 record when v2.0.0 is active."
+    assert len(resp_2) == 0
