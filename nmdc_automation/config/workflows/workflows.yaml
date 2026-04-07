@@ -53,7 +53,7 @@ Workflows:
         data_object_type: Read Filtering Info File
         description: Read filtering info for {id}
 
-  - Name: Reads QC Interleaved
+  - Name: Reads QC Interleave
     Type: nmdc:ReadQcAnalysis
     Enabled: True
     Analyte Category: Metagenome
