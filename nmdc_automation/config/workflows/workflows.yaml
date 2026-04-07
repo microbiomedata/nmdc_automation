@@ -14,7 +14,7 @@ Workflows:
     Filter Output Objects:
     - Metagenome Raw Reads
 
-  - Name: Reads QC Interleave
+  - Name: Reads QC
     Type: nmdc:ReadQcAnalysis
     Enabled: True
     Analyte Category: Metagenome
@@ -53,7 +53,7 @@ Workflows:
         data_object_type: Read Filtering Info File
         description: Read filtering info for {id}
 
-  - Name: Reads QC Noninterleaved
+  - Name: Reads QC Interleaved
     Type: nmdc:ReadQcAnalysis
     Enabled: True
     Analyte Category: Metagenome
@@ -103,8 +103,8 @@ Workflows:
     WDL: jgi_assembly.wdl
     Collection: workflow_execution_set
     Predecessors:
+    - Reads QC
     - Reads QC Interleave
-    - Reads QC Noninterleave
     Input_prefix: jgi_metaAssembly
     Inputs:
       input_files: do:Filtered Sequencing Reads
@@ -377,8 +377,8 @@ Workflows:
     WDL: ReadbasedAnalysis.wdl
     Collection: workflow_execution_set
     Predecessors:
+    - Reads QC
     - Reads QC Interleave
-    - Reads QC Noninterleave
     Input_prefix: ReadbasedAnalysis
     Inputs:
       input_file: do:Filtered Sequencing Reads
