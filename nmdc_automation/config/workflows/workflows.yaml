@@ -66,6 +66,8 @@ Workflows:
       proj: "{workflow_execution_id}"
       input_fastq1: do:Metagenome Raw Read 1
       input_fastq2: do:Metagenome Raw Read 2
+      shortRead: true
+      interleaved: false
     Filter Input Objects:
     - Metagenome Raw Read 1
     - Metagenome Raw Read 2
