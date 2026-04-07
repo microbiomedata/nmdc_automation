@@ -64,8 +64,8 @@ Workflows:
     Input_prefix: rqcfilter
     Inputs:
       proj: "{workflow_execution_id}"
-      input_fastq1: do:Metagenome Raw Read 1
-      input_fastq2: do:Metagenome Raw Read 2
+      input_fq1: do:Metagenome Raw Read 1
+      input_fq2: do:Metagenome Raw Read 2
       shortRead: true
       interleaved: false
     Filter Input Objects:
