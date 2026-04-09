@@ -19,11 +19,11 @@
     "input_prefix": "nmdc_rqcfilter",
     "inputs": {
       "proj": "nmdc:wfrqc-12-mecph171.1",
-      "input_fastq1": [
+      "input_fq1": [
         "https://storage.neonscience.org/neon-microbial-raw-seq-files/2023/BMI_HCNKKBGX5_mms_R1/BMI_HCNKKBGX5_Tube93_R1.fastq.gz",
         "https://storage.neonscience.org/neon-microbial-raw-seq-files/2023/BMI_HLGJLBGX5_mms_R1/BMI_HLGJLBGX5_Tube93_R1.fastq.gz"
       ],
-      "input_fastq2": [
+      "input_fq2": [
         "https://storage.neonscience.org/neon-microbial-raw-seq-files/2023/BMI_HCNKKBGX5_mms_R2/BMI_HCNKKBGX5_Tube93_R2.fastq.gz",
         "https://storage.neonscience.org/neon-microbial-raw-seq-files/2023/BMI_HLGJLBGX5_mms_R2/BMI_HLGJLBGX5_Tube93_R2.fastq.gz"
       ]
