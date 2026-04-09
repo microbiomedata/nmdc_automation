@@ -347,23 +347,32 @@ def test_scheduler_create_job_rec_raises_missing_data_object_exception(test_db, 
 #def test_scheduler_create_job_rec_has_input_files_as_array(test_db, mock_api, workflows_config_dir, site_config_file):
 def test_scheduler_create_job_rec_has_input_files_as_array(test_db, test_client, workflows_config_dir, site_config_file):
     """
-    Test that the input_data_objects field is an array of strings.
+    Test that input_fq1/input_fq2 (Reads QC Interleave) and input_files (Assembly)
+    are arrays, not plain strings. Regression test for the nohup error where
+    input_fq1/input_fq2 were passed as strings instead of Array[String].
     """
     reset_db(test_db)
     load_fixture(test_db, "data_object_set.json")
     load_fixture(test_db, "data_generation_set.json")
-    load_fixture(test_db, "read_qc_analysis.json", col="workflow_execution_set")
 
-    #jm = Scheduler(
-    #    test_db, workflow_yaml=workflows_config_dir / "workflows.yaml",
-    #    site_conf=site_config_file
-    #    )
     jm = Scheduler(
         workflow_yaml=workflows_config_dir / "workflows.yaml",
-        site_conf=site_config_file, 
+        site_conf=site_config_file,
         api=test_client
         )
 
+    # Cycle 1: no RQC output loaded yet, so scheduler creates the Reads QC Interleave job.
+    # This is where input_fq1/input_fq2 are assigned — assert they are lists not plain strings.
+    resp = jm.cycle()
+    rqc_jobs = [j for j in resp if j["config"]["activity"]["type"] == "nmdc:ReadQcAnalysis"]
+    assert rqc_jobs
+    rqc_job = rqc_jobs[0]
+    assert isinstance(rqc_job["config"]["inputs"]["input_fq1"], list)
+    assert isinstance(rqc_job["config"]["inputs"]["input_fq2"], list)
+
+    # Simulate RQC completing; loading now (not before) ensures cycle 1 exercised input_fq1/fq2.
+    # Cycle 2: scheduler sees Filtered Sequencing Reads and creates the Assembly job.
+    load_fixture(test_db, "read_qc_analysis.json", col="workflow_execution_set")
     resp = jm.cycle()
     assemblies = [j for j in resp if j["config"]["activity"]["type"] == "nmdc:MetagenomeAssembly"]
     assert assemblies

@@ -192,9 +192,7 @@ class Scheduler:
                 if len(dobj_list) == 1:
                     input_data_objects.append(dobj_list[0].as_dict())
                 
-                    if k == "input_files":
-                        v = [dobj_list[0]["url"]]
-                    elif k in ["input_fastq1", "input_fastq2"]:  
+                    if k in ["input_files", "input_fq1", "input_fq2", "input_fastq1", "input_fastq2"]:
                         v = [dobj_list[0]["url"]]
                     else:
                         v = dobj_list[0]["url"]
