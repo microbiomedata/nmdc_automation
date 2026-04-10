@@ -16,9 +16,65 @@ logger = logging.getLogger(__name__)
 
 warned_objects = set()
 
+def _collect_candidate_data_object_ids_from_dg(
+    nmdcapi,
+    workflows: List[WorkflowConfig],
+    data_generation_records: List[dict],
+) -> set[str]:
+    """
+    Collect all candidate data object IDs relevant for the workflows,
+    starting only from the already-fetched data_generation_records.
+
+    Includes:
+      - has_input / has_output from data_generation_set records
+      - has_input / has_output from workflow_execution_set records
+        whose was_informed_by references those DG records.
+    """
+    candidate_do_ids: set[str] = set()
+
+    # 1) From data_generation_records
+    data_generation_ids: set[str] = set()
+    for rec in data_generation_records:
+        data_generation_ids.add(rec["id"])
+        for k in ("has_input", "has_output"):
+            ids = rec.get(k) or []
+            candidate_do_ids.update(ids)
+
+    if not data_generation_ids:
+        return candidate_do_ids
+
+    # 2) From workflow_execution_set records whose was_informed_by is in those DG IDs
+    wfe_chunk_size = 100
+    wfe_max_page_size = 1000
+
+    workflow_execution_workflows = [
+        wf for wf in workflows if wf.collection == "workflow_execution_set"
+    ]
+
+    dg_id_list = list(data_generation_ids)
+
+    for wf in workflow_execution_workflows:
+        records: list[dict] = []
+
+        for i in range(0, len(dg_id_list), wfe_chunk_size):
+            id_chunk = dg_id_list[i:i + wfe_chunk_size]
+            q = {"was_informed_by": {"$in": id_chunk}}
+            chunk_records = nmdcapi.list_from_collection(
+                wf.collection, q, max=wfe_max_page_size
+            )
+            records.extend(chunk_records)
+
+        for rec in records:
+            if rec.get("type") != wf.type:
+                continue
+            for k in ("has_input", "has_output"):
+                ids = rec.get(k) or []
+                candidate_do_ids.update(ids)
+
+    return candidate_do_ids
 
 #def get_required_data_objects_map(db, workflows: List[WorkflowConfig]) -> Dict[str, DataObject]:
-def get_required_data_objects_map(api, workflows: List[WorkflowConfig], data_generation_records: List[dict],) -> Dict[str, DataObject]:
+def get_required_data_objects_map(api, workflows: List[WorkflowConfig], candidate_do_ids_list: List[str]) -> Dict[str, DataObject]:
     """
      Search for all the data objects that are required data object types for the workflows,
         and return a dictionary of data objects by ID. Cache the result.
@@ -26,14 +82,9 @@ def get_required_data_objects_map(api, workflows: List[WorkflowConfig], data_gen
     """
     # Build up a filter of what do ids are used by workflows
     required_types = {t for wf in workflows for t in wf.input_data_object_types}
-    candidate_do_ids = set()
-    for rec in data_generation_records:
-        for k in ("has_input", "has_output"):
-            ids = rec.get(k) or []
-            candidate_do_ids.update(ids)
     chunk_size = 100
     max_page_size = 1000
-    candidate_do_ids_list = list(candidate_do_ids)
+    candidate_do_ids_list = list(candidate_do_ids_list)
     required_types_list = list(required_types)
     required_data_object_map = {}
 
@@ -593,11 +644,17 @@ def load_workflow_process_nodes(nmdcapi, workflows: list[WorkflowConfig], allowl
             data_generation_records.extend(records)
     else:
         data_generation_records = nmdcapi.list_from_collection("data_generation_set", dg_base_query, max=max_page_size)
+    
+    candidate_do_ids = _collect_candidate_data_object_ids_from_dg(
+        nmdcapi, workflows, data_generation_records
+    )
+    candidate_do_ids_list = list(candidate_do_ids)
 
     # This is map from the data object ID to the activity
     # that created it.
     #data_object_map = get_required_data_objects_map(db, workflows)
-    data_object_map = get_required_data_objects_map(nmdcapi, workflows, data_generation_records)
+    if candidate_do_ids_list:
+        data_object_map = get_required_data_objects_map(nmdcapi, workflows, candidate_do_ids_list)
 
     # Build up a set of relevant activities and a map from
     # the output objects to the activity that generated them.
