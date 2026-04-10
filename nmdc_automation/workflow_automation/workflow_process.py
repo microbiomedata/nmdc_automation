@@ -18,27 +18,32 @@ warned_objects = set()
 
 
 #def get_required_data_objects_map(db, workflows: List[WorkflowConfig]) -> Dict[str, DataObject]:
-def get_required_data_objects_map(api, workflows: List[WorkflowConfig]) -> Dict[str, DataObject]:
+def get_required_data_objects_map(api, workflows: List[WorkflowConfig], data_generation_records: List[dict],) -> Dict[str, DataObject]:
     """
      Search for all the data objects that are required data object types for the workflows,
         and return a dictionary of data objects by ID. Cache the result.
 
     """
-    # Build up a filter of what types are used
+    # Build up a filter of what do ids are used by workflows
     required_types = {t for wf in workflows for t in wf.input_data_object_types}
-    q = {"data_object_type": {"$in": list(required_types)}}
-    max_page_size = 1000  # max number of documents to include in the page
-    records = api.list_from_collection("data_object_set", q, max=max_page_size)
-    required_data_object_map = {
-        rec["id"]: DataObject(**rec)
-        for rec in records
-    }
-    #required_data_object_map = {
-    #    rec["id"]: DataObject(**rec)
-    #    for rec in db.data_object_set.find(
-    #        {"data_object_type": {"$in": list(required_types)}}
-    #    )
-    #}
+    candidate_do_ids = set()
+    for rec in data_generation_records:
+        for k in ("has_input", "has_output"):
+            ids = rec.get(k) or []
+            candidate_do_ids.update(ids)
+    chunk_size = 100
+    max_page_size = 1000
+    candidate_do_ids_list = list(candidate_do_ids)
+    required_types_list = list(required_types)
+    required_data_object_map = {}
+
+    for i in range(0, len(candidate_do_ids_list), chunk_size):
+        id_chunk = candidate_do_ids_list[i:i + chunk_size]
+        q = {"data_object_type": {"$in": required_types_list}, "id": {"$in": id_chunk}}
+        records = api.list_from_collection("data_object_set", q, max=max_page_size)
+        for rec in records:
+            required_data_object_map[rec["id"]] = DataObject(**rec)
+
     return required_data_object_map
 
 def _get_latest_version(new_wfp_node, current_wfp_node):
@@ -133,12 +138,14 @@ def _is_missing_required_input_output(wf: WorkflowConfig, rec: dict, data_object
 
 def get_current_workflow_process_nodes(
         api, workflows: List[WorkflowConfig],
-        data_objects_by_id: Dict[str, DataObject], allowlist: List[str] = None) -> List[WorkflowProcessNode]:
+        data_objects_by_id: Dict[str, DataObject],
+        data_generation_records: List[dict],
+        allowlist: List[str] = None
+) -> List[WorkflowProcessNode]:
     """
     Fetch the relevant workflow process nodes for the given workflows.
-        1. Get the Data Generation (formerly Omics Processing) records for the workflows by analyte category.
-        2. Get the remaining Workflow Execution records that was_informed_by the Data Generation objects.
-        3. Filter Workflow Execution records by:
+        1. Get the remaining Workflow Execution records that was_informed_by the Data Generation objects.
+        2. Filter Workflow Execution records by:
             - version (within range) if specified in the workflow
             - input and output data objects required by the workflow
     Returns a list of WorkflowProcessNode objects.
@@ -157,20 +164,14 @@ def get_current_workflow_process_nodes(
     # Dict to keep track of do to manifest set to input DOs and dgns
     manifest_map = {}
 
-    # default query for data_generation_set records filtered by analyte category
-    q = {"analyte_category": analyte_category}
-
-    # I think the cycling should start here, not from querying all data objects. 20260219 KL
-    # override query with allowlist
-    if allowlist:
-        q["id"] = {"$in": list(allowlist)}
-    #dg_execution_records = db["data_generation_set"].find(q)
-    dg_execution_records = api.list_from_collection("data_generation_set", q)
-    dg_execution_records = list(dg_execution_records)
+    # Use the DG records passed in by the orchestrator
+    dg_execution_records = data_generation_records
 
     for wf in data_generation_workflows:
         # Sequencing workflows don't have a git repo
         for rec in dg_execution_records:
+            if rec.get("analyte_category", "").lower() != analyte_category:
+                continue
             # legacy JGI sequencing records won't have output but we still want to include them
             # The graph in that case will be rooted at the ReadsQC node
             data_generation_ids.add(rec["id"])
@@ -242,16 +243,22 @@ def get_current_workflow_process_nodes(
                 dg_set_to_manifest_map[key_tuple] = manifest_id
 
 
-    for wf in workflow_execution_workflows:
-        q = {}
-        if wf.git_repo:
-            q = {"git_url": wf.git_repo}
-        # override query with allowlist
-        if allowlist: 
-            q = {"was_informed_by": {"$in": list(allowlist)}}
+    wfe_chunk_size = 100
+    wfe_max_page_size = 1000
 
-        #records = db[wf.collection].find(q)
-        records = api.list_from_collection(wf.collection, q)
+    for wf in workflow_execution_workflows:
+        records = []
+        if allowlist:
+            # Chunk the allowlist into was_informed_by queries (mirrors main behavior)
+            allowlist_list = list(allowlist)
+            for i in range(0, len(allowlist_list), wfe_chunk_size):
+                id_chunk = allowlist_list[i:i + wfe_chunk_size]
+                q = {"was_informed_by": {"$in": id_chunk}}
+                chunk_records = api.list_from_collection(wf.collection, q, max=wfe_max_page_size)
+                records.extend(chunk_records)
+        else:
+            q = {"git_url": wf.git_repo} if wf.git_repo else {}
+            records = api.list_from_collection(wf.collection, q, max=wfe_max_page_size)
         for rec in records:
             if rec['type'] != wf.type:
                 continue
@@ -570,16 +577,33 @@ def load_workflow_process_nodes(nmdcapi, workflows: list[WorkflowConfig], allowl
     workflow: workflow
     """
 
+    analyte_category = _determine_analyte_category(workflows)
+    dg_base_query = {"analyte_category": analyte_category}
+
+    chunk_size = 100
+    max_page_size = 1000
+    data_generation_records = []
+
+    if allowlist:
+        allowlist_list = list(allowlist)
+        for i in range(0, len(allowlist_list), chunk_size):
+            id_chunk = allowlist_list[i:i + chunk_size]
+            dg_query = {**dg_base_query, "id": {"$in": id_chunk}}
+            records = nmdcapi.list_from_collection("data_generation_set", dg_query, max=max_page_size)
+            data_generation_records.extend(records)
+    else:
+        data_generation_records = nmdcapi.list_from_collection("data_generation_set", dg_base_query, max=max_page_size)
+
     # This is map from the data object ID to the activity
     # that created it.
     #data_object_map = get_required_data_objects_map(db, workflows)
-    data_object_map = get_required_data_objects_map(nmdcapi, workflows)
+    data_object_map = get_required_data_objects_map(nmdcapi, workflows, data_generation_records)
 
     # Build up a set of relevant activities and a map from
     # the output objects to the activity that generated them.
     #current_nodes = get_current_workflow_process_nodes(db, workflows, data_object_map, allowlist) #orig
     #current_nodes, manifest_map = get_current_workflow_process_nodes(db, nmdcapi, workflows, data_object_map, allowlist) #299
-    current_nodes, manifest_map = get_current_workflow_process_nodes(nmdcapi, workflows, data_object_map, allowlist)
+    current_nodes, manifest_map = get_current_workflow_process_nodes(nmdcapi, workflows, data_object_map, data_generation_records, allowlist)
 
     node_data_object_map, current_nodes = _map_nodes_to_data_objects(current_nodes, data_object_map)
 
