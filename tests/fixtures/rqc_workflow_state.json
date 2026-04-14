@@ -15,8 +15,8 @@
     "input_prefix": "nmdc_rqcfilter",
     "inputs": {
       "proj": "nmdc:wfrqc-12-s66ntc59.1",
-      "input_fastq1": "https://storage.neonscience.org/neon-microbial-raw-seq-files/2023/argonne_R1/DSNY_009-M-33-14-20140409-gen_R1.fastq.gz",
-      "input_fastq2": "https://storage.neonscience.org/neon-microbial-raw-seq-files/2023/argonne_R2/DSNY_009-M-33-14-20140409-gen_R2.fastq.gz"
+      "input_fq1": "https://storage.neonscience.org/neon-microbial-raw-seq-files/2023/argonne_R1/DSNY_009-M-33-14-20140409-gen_R1.fastq.gz",
+      "input_fq2": "https://storage.neonscience.org/neon-microbial-raw-seq-files/2023/argonne_R2/DSNY_009-M-33-14-20140409-gen_R2.fastq.gz"
     },
     "input_data_objects": [
       {
