@@ -1831,14 +1831,14 @@ requests = "*"
 
 [[package]]
 name = "nmdc-schema"
-version = "11.17.0"
+version = "11.18.0"
 description = "Schema resources for the National Microbiome Data Collaborative (NMDC)"
 optional = false
 python-versions = "<4.0,>=3.10"
 groups = ["main"]
 files = [
-    {file = "nmdc_schema-11.17.0-py3-none-any.whl", hash = "sha256:cff858c70c30116dd71c4a6d67b724bb498d64cc7be5da4219b941f4e22e31ab"},
-    {file = "nmdc_schema-11.17.0.tar.gz", hash = "sha256:cf8d82feb9202c2669c1fd07c1cf8ba653615f445a856c2f35ec508cf248d774"},
+    {file = "nmdc_schema-11.18.0-py3-none-any.whl", hash = "sha256:86696614881c8389f205289ee351f54a332a54e41897b4602996ac25587aec77"},
+    {file = "nmdc_schema-11.18.0.tar.gz", hash = "sha256:efba19d87f5b5a765bc4acf073f99a7390f9cb6b5491b2068bfe8632d8584351"},
 ]
 
 [package.dependencies]
@@ -1847,13 +1847,13 @@ click-log = ">=0.4.0,<0.5.0"
 deprecated = ">=1.0.0,<2.0.0"
 jsonasobj2 = ">=1.0.0,<2.0.0"
 jsonschema = ">=4.0.0,<5.0.0"
-linkml = ">=1.10.0,<2.0.0"
-linkml-runtime = ">=1.10.0,<2.0.0"
+linkml = ">=1.9.0,<2.0.0"
+linkml-runtime = ">=1.9.0,<2.0.0"
 pymdown-extensions = ">=10.16.1,<11.0.0"
 pymongo = ">=4.7.2,<5.0.0"
 python-dotenv = ">=0.21.0,<2.0.0"
 pyyaml = ">=6.0.0,<7.0.0"
-rdflib = ">=6.2.0,<7.0.0"
+rdflib = ">=6.2.0,<8.0.0"
 requests = ">=2.0.0,<3.0.0"
 
 [[package]]
@@ -4422,4 +4422,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.12"
-content-hash = "fe1e146a9dd743e715ecc9ed540a158c7de6854cd7560ea98ed7026e0091096b"
+content-hash = "7003f4dfe94215eefdf52854da848bd5be0cb241a2f51aba5ad73d4944963062"
