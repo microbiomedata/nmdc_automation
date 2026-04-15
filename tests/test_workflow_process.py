@@ -6,12 +6,9 @@ from nmdc_automation.workflow_automation.workflow_process import (
     load_workflow_process_nodes,
     _resolve_relationships,
     _map_nodes_to_data_objects,
-    _within_range,
-    _determine_analyte_category,
-    _collect_candidate_data_object_ids_from_dg,
+    _within_range
 )
 from nmdc_automation.workflow_automation.workflows import load_workflow_configs
-from tests.conftest import test_db
 from tests.fixtures.db_utils import  load_fixture, reset_db
 
 
@@ -36,19 +33,9 @@ def test_load_workflow_process_nodes(test_db, test_client, workflow_file, workfl
 
     workflow_configs = load_workflow_configs(workflows_config_dir / workflow_file)
 
-    analyte_category = _determine_analyte_category(workflow_configs)
-    dg_query = {"analyte_category": analyte_category}
-    data_generation_records = list(
-        test_client.list_from_collection("data_generation_set", dg_query, max=1000)
-    )
-    candidate_do_ids = _collect_candidate_data_object_ids_from_dg(
-        test_client, workflow_configs, data_generation_records
-    )
-    candidate_do_ids_list = list(candidate_do_ids)
-
    # sanity checking these - they are used in the next step
-    data_objs_by_id = get_required_data_objects_map(test_client, workflow_configs, candidate_do_ids_list)
-    current_nodes, manifest_map = get_current_workflow_process_nodes(test_client, workflow_configs, data_objs_by_id, data_generation_records)
+    data_objs_by_id = get_required_data_objects_map(test_client, workflow_configs)
+    current_nodes, manifest_map = get_current_workflow_process_nodes(test_client, workflow_configs, data_objs_by_id)
     assert current_nodes
     assert len(current_nodes) == 2
 
@@ -76,21 +63,10 @@ def test_get_required_data_objects_map(test_db, test_client, workflows_config_di
     reset_db(test_db)
     load_fixture(test_db, "data_object_set.json")
     load_fixture(test_db, "lipidomics_data_objects.json")
-    load_fixture(test_db, "data_generation_set.json")
-    load_fixture(test_db, "read_qc_analysis.json", "workflow_execution_set")
 
     
     workflow_config = load_workflow_configs(workflows_config_dir / "workflows.yaml")
-    analyte_category = _determine_analyte_category(workflow_config)
-    dg_query = {"analyte_category": analyte_category}
-    data_generation_records = list(
-        test_client.list_from_collection("data_generation_set", dg_query, max=1000)
-    )
-    candidate_do_ids = _collect_candidate_data_object_ids_from_dg(
-        test_client, workflow_config, data_generation_records
-    )
-    candidate_do_ids_list = list(candidate_do_ids)
-    required_data_object_map = get_required_data_objects_map(test_client, workflow_config, candidate_do_ids_list)
+    required_data_object_map = get_required_data_objects_map(test_client, workflow_config)
     assert required_data_object_map
     for do in required_data_object_map.values():
         assert do.data_object_type
@@ -108,16 +84,7 @@ def test_load_workflow_process_nodes_with_obsolete_versions(test_db, test_client
     load_fixture(test_db, "workflow_execution_2.json", "workflow_execution_set")
 
     workflow_config = load_workflow_configs(workflows_config_dir / "workflows.yaml")
-    analyte_category = _determine_analyte_category(workflow_config)
-    dg_query = {"analyte_category": analyte_category}
-    data_generation_records = list(
-        test_client.list_from_collection("data_generation_set", dg_query, max=1000)
-    )
-    candidate_do_ids = _collect_candidate_data_object_ids_from_dg(
-        test_client, workflow_config, data_generation_records
-    )
-    candidate_do_ids_list = list(candidate_do_ids)
-    data_objs_by_id = get_required_data_objects_map(test_client, workflow_config, candidate_do_ids_list)
+    data_objs_by_id = get_required_data_objects_map(test_client, workflow_config)
 
     # There are 7 workflow executions in the fixture, but only 4 are current:
     # 2 are obsolete  MAGs workflows,
@@ -136,7 +103,7 @@ def test_load_workflow_process_nodes_with_obsolete_versions(test_db, test_client
 
     # testing functions that are called by load_workflow_process_nodes
     # get_current_workflow_process_nodes
-    current_nodes, manifest_map = get_current_workflow_process_nodes(test_client, workflow_config, data_objs_by_id, data_generation_records)
+    current_nodes, manifest_map = get_current_workflow_process_nodes(test_client, workflow_config, data_objs_by_id)
     assert current_nodes
     assert len(current_nodes) == exp_num_current_nodes
     current_node_types = [node.type for node in current_nodes]
@@ -175,17 +142,8 @@ def test_resolve_relationships(test_db, test_client, workflows_config_dir):
     load_fixture(test_db, "metagenome_annotation.json", "workflow_execution_set")
 
     workflow_config = load_workflow_configs(workflows_config_dir / "workflows.yaml")
-    analyte_category = _determine_analyte_category(workflow_config)
-    dg_query = {"analyte_category": analyte_category}
-    data_generation_records = list(
-        test_client.list_from_collection("data_generation_set", dg_query, max=1000)
-    )
-    candidate_do_ids = _collect_candidate_data_object_ids_from_dg(
-        test_client, workflow_config, data_generation_records
-    )
-    candidate_do_ids_list = list(candidate_do_ids)
-    data_objs_by_id = get_required_data_objects_map(test_client, workflow_config, candidate_do_ids_list)
-    current_nodes, manifest_map = get_current_workflow_process_nodes(test_client, workflow_config, data_objs_by_id, data_generation_records)
+    data_objs_by_id = get_required_data_objects_map(test_client, workflow_config)
+    current_nodes, manifest_map = get_current_workflow_process_nodes(test_client, workflow_config, data_objs_by_id)
     current_nodes_by_data_object_id, current_nodes = _map_nodes_to_data_objects(
         current_nodes, data_objs_by_id)
     assert current_nodes
@@ -262,21 +220,10 @@ def test_get_required_data_objects_by_id(test_db, test_client, workflows_config_
     # TODO: add workflow specific data objects
     reset_db(test_db)
     load_fixture(test_db, "data_object_set.json")
-    load_fixture(test_db, "data_generation_set.json")
-    load_fixture(test_db, "read_qc_analysis.json", "workflow_execution_set")
 
     workflow_config = load_workflow_configs(workflows_config_dir / workflow_file)
 
-    analyte_category = _determine_analyte_category(workflow_config)
-    dg_query = {"analyte_category": analyte_category}
-    data_generation_records = list(
-        test_client.list_from_collection("data_generation_set", dg_query, max=1000)
-    )
-    candidate_do_ids = _collect_candidate_data_object_ids_from_dg(
-        test_client, workflow_config, data_generation_records
-    )
-    candidate_do_ids_list = list(candidate_do_ids)
-    required_data_object_map = get_required_data_objects_map(test_client, workflow_config, candidate_do_ids_list)
+    required_data_object_map = get_required_data_objects_map(test_client, workflow_config)
     assert required_data_object_map
     # get a unique list of the data object types
     do_types = set()
