@@ -401,6 +401,9 @@ def _resolve_relationships(current_nodes: List[WorkflowProcessNode], node_data_o
     # Let's use this to find the parent activity
     # for each child activity
     for node in current_nodes:
+        if node.id == "nmdc:wfmag-11-307mtf48.2":
+            print(f"DEBUG MAGs node: parents={node.workflow.parents}")
+            print(f"DEBUG MAGs has_input={node.has_input}")
         logging.debug(f"Processing {node.id} {node.name} {node.workflow.name}")
         node_predecessors = node.workflow.parents
         if not node_predecessors:
@@ -462,6 +465,7 @@ def _map_nodes_to_data_objects(current_nodes: List[WorkflowProcessNode], require
     """
     node_data_object_map = dict()
     for node in current_nodes:
+        print(f"DEBUG node {node.id} {node.type} {node.was_informed_by}")
         for data_object_id in node.has_output:
             if data_object_id in required_data_object_map:
                 do = required_data_object_map[data_object_id]
@@ -474,6 +478,8 @@ def _map_nodes_to_data_objects(current_nodes: List[WorkflowProcessNode], require
                 node_data_object_map[data_object_id] = None
             else:
                 node_data_object_map[data_object_id] = node
+    for doid, node in node_data_object_map.items():
+        print(doid, "->", node.id if node else None)
     return node_data_object_map, current_nodes
 
 
@@ -535,8 +541,11 @@ def _map_manifest_to_data_objects(api, manifest_id, manifest_to_data_objects: Di
                     manifest_to_data_objects['data_object_set'].append(data_objects_by_id[data_object['id']])
                     #print(data_object)
                 else:
-                    logging.info(f"WARN: Couldn't add data object to manifest map. Data Object: {data_object['id']}.")
-                    raise ValueError("Could not add data object to manifest map")
+                    logging.info(
+                        f"WARN: Did not add data object to manifest map. "
+                        f"Expected if DO included in manifest but not required by workflows. "
+                        f"Data Object: {data_object['id']}.")
+                    continue
     
     return manifest_to_data_objects
 
@@ -655,6 +664,8 @@ def load_workflow_process_nodes(nmdcapi, workflows: list[WorkflowConfig], allowl
     #data_object_map = get_required_data_objects_map(db, workflows)
     if candidate_do_ids_list:
         data_object_map = get_required_data_objects_map(nmdcapi, workflows, candidate_do_ids_list)
+    else:
+        data_object_map = {}
 
     # Build up a set of relevant activities and a map from
     # the output objects to the activity that generated them.
