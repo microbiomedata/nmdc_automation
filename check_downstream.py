@@ -112,6 +112,10 @@ def check_downstream(wfp_nodes, force=False):
 
     for node in wfp_nodes:
         for child_wf in node.workflow.children:
+            #print(f"\nChecking node {node.id}  [{node.type}]  ver={node.version or 'N/A'}  for child workflow type '{child_wf.type}' …")
+            #print(f"    Child workflow1 version: {[child_node.workflow.version.lstrip('b').lstrip('v') for child_node in node.children]}")
+            #print(f"    Child workflow2 version: {child_wf.version.lstrip('b').lstrip('v')}")
+            #print(f"    Satisfied: {any(within_range(child_node.workflow, child_wf, force=force) for child_node in node.children)}")
             if not child_wf.enabled:
                 continue
             # Is there already a child node that satisfies this workflow?
@@ -175,8 +179,8 @@ def main():
     # ── Check downstream completeness ─────────────────────────────────────────
     complete, missing = check_downstream(wfp_nodes)
 
-    # Build a quick lookup of failures: (dg_id, wf_type) -> True if any execution has qc_status == 'fail'
-    failed_by_dg_and_type: set[tuple[str, str]] = set()
+    # Build a quick lookup of failures: dg_id -> True if any execution has qc_status == 'fail'
+    failed_dg_ids: set[str] = set()
     all_dg_ids: set[str] = set()
     for node in wfp_nodes:
         for dg_id in node.was_informed_by:
@@ -185,9 +189,8 @@ def main():
         q_fail = {"was_informed_by": {"$in": list(all_dg_ids)}, "qc_status": "fail"}
         failed_execs = api.list_from_collection("workflow_execution_set", q_fail, max=10000)
         for rec in failed_execs:
-            wf_type = rec.get("type")
             for dg_id in rec.get("was_informed_by", []):
-                failed_by_dg_and_type.add((dg_id, wf_type))
+                failed_dg_ids.add(dg_id)
 
     # DG-level check: DG nodes with no downstream workflows at all
     no_downstream_rows: set[tuple[str, str]] = set()
@@ -203,19 +206,11 @@ def main():
         for dg_id in node.was_informed_by:
             missing_rows.add((dg_id, node.id, child_wf.type))
 
-    # Add "fail" column and DG-only rows
+    # Add "fail" column
     missing_lines = []
-
-    # 1) Workflow-type-level missing
     for dg_id, last_wf_id, missing_type in sorted(missing_rows):
-        fail_flag = "fail" if (dg_id, missing_type) in failed_by_dg_and_type else ""
+        fail_flag = "fail" if dg_id in failed_dg_ids else ""
         missing_lines.append(f"{dg_id}\t{last_wf_id}\t{missing_type}\t{fail_flag}")
-
-    # 2) DGs with no downstream workflows at all
-    for dg_id, dg_node_id in sorted(no_downstream_rows):
-        missing_type = "NONE"
-        fail_flag = ""
-        missing_lines.append(f"{dg_id}\t{dg_node_id}\t{missing_type}\t{fail_flag}")
 
     tsv_output = (
         "data_generation_id\tlast_workflow_id\tmissing_workflow_type\tfail\n"
