@@ -179,6 +179,9 @@ def main():
     # ── Check downstream completeness ─────────────────────────────────────────
     complete, missing = check_downstream(wfp_nodes)
 
+    # Make list of DG IDs in allow list but with no downstream workflows
+    missing_dg_ids = set(allowlist) - {dg_id for node in wfp_nodes for dg_id in node.was_informed_by}
+
     # Fetch processing_institution for all DG IDs in allowlist
     CHUNK_SIZE = 100
     dg_processing_institution: dict[str, str] = {}
@@ -191,7 +194,7 @@ def main():
             dg_processing_institution[rec["id"]] = rec.get("processing_institution", "")
             dg_has_output[rec["id"]] = bool(rec.get("has_output"))
 
-    # Fetch job ids where the trigger activity was the last workflow id for each dg id
+    # Fetch job ids where the trigger activity was the last workflow id or the dg id if no existing workflows
     pending_job: dict[str, str] = {}
     last_wf_ids_list = list({
         workflow_id
@@ -201,10 +204,9 @@ def main():
             if getattr(node.workflow, "collection", None) == "data_generation_set"
             else [node.id]
         )
-    })
-    triggers = set(last_wf_ids_list + allowlist)
-    for i in range(0, len(triggers), CHUNK_SIZE):
-        id_chunk = list(triggers)[i:i + CHUNK_SIZE]
+    } | set(missing_dg_ids))
+    for i in range(0, len(last_wf_ids_list), CHUNK_SIZE):
+        id_chunk = last_wf_ids_list[i:i + CHUNK_SIZE]
         job_records = api.list_jobs({"config.trigger_activity": {"$in": id_chunk}}, max=10000)
         for rec in job_records:
             pending_job[rec["config"]["trigger_activity"]] = rec.get("id", "")
@@ -219,32 +221,25 @@ def main():
             for dg_id in rec.get("was_informed_by", []):
                 failed_dg_ids.add(dg_id)
 
-    # Make output rows for DG ids missing downstream workflows
+    # Make output rows for DG ids that are missing a downstream workflow
     missing_rows = set()
     for node, child_wf in missing:
         for dg_id in node.was_informed_by:
-            last_wf_id = "NONE" if getattr(node.workflow, "collection", None) == "data_generation_set" else node.id
+            is_data_generation = getattr(node.workflow, "collection", None) == "data_generation_set"
+            last_wf_id = "" if is_data_generation else node.id
             processing_institution = dg_processing_institution.get(dg_id, "")
             has_output = dg_has_output.get(dg_id, "")
-            if last_wf_id == "NONE":
-                trigger = dg_id
-            else:
-                trigger = last_wf_id
+            trigger = dg_id if is_data_generation else last_wf_id
             last_job_id = pending_job.get(trigger, "")
             fail_flag = "fail" if dg_id in failed_dg_ids else ""
             missing_rows.add((dg_id, last_wf_id, last_job_id, child_wf.type, fail_flag, processing_institution, has_output))
 
-    # Make output rows for DG IDs that never made it into wfp_nodes at all (ie malformed input DOs)
-    mapped_dg_ids = set()
-    for node in wfp_nodes:
-        for dg_id in node.was_informed_by:
-            mapped_dg_ids.add(dg_id)
-    no_workflow_dg_ids = set(allowlist) - mapped_dg_ids
-    for dg_id in sorted(no_workflow_dg_ids):
+    # Make output rows for DG IDs with no downstream workflows (never made it into wfp_nodes at all (ie malformed input DOs))
+    for dg_id in sorted(missing_dg_ids):
         fail_flag = "fail" if dg_id in failed_dg_ids else ""
         processing_institution = dg_processing_institution.get(dg_id, "")
         has_output = dg_has_output.get(dg_id, "")
-        missing_rows.add((dg_id, "NONE", "", "nmdc:ReadQcAnalysis", fail_flag, processing_institution, has_output))
+        missing_rows.add((dg_id, "", "", "nmdc:ReadQcAnalysis", fail_flag, processing_institution, has_output))
 
     # Make TSV output
     missing_lines = []
