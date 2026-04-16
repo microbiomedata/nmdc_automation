@@ -179,41 +179,62 @@ def main():
     # ── Check downstream completeness ─────────────────────────────────────────
     complete, missing = check_downstream(wfp_nodes)
 
-    # Build a quick lookup of failures: dg_id -> True if any execution has qc_status == 'fail'
-    failed_dg_ids: set[str] = set()
-    all_dg_ids: set[str] = set()
+    # Fetch processing_institution for all DG IDs in allowlist
+    CHUNK_SIZE = 100
+    dg_processing_institution: dict[str, str] = {}
+    dg_has_output: dict[str, bool] = {}
+    allowlist_list = list(allowlist)
+    for i in range(0, len(allowlist_list), CHUNK_SIZE):
+        id_chunk = allowlist_list[i:i + CHUNK_SIZE]
+        dg_records = api.list_from_collection("data_generation_set", {"id": {"$in": id_chunk}}, max=10000)
+        for rec in dg_records:
+            dg_processing_institution[rec["id"]] = rec.get("processing_institution", "")
+            dg_has_output[rec["id"]] = bool(rec.get("has_output"))
+
+    # Fetch DG IDs from the allowlist that never made it into wfp_nodes
+    loaded_dg_ids = set()
     for node in wfp_nodes:
         for dg_id in node.was_informed_by:
-            all_dg_ids.add(dg_id)
-    if all_dg_ids:
-        q_fail = {"was_informed_by": {"$in": list(all_dg_ids)}, "qc_status": "fail"}
-        failed_execs = api.list_from_collection("workflow_execution_set", q_fail, max=10000)
-        for rec in failed_execs:
-            for dg_id in rec.get("was_informed_by", []):
-                failed_dg_ids.add(dg_id)
+            loaded_dg_ids.add(dg_id)
+    no_workflow_dg_ids = set(allowlist) - loaded_dg_ids
 
-    # DG-level check: DG nodes with no downstream workflows at all
-    no_downstream_rows: set[tuple[str, str]] = set()
-    for node in wfp_nodes:
-        if getattr(node.workflow, "collection", None) != "data_generation_set":
-            continue
-        if not node.children:
-            for dg_id in node.was_informed_by:
-                no_downstream_rows.add((dg_id, node.id))
+    # Fetch DG IDs associated with workflow executions with qc_status == 'fail'
+    failed_dg_ids: set[str] = set()
+    if loaded_dg_ids:
+        loaded_dg_ids_list = list(loaded_dg_ids)
+        for i in range(0, len(loaded_dg_ids_list), CHUNK_SIZE):
+            id_chunk = loaded_dg_ids_list[i:i + CHUNK_SIZE]
+            q_fail = {"was_informed_by": {"$in": id_chunk}, "qc_status": "fail"}
+            failed_execs = api.list_from_collection("workflow_execution_set", q_fail, max=10000)
+            for rec in failed_execs:
+                for dg_id in rec.get("was_informed_by", []):
+                    failed_dg_ids.add(dg_id)
 
+    # DG ids missing downstream workflows
     missing_rows = set()
     for node, child_wf in missing:
         for dg_id in node.was_informed_by:
-            missing_rows.add((dg_id, node.id, child_wf.type))
+            last_wf_id = "NONE" if getattr(node.workflow, "collection", None) == "data_generation_set" else node.id
+            fail_flag = "fail" if dg_id in failed_dg_ids else ""
+            processing_institution = dg_processing_institution.get(dg_id, "")
+            has_output = dg_has_output.get(dg_id, "")
+            missing_rows.add((dg_id, last_wf_id, child_wf.type, fail_flag, processing_institution, has_output))
 
-    # Add "fail" column
-    missing_lines = []
-    for dg_id, last_wf_id, missing_type in sorted(missing_rows):
+
+    # DG IDs that never made it into wfp_nodes at all (ie malformed input DOs)
+    for dg_id in sorted(no_workflow_dg_ids):
         fail_flag = "fail" if dg_id in failed_dg_ids else ""
-        missing_lines.append(f"{dg_id}\t{last_wf_id}\t{missing_type}\t{fail_flag}")
+        processing_institution = dg_processing_institution.get(dg_id, "")
+        has_output = dg_has_output.get(dg_id, "")
+        missing_rows.add((dg_id, "NONE", "nmdc:ReadQcAnalysis", fail_flag, processing_institution, has_output))
+
+
+    missing_lines = []
+    for dg_id, last_wf_id, missing_type, fail_flag, processing_institution, has_output in sorted(missing_rows):
+        missing_lines.append(f"{dg_id}\t{last_wf_id}\t{missing_type}\t{fail_flag}\t{processing_institution}\t{has_output}")
 
     tsv_output = (
-        "data_generation_id\tlast_workflow_id\tmissing_workflow_type\tfail\n"
+        "data_generation_id\tlast_workflow_id\tmissing_workflow_type\tfail\tprocessing_institution\thas_output\n"
         + "\n".join(missing_lines)
         + "\n"
     )
