@@ -273,20 +273,5 @@ def main():
         sys.exit(1)
     sys.exit(0)
 
-
-def _collect_tree(node, indent: int, lines: list, seen=None):
-    """Recursively collect tree lines into a list."""
-    if seen is None:
-        seen = set()
-    if node.id in seen:
-        lines.append("  " * indent + f"[{node.id}] (already shown)")
-        return
-    seen.add(node.id)
-    do_count = len(node.data_objects_by_type)
-    lines.append("  " * indent + f"- {node.id}  [{node.type}]  ver={node.version or 'N/A'}  data_objects={do_count}")
-    for child in node.children:
-        _collect_tree(child, indent + 1, lines, seen)
-
-
 if __name__ == "__main__":
     main()
