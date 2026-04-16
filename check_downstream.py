@@ -243,7 +243,10 @@ def main():
 
     # Make TSV output
     missing_lines = []
-    for dg_id, last_wf_id, last_job_id, missing_type, fail_flag, processing_institution, has_output in sorted(missing_rows):
+    for dg_id, last_wf_id, last_job_id, missing_type, fail_flag, processing_institution, has_output in sorted(
+        missing_rows,
+        key=lambda row: (row[2], row[3]),
+    ):
         missing_lines.append(f"{dg_id}\t{last_wf_id}\t{last_job_id}\t{missing_type}\t{fail_flag}\t{processing_institution}\t{has_output}")
     tsv_output = (
         "data_generation_id\tlast_workflow_id\tlast_job_id\tmissing_workflow_type\tfail\tprocessing_institution\thas_output\n"
