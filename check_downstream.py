@@ -253,21 +253,6 @@ def main():
     (out_dir / "missing.tsv").write_text(tsv_output)
     logging.info(f"Wrote missing.tsv ({len(missing_lines)} entries) to {out_dir}")
 
-    # ── Data object summary per node ─────────────────────────────────────────
-    if args.verbose:
-        do_lines = []
-        for node in wfp_nodes:
-            do_lines.append(f"\n  {node.id}  [{node.type}]  ver={node.version or 'N/A'}")
-            if node.data_objects_by_type:
-                for do_type, do_obj in node.data_objects_by_type.items():
-                    do_lines.append(f"    {do_type}: {do_obj.id}")
-            else:
-                do_lines.append("    (no required data objects mapped)")
-        do_text = "\n".join(do_lines)
-        print("\n=== Data Objects by Node ===")
-        print(do_text)
-        (out_dir / "data_objects.txt").write_text(do_text + "\n")
-
     # ── Exit code ─────────────────────────────────────────────────────────────
     if missing:
         sys.exit(1)
