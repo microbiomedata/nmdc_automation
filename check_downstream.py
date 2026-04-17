@@ -12,9 +12,6 @@ The site config TOML must have [nmdc] api_url and [credentials] client_id/client
 The packaged workflows YAML (nmdc_automation/config/workflows/workflows.yaml) is always used.
 Outputs are written to a folder named <study_id>_<date> or <allowlist_stem>_<date>.
 
-Exit codes:
-    0 - all downstream data objects/executions are present
-    1 - one or more downstream workflows are missing
 """
 
 import argparse
@@ -256,10 +253,6 @@ def main():
     (out_dir / "missing.tsv").write_text(tsv_output)
     logging.info(f"Wrote missing.tsv ({len(missing_lines)} entries) to {out_dir}")
 
-    # ── Exit code ─────────────────────────────────────────────────────────────
-    if missing:
-        sys.exit(1)
-    sys.exit(0)
 
 if __name__ == "__main__":
     main()
