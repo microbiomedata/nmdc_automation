@@ -6,7 +6,8 @@ workflow executions have been created for a given set of workflow process nodes.
 Usage:
     python check_downstream.py --site-config <path/to/site_configuration.toml> \\
                                (--study-id <id> | --allowlist-file <file>) \\
-                               [--verbose]
+                               [--verbose] \\
+                               [--output-path]
 
 The site config TOML must have [nmdc] api_url and [credentials] client_id/client_secret.
 The packaged workflows YAML (nmdc_automation/config/workflows/workflows.yaml) is always used.
@@ -59,6 +60,11 @@ def parse_args():
         default=False,
         help="Enable DEBUG-level logging.",
     )
+    parser.add_argument(
+        "--output-path",
+        default=None,
+        help="Path to output directory (default: <study_id>_<date> or <allowlist_stem>_<date>).",
+    )
     return parser.parse_args()
 
 
@@ -81,7 +87,7 @@ def build_allowlist(args, api):
         return [line.strip() for line in path.read_text().splitlines() if line.strip()]
 
 
-def make_output_dir(args) -> Path:
+def make_output_path(args) -> Path:
     """Return a Path for the output directory, creating it if needed."""
     today = date.today().isoformat()
     if args.study_id:
@@ -89,9 +95,11 @@ def make_output_dir(args) -> Path:
         stem = args.study_id.replace(":", "-")
     else:
         stem = Path(args.allowlist_file).stem
-    out_dir = Path(f"{stem}_{today}")
-    out_dir.mkdir(parents=True, exist_ok=True)
-    return out_dir
+    if not args.output_path:
+        out_path = Path(f"{stem}_{today}")
+    else:
+        out_path = Path(f"{args.output_path}/{stem}_{today}")
+    return out_path
 
 
 def check_downstream(wfp_nodes, force=False):
@@ -161,8 +169,8 @@ def main():
         logging.info(f"Allowlist     : {len(allowlist)} IDs")
 
     # ── Create output directory ───────────────────────────────────────────────
-    out_dir = make_output_dir(args)
-    logging.info(f"Output dir    : {out_dir}")
+    out_path = make_output_path(args)
+    logging.info(f"Output path   : {out_path}")
 
     # ── Load workflow process nodes ───────────────────────────────────────────
     logging.info("Loading workflow process nodes …")
@@ -177,7 +185,7 @@ def main():
     complete, missing = check_downstream(wfp_nodes)
 
     # Make list of DG IDs in allow list but with no downstream workflows
-    missing_dg_ids = set(allowlist) - {dg_id for node in wfp_nodes for dg_id in node.was_informed_by}
+    dg_ids_no_workflows = set(allowlist) - {dg_id for node in wfp_nodes for dg_id in node.was_informed_by}
 
     # Fetch processing_institution for all DG IDs in allowlist
     CHUNK_SIZE = 100
@@ -201,7 +209,7 @@ def main():
             if getattr(node.workflow, "collection", None) == "data_generation_set"
             else [node.id]
         )
-    } | set(missing_dg_ids))
+    } | set(dg_ids_no_workflows))
     for i in range(0, len(last_wf_ids_list), CHUNK_SIZE):
         id_chunk = last_wf_ids_list[i:i + CHUNK_SIZE]
         job_records = api.list_jobs({"config.trigger_activity": {"$in": id_chunk}}, max=10000)
@@ -218,7 +226,7 @@ def main():
             for dg_id in rec.get("was_informed_by", []):
                 failed_dg_ids.add(dg_id)
 
-    # Make output rows for DG ids that are missing a downstream workflow
+    # Make output rows for DG ids that are missing some downstream workflow
     missing_rows = set()
     for node, child_wf in missing:
         for dg_id in node.was_informed_by:
@@ -232,17 +240,17 @@ def main():
             missing_rows.add((dg_id, last_wf_id, last_job_id, child_wf.type, fail_flag, processing_institution, has_output))
 
     # Make output rows for DG IDs with no downstream workflows (never made it into wfp_nodes at all (ie malformed input DOs))
-    for dg_id in sorted(missing_dg_ids):
+    for dg_id in sorted(dg_ids_no_workflows):
         fail_flag = "fail" if dg_id in failed_dg_ids else ""
         processing_institution = dg_processing_institution.get(dg_id, "")
         has_output = dg_has_output.get(dg_id, "")
         missing_rows.add((dg_id, "", "", "nmdc:ReadQcAnalysis", fail_flag, processing_institution, has_output))
 
-    # Make TSV output
+    # Make TSV output for missing workflows
     missing_lines = []
     for dg_id, last_wf_id, last_job_id, missing_type, fail_flag, processing_institution, has_output in sorted(
         missing_rows,
-        key=lambda row: (row[2], row[3]),
+        key=lambda row: (row[2], row[3], row[6]),
     ):
         missing_lines.append(f"{dg_id}\t{last_wf_id}\t{last_job_id}\t{missing_type}\t{fail_flag}\t{processing_institution}\t{has_output}")
     tsv_output = (
@@ -250,8 +258,20 @@ def main():
         + "\n".join(missing_lines)
         + "\n"
     )
-    (out_dir / "missing.tsv").write_text(tsv_output)
-    logging.info(f"Wrote missing.tsv ({len(missing_lines)} entries) to {out_dir}")
+    Path(f"{out_path}_missing.tsv").write_text(tsv_output)
+    logging.info(f"Wrote ({len(missing_lines)} entries) to {out_path}_missing.tsv")
+
+    # Make a list of DG IDs that are finished (i.e. can be removed from allow lst) and unfinished (i.e. keep in allow list or add to allow list if it has outputs)
+    all_dg_ids_unfinished = set()
+    for line in missing_lines:
+        dg_id = line.split("\t")[0]
+        all_dg_ids_unfinished.add(dg_id)
+    ready_for_processing_but_unfinished = {dg_id for dg_id in all_dg_ids_unfinished if dg_has_output.get(dg_id, "TRUE")}
+    Path(f"{out_path}_unfinished.lst").write_text("\n".join(ready_for_processing_but_unfinished) + "\n")
+    logging.info(f"Wrote ({len(ready_for_processing_but_unfinished)} entries) to {out_path}_unfinished.lst")
+    dg_ids_finished = sorted(set(allowlist) - all_dg_ids_unfinished)
+    Path(f"{out_path}_finished.lst").write_text("\n".join(dg_ids_finished) + "\n")
+    logging.info(f"Wrote ({len(dg_ids_finished)} entries) to {out_path}_finished.lst")
 
 
 if __name__ == "__main__":
