@@ -19,7 +19,7 @@ Workflows:
     Enabled: True
     Analyte Category: Metagenome
     Git_repo: https://github.com/microbiomedata/ReadsQC
-    Version: v1.0.22
+    Version: v1.0.24
     WDL: rqcfilter.wdl
     Collection: workflow_execution_set
     Filter Input Objects:
@@ -58,7 +58,7 @@ Workflows:
     Enabled: True
     Analyte Category: Metagenome
     Git_repo: https://github.com/microbiomedata/ReadsQC
-    Version: v1.0.22
+    Version: v1.0.24
     Collection: workflow_execution_set
     WDL: rqcfilter.wdl
     Input_prefix: rqcfilter

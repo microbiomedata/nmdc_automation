@@ -1,11 +1,11 @@
 {
   "workflow": {
-    "id": "Reads QC Interleave: v1.0.14"
+    "id": "Reads QC Interleave: v1.0.24"
   },
   "created_at": "2025-03-18T18:30:41",
   "config": {
     "git_repo": "https://github.com/microbiomedata/ReadsQC",
-    "release": "v1.0.14",
+    "release": "v1.0.24",
     "wdl": "interleave_rqcfilter.wdl",
     "activity_id": "nmdc:wfrqc-12-s66ntc59.1",
     "activity_set": "workflow_execution_set",
