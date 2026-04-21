@@ -22,8 +22,8 @@ Workflows:
   - Name: Readbased Taxonomy
     Import: false
     Type: nmdc:ReadBasedTaxonomyAnalysis
-    Git_repo: https://github.com/microbiomedata/ReadsQC
-    Version: v1.0.24
+    Git_repo: https://github.com/microbiomedata/ReadbasedAnalysis
+    Version: v1.0.10
     Collection: workflow_execution_set
     WorkflowExecutionRange: ReadBasedTaxonomyAnalysis
     Inputs:
