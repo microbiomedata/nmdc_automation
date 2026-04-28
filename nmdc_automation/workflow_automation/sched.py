@@ -318,10 +318,10 @@ class Scheduler:
     @lru_cache(maxsize=128)
     def get_existing_jobs(self, wf: WorkflowConfig):
         """
-        # we return an existing job if an exact version match was found,
-        # no other version is currently running, 
-        # and no existing version is newer than our current config (so that we don't schedule 
-        # a downgraded new job record). 
+        we return an existing job if an exact version match was found,
+        no other version is currently running, 
+        and no existing version is newer than our current config (so that we don't schedule 
+        a downgraded new job record). 
         """
         existing_jobs = set()
 
