@@ -349,7 +349,8 @@ class Scheduler:
                 continue
             
             #
-            # Look for active jobs to avoid directory collisions
+            # Look for active jobs to avoid directory collisions,
+            # Anything found going forward will not be the exact version
             #
 
             # A job with a different version that is unclaimed should be returned
@@ -357,10 +358,10 @@ class Scheduler:
                 existing_jobs.add(act)
                 continue
             
-            # Check for any jobs for this activity that are currently active
-            # that may have a different version, i.e running before the current
-            # config deployed a new version to schedule. In this case, we don't want it 
-            # to schedule on top of it, so return it as an existing job
+            # If we get here, then check if any jobs for this activity exists
+            # that has a claim and is currently in progress.
+            # In this case, we don't want it to schedule a new job on top of one found, 
+            # so return it as an existing job.
             is_active = False
             for claim in claims:
                 op_id = claim.get("op_id")
@@ -458,7 +459,7 @@ class Scheduler:
             # the refactor but making a note of it. -jlp 20250714
             for child_act in wfp_node.children:
                 if within_range(child_act.workflow, wf, force=self.force):
-                    msg = f"Skipping existing job for {child_act.id} {wf.name}:{wf.version}"
+                    msg = f"Skipping existing job for {child_act.id} {wf.name}:{child_act.version}"
                     if msg not in self._messages:
                         logger.info(msg)
                         self._messages.append(msg)

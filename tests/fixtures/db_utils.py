@@ -12,7 +12,8 @@ COLS = [
     'data_generation_set',
     'jobs',
     'workflow_execution_set',
-    'manifest_set'
+    'manifest_set',
+    'operations'
     ]
 
 
