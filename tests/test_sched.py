@@ -2,6 +2,7 @@ from nmdc_automation.workflow_automation.sched import Scheduler, SchedulerJob, M
 from pytest import mark
 import pytest
 from unittest.mock import patch, MagicMock
+import copy
 
 from nmdc_automation.workflow_automation.workflow_process import load_workflow_process_nodes
 from nmdc_automation.workflow_automation.workflows import load_workflow_configs
@@ -612,9 +613,7 @@ def test_scheduler_cycle_manifest_multi(test_db, test_client, workflows_config_d
     This currently uses a modified dev site config so that the dev-api gets called to test the
     aggregations whereas other unit tests mock the api for minting IDs, else it will hang
     TO DO: replace live dev aggregation call for stability of offline testing 
-    Results: One manifest job is scheduled, a second dgns for the same manifest is skipped, and a
-    non-manifest MAGs:v1.3.16 for nmdc:wfmgan-11-6x59p192.2 is created
-    note: site_config_file_dev_api before
+    Results: Two separate manifest jobs are scheduled
     """
     exp_rqc_git_repos = [
         "https://github.com/microbiomedata/ReadsQC",
@@ -844,4 +843,119 @@ def test_scheduler_mock_minter(test_db, test_client, workflows_config_dir, site_
         resp = jm.cycle()
         
         assert jm.api.minter.called
-        
+
+
+def test_no_schedule_minor_upgrade_of_running_job(test_db, test_client, workflows_config_dir, site_config_file):
+    """
+    Test that if a v2.0.0 MAG job is scheduled and ready for the watcher to pick up,
+    and immediately after the scheduler sees a new wf version for this activity record, but does NOT 
+    create a v2.0.1 job for the same activity. Note: this tests if the job is unclaimed.
+    """
+    reset_db(test_db)
+    load_fixture(test_db, "data_objects_2.json", "data_object_set")
+    load_fixture(test_db, "data_generation_2.json", "data_generation_set")
+    load_fixture(test_db, "workflow_execution_2.json", "workflow_execution_set")
+
+    
+
+    # Ensure no jobs exist yet
+    test_db.jobs.delete_many({})
+
+    # Initialize scheduler with a workflow file that includes MAGs v2.0.1
+    jm = Scheduler(workflow_yaml=workflows_config_dir / "workflows.yaml",
+                   site_conf=site_config_file,
+                   api=test_client)
+    
+    # enforce that the workflow version for MAGs is v2.0.0 version to start 
+    # (we override the value loaded from workflows.yaml so the test stays static)
+    mags_wf = None
+    parent_wf = None
+    for wf in jm.workflows:
+        for child in wf.children:
+            if "MAGs" in child.name:
+                child.version = "v2.0.0" # force baseline
+                mags_wf = child
+                parent_wf = wf
+                break
+    
+    assert mags_wf is not None, "Could not find MAGs workflow in config"
+
+    resp = jm.cycle()
+    
+    assert len(resp) == 1
+    job_rec = resp[0]
+    
+    # Printing the details as requested
+    print(f"\n[SCHEDULER] Created Job ID: {job_rec['id']}")
+    print(f"[SCHEDULER] Workflow: {job_rec['workflow']['id']}")
+    print(f"[SCHEDULER] Release: {job_rec['config']['release']}")
+    
+    assert job_rec["config"]["release"] == "v2.0.0"
+
+    
+    # Now create a new mags to run of wf v2.0.1 mag instance, i.e., simulate the redeployment of a new scheduler with update mag version (while 2.0.0 job is running)
+    new_mags_instance = copy.copy(mags_wf)
+    new_mags_instance.version = "v2.0.1"
+    parent_wf.children = [new_mags_instance]
+
+    resp_2 = jm.cycle()
+    
+    # scheduler does not create a v2.0.1 record when v2.0.0 is active.
+    # if len(resp_2) > 0, the scheduler failed to see the v2.0.0 job as a conflict.
+    if len(resp_2) > 0:
+        assert len(resp_2) == 0, f"Scheduled {resp_2[0]['workflow']['id']} while v2.0.0 is running!"
+    
+
+def test_scheduler_cycle_minor_upgrade_of_claimed_jobs(test_db, test_client, workflows_config_dir, site_config_file):
+    """
+    This tests two use cases for the scheduler cycles after a patch upgrade exists for a wf.
+    1) When a job exists before the patch upgrade and is claimed but not done, it should not 
+    scheduling a new job for this upgraded patch version (finds it as existing job).
+    2) After updating the claimed job to be done, then existing_jobs returns nothing; downstream jobs
+    can be scheduled for the new wfp node of the activity
+    """
+    
+    # init_test(test_db)
+    reset_db(test_db)
+
+    load_fixture(test_db, "data_objects_4.json", col="data_object_set")
+    load_fixture(test_db, "data_generation_4.json", col="data_generation_set")
+    
+    # Load the claimed job that has v1.0.20 for RQC 
+    load_fixture(test_db, "jobs_4.json", col="jobs")
+    load_fixture(test_db, "operations_4.json", col="operations")
+    
+
+    # Scheduler will find one job to create
+    exp_num_jobs_initial = 0
+    exp_num_jobs_cycle_1 = 2
+    jm = Scheduler(workflow_yaml=workflows_config_dir / "workflows.yaml",
+                   site_conf=site_config_file, api=test_client)
+
+    # Dynamically update the config version in memory to v1.0.24 so test stays consistent
+    for wf in jm.workflows:
+        if "Reads QC Interleave" in wf.name:
+            wf.version = "v1.0.24" 
+            break
+
+    # Cycle will find existing job, when processing the dgns wfp node (only 1 wfp node exists so far), 
+    # so no new job should be scheduled
+    resp = jm.cycle()
+    assert len(resp) == exp_num_jobs_initial
+    
+    # Let's also test that a finished claimed job with a non-upgrade is not scheduled.
+    # Note: if an operations done is True, then the corresponding workflow_execution record was updated
+    # too, else this wouldn't make sense and it would try and schedule a new job for this patch upgrade.
+    load_fixture(test_db, "workflow_execution_4.json", col="workflow_execution_set")
+
+    op_doc = test_db.operations.find_one({})
+    dynamic_op_id = op_doc["id"]
+    # Update done flag to true
+    jm.api.update_operation(dynamic_op_id, done=True)
+
+    # There will be 2 wfp nodes - one for dgns_id and the completed rqc v1.0.20
+    # We should not find an existing job (i.e., exact version or in progress) anymore
+    # but now that a wfp node exists for the completed rqc v1.0.20, we will schedule 
+    # downstream assembly and rbt from wfp node for rqc v1.0.20 
+    resp = jm.cycle()
+    assert len(resp) == exp_num_jobs_cycle_1
