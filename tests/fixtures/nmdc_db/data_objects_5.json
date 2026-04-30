@@ -1,0 +1,60 @@
+[{
+  "data_object_type": "Metagenome Raw Read 2",
+  "description": "sequencing results for BMI_HY5W2BGXG_Plate19S_31WellG3_R2",
+  "id": "nmdc:dobj-11-8ecwcj38",
+  "md5_checksum": "818d0bc4bff45f46c9d3630ffbb80cd4",
+  "name": "BMI_HY5W2BGXG_Plate19S_31WellG3_R2.fastq.gz",
+  "type": "nmdc:DataObject",
+  "url": "https://storage.neonscience.org/neon-microbial-raw-seq-files/2020/BMI_HY5W2BGXG_mms_R2/BMI_HY5W2BGXG_Plate19S_31WellG3_R2.fastq.gz",
+  "data_category": "instrument_data"
+},
+{
+  "data_object_type": "Metagenome Raw Read 1",
+  "description": "sequencing results for BMI_HY5W2BGXG_Plate19S_31WellG3_R1",
+  "id": "nmdc:dobj-11-stgwcv16",
+  "md5_checksum": "fd75ef2c0fdabcb7144053ef091fe41b",
+  "name": "BMI_HY5W2BGXG_Plate19S_31WellG3_R1.fastq.gz",
+  "type": "nmdc:DataObject",
+  "url": "https://storage.neonscience.org/neon-microbial-raw-seq-files/2020/BMI_HY5W2BGXG_mms_R1/BMI_HY5W2BGXG_Plate19S_31WellG3_R1.fastq.gz",
+  "data_category": "instrument_data"
+},
+{
+  "data_category": "instrument_data",
+  "data_object_type": "Metagenome Raw Read 2",
+  "description": "sequencing results for BMI_21S_24_2195_mms_H2WYNBGXT_R2",
+  "id": "nmdc:dobj-15-3eq34624",
+  "md5_checksum": "d3f0ef6b28ed64a421a34ef3635f8eb5",
+  "name": "BMI_21S_24_2195_mms_H2WYNBGXT_R2.fastq.gz",
+  "type": "nmdc:DataObject",
+  "url": "https://storage.neonscience.org/neon-microbial-raw-seq-files/2023/H2WYNBGXT_R2/BMI_21S_24_2195_mms_H2WYNBGXT_R2.fastq.gz"
+},
+{
+  "data_category": "instrument_data",
+  "data_object_type": "Metagenome Raw Read 1",
+  "description": "sequencing results for BMI_21S_23_2077_mms_HN27GBGXN_R1",
+  "id": "nmdc:dobj-15-ey05e010",
+  "md5_checksum": "e31aa5fbbe6e2b9fc1383779fa44be70",
+  "name": "BMI_21S_23_2077_mms_HN27GBGXN_R1.fastq.gz",
+  "type": "nmdc:DataObject",
+  "url": "https://storage.neonscience.org/neon-microbial-raw-seq-files/2023/HN27GBGXN_R1/BMI_21S_23_2077_mms_HN27GBGXN_R1.fastq.gz"
+},
+{
+  "data_category": "instrument_data",
+  "data_object_type": "Metagenome Raw Read 2",
+  "description": "sequencing results for BMI_21S_23_2077_mms_HN27GBGXN_R2",
+  "id": "nmdc:dobj-15-fw2xxn07",
+  "md5_checksum": "c2966c77d5630f705b0249a98ab1144d",
+  "name": "BMI_21S_23_2077_mms_HN27GBGXN_R2.fastq.gz",
+  "type": "nmdc:DataObject",
+  "url": "https://storage.neonscience.org/neon-microbial-raw-seq-files/2023/HN27GBGXN_R2/BMI_21S_23_2077_mms_HN27GBGXN_R2.fastq.gz"
+},
+{
+  "data_category": "instrument_data",
+  "data_object_type": "Metagenome Raw Read 1",
+  "description": "sequencing results for BMI_21S_24_2195_mms_H2WYNBGXT_R1",
+  "id": "nmdc:dobj-15-s0y8p788",
+  "md5_checksum": "ed239b98ca836f4105638de895aa534c",
+  "name": "BMI_21S_24_2195_mms_H2WYNBGXT_R1.fastq.gz",
+  "type": "nmdc:DataObject",
+  "url": "https://storage.neonscience.org/neon-microbial-raw-seq-files/2023/H2WYNBGXT_R1/BMI_21S_24_2195_mms_H2WYNBGXT_R1.fastq.gz"
+}]

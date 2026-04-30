@@ -2,7 +2,9 @@ from nmdc_automation.workflow_automation.sched import Scheduler, SchedulerJob, M
 from pytest import mark
 import pytest
 from unittest.mock import patch, MagicMock
+from requests.exceptions import HTTPError
 import copy
+import time
 
 from nmdc_automation.workflow_automation.workflow_process import load_workflow_process_nodes
 from nmdc_automation.workflow_automation.workflows import load_workflow_configs
@@ -959,3 +961,59 @@ def test_scheduler_cycle_minor_upgrade_of_claimed_jobs(test_db, test_client, wor
     # downstream assembly and rbt from wfp node for rqc v1.0.20 
     resp = jm.cycle()
     assert len(resp) == exp_num_jobs_cycle_1
+
+def test_get_existing_jobs_404_error(test_data_dir, test_db, test_client, workflows_config_dir, site_config_file):
+    """
+    Use case for checking a given ID in the allow list does not schedule for a minor upgrade
+    when there are more than one existing jobs returned for a wf activity    
+    Test also handles associated operations ID not found as properly skipped (edge case)
+    """
+    # Populate the set with test ID
+    allowlist = {"nmdc:dgns-15-bvywdf28"}
+    
+
+    reset_db(test_db)
+
+    load_fixture(test_db, "data_objects_5.json", col="data_object_set")
+    load_fixture(test_db, "data_generation_5.json", col="data_generation_set")
+    
+    # Load 3 jobs records with existing jobs that have a patch version 
+    load_fixture(test_db, "jobs_5.json", col="jobs")
+    # Load associated operations records for two of the jobs
+    load_fixture(test_db, "operations_5.json", col="operations")
+    
+
+    # Scheduler will find one job to create
+    exp_num_jobs_initial = 0
+    
+    jm = Scheduler(workflow_yaml=workflows_config_dir / "workflows.yaml",
+                   site_conf=site_config_file, api=test_client)
+    
+    # Dynamically update the config version in memory to v1.0.24 so test stays consistent
+    for wf in jm.workflows:
+        if "Reads QC Interleave" in wf.name:
+            wf.version = "v1.0.24" 
+            break
+    
+    def mock_get_op_side_effect(op_id):
+        """
+        Retrieves an operation from the DB; raises 404 if missing.
+        """
+        # Search the operations collection for the matching ID
+        op = test_db.operations.find_one({"id": op_id})
+        
+        if op:
+            return op
+        
+        # If not found, mimic the production API 404 failure
+        mock_resp = MagicMock()
+        mock_resp.status_code = 404
+        mock_resp.reason = "Not Found"
+        mock_resp.url = f"https://api-dev.microbiomedata.org/operations/{op_id}"
+        
+        raise HTTPError(f"404 Client Error: Not Found for url: {mock_resp.url}", response=mock_resp)
+    
+    with patch.object(jm.api, 'minter', return_value="mocked-id-123"):
+        resp = jm.cycle(allowlist=allowlist)
+        assert len(resp) == exp_num_jobs_initial
+    

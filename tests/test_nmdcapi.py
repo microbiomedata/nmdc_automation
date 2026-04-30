@@ -4,10 +4,13 @@ import os
 import time
 import re
 import requests
+import pytest
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from unittest.mock import patch, PropertyMock, Mock
 from tests.fixtures.db_utils import load_fixture, reset_db
+from unittest.mock import MagicMock
+from requests.exceptions import HTTPError
 
 
 #def test_basics(requests_mock, site_config_file, mock_api):
@@ -464,3 +467,74 @@ def test_list_from_collection_recovery_success(mock_sleep, monkeypatch, requests
     
     # check backoff sleep was triggered during the retry
     assert mock_sleep.call_count == 1
+
+
+@patch("time.sleep", return_value=None)
+def test_get_op_tenacity_retry(mock_sleep, site_config_file):
+    """
+    Validates Tenacity retry logic for get_op:
+    1. Confirms 404 (Not Found) errors short-circuit and exit immediately (1 attempt).
+    2. Confirms 500 (Server Error) errors trigger the full retry policy (6 attempts).
+    
+    Note: 'time.sleep' is patched to ensure the test suite runs instantly. 
+    To manually verify the exponential backoff timing, temporarily remove 
+    the @patch decorator and the mock_sleep argument.
+    """
+
+    api = nmdcapi(site_config_file)
+    
+    mock_token_resp = MagicMock()
+    mock_token_resp.status_code = 200
+    mock_token_resp.json.return_value = {
+        "access_token": "fake_token",
+        "expires": {
+            "days": 0,
+            "hours": 1,
+            "minutes": 0,
+            "seconds": 0
+        }
+    }
+
+    # setup mock 404 response
+    mock_404_resp = MagicMock()
+    mock_404_resp.status_code = 404
+    mock_404_resp.ok = False
+    mock_404_resp.raise_for_status.side_effect = HTTPError("Not Found", response=mock_404_resp)
+
+    # setup mock 500 response
+    mock_500_resp = MagicMock()
+    mock_500_resp.status_code = 500
+    mock_500_resp.ok = False
+    mock_500_resp.raise_for_status.side_effect = HTTPError("500 Error", response=mock_500_resp)
+
+    # use the request-based side effect
+    def dynamic_resp(prep_request, **kwargs):
+        # Check the URL inside the PreparedRequest object
+        if "/token" in prep_request.url:
+            return mock_token_resp
+        return current_error
+
+    with patch('requests.Session.send', side_effect=dynamic_resp) as mock_send:
+
+        current_error = mock_404_resp
+        with pytest.raises(HTTPError) as excinfo:
+            api.get_op("nmdc:ghost-id")
+        
+    
+        assert excinfo.value.response.status_code == 404
+        # Expect 2 calls: 1 for token, 1 for the operation
+        assert mock_send.call_count == 2
+    
+        # reset for next api call
+        mock_send.reset_mock()
+        api.token = None 
+
+        # test 500 (Should retry 6 times, as defined in the decorator) 
+        current_error = mock_500_resp
+        with pytest.raises(HTTPError):
+            api.get_op("nmdc:test-id")
+        
+
+        # 1 token call + 6 op attempts = 7
+        assert mock_send.call_count == 7
+        
