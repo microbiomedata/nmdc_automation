@@ -13,6 +13,7 @@ from nmdc_automation.workflow_automation.workflow_process import load_workflow_p
 from nmdc_automation.models.workflow import WorkflowConfig, WorkflowProcessNode
 from semver.version import Version
 import sys
+from requests.exceptions import HTTPError
 
 
 _POLL_INTERVAL = 60
@@ -364,10 +365,26 @@ class Scheduler:
             for claim in claims:
                 op_id = claim.get("op_id")
                 if op_id:
-                    op_obj = self.api.get_op(op_id)
-                    if op_obj.get("done") is False:
-                        is_active = True
-                        break # Stop checking claims for this job
+                    try:
+                        op_obj = self.api.get_op(op_id)
+                        if op_obj.get("done") is False:
+                            is_active = True
+                            break # Stop checking claims for this job
+                    except HTTPError as e:
+                        # check if it was specifically a data issue (404)
+                        # and only continue for this use case
+                        status_code = getattr(e.response, 'status_code', None)
+                        if status_code == 404:
+                            logger.warning(f"Data missing (404) for operation ID {op_id}.")
+                            continue
+                        
+                        logger.error(f"API Error {status_code} for {op_id}. Aborting cycle for safety.")
+                        raise 
+
+                    except Exception as e:
+                        logger.error(f"Critical system failure during op check: {e}")
+                        raise
+
             if is_active:
                 existing_jobs.add(act)
                 continue

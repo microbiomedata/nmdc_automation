@@ -16,7 +16,7 @@ from typing import Union, List
 from datetime import datetime, timedelta, timezone
 from nmdc_automation.config import SiteConfig, UserConfig
 import logging
-from tenacity import retry, wait_exponential, stop_after_attempt
+from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception
 from requests.exceptions import HTTPError
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
@@ -474,7 +474,22 @@ class NmdcRuntimeApi:
             url = orig_url + "&page_token=%s" % (resp["next_page_token"])
         return results
 
-    @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
+    # Optimized to not retry on 404 ("Not Found" errors), since retrying won't eventuall
+    # retrieve the data. All other error codes will continue to trigger a 6-attempt exponential 
+    # backoff to handle transient network or server-side issues.
+    @retry(
+        retry=retry_if_exception(
+            lambda e: not (
+                isinstance(e, HTTPError) and 
+                getattr(e, "response", None) is not None and 
+                e.response.status_code == 404
+            )
+        ),
+        # for other error codes, retry
+        wait=wait_exponential(multiplier=4, min=8, max=120),
+        stop=stop_after_attempt(6),
+        reraise=True
+    )
     @refresh_token
     def get_op(self, opid):
         url = "%soperations/%s" % (self._base_url, opid)

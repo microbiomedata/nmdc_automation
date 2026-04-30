@@ -7,6 +7,7 @@ from pathlib import Path
 from pytest import fixture
 import requests
 import requests_mock
+from requests.exceptions import HTTPError
 import shutil
 from time import time
 import pandas as pd
@@ -268,7 +269,18 @@ def configured_api_mock(session_monkeypatch, test_db, test_data_dir):
         # Search the operations collection for the matching ID
         op = test_db.operations.find_one({"id": op_id})
         
-        return op if op else {}
+        if op:
+            return op
+        
+        # else data is missing so return a 404 error like the api:
+        mock_resp = MagicMock()
+        mock_resp.status_code = 404
+        mock_resp.reason = "Not Found"
+        mock_resp.url = f"https://api-dev.microbiomedata.org/operations/{op_id}"
+        
+        # This error will bubble up through Tenacity and crash the test 
+        # unless a try/except is added to the Scheduler code.
+        raise HTTPError(f"404 Client Error: Not Found for url: {mock_resp.url}", response=mock_resp)
 
     mock_api.get_op.side_effect = mock_get_op_side_effect
 
