@@ -588,7 +588,7 @@ Data Objects:
       description: Metagenome Bins for {id}
       name: Metagenome bin tarfiles archive
       data_category: processed_data
-      import_suffix: _[0-9]+_s\.tar\.gz$
+      import_suffix: _s[0-9]+\.tar\.gz$
       nmdc_suffix: _hqmq_bin.zip
       input_to: []
       output_of:  nmdc:MagsAnalysis
