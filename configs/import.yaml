@@ -127,7 +127,7 @@ Workflows:
     Import: false
     Type: nmdc:MagsAnalysis
     Git_repo: https://github.com/microbiomedata/metaMAGs
-    Version: v1.3.19
+    Version: v2.0.2
     Collection: workflow_execution_set
     WorkflowExecutionRange: MagsAnalysis
     Inputs:
@@ -588,7 +588,7 @@ Data Objects:
       description: Metagenome Bins for {id}
       name: Metagenome bin tarfiles archive
       data_category: processed_data
-      import_suffix: _[0-9]+\.tar\.gz$
+      import_suffix: _[0-9]+_s\.tar\.gz$
       nmdc_suffix: _hqmq_bin.zip
       input_to: []
       output_of:  nmdc:MagsAnalysis
