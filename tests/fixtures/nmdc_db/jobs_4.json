@@ -1,0 +1,90 @@
+[{
+  "workflow": {
+    "id": "Reads QC Interleave: v1.0.20"
+  },
+  "id": "nmdc:sys0hdgk2w95",
+  "created_at": {
+    "$date": "2026-04-17T21:14:31.724Z"
+  },
+  "config": {
+    "git_repo": "https://github.com/microbiomedata/ReadsQC",
+    "release": "v1.0.20",
+    "wdl": "interleave_rqcfilter.wdl",
+    "activity_id": "nmdc:wfrqc-11-avb69r07.1",
+    "activity_set": "workflow_execution_set",
+    "was_informed_by": [
+      "nmdc:dgns-15-bvywdf28"
+    ],
+    "trigger_activity": "nmdc:dgns-15-bvywdf28",
+    "iteration": 1,
+    "input_prefix": "nmdc_rqcfilter",
+    "inputs": {
+      "proj": "nmdc:wfrqc-11-avb69r07.1",
+      "input_fastq1": [
+        "https://storage.neonscience.org/neon-microbial-raw-seq-files/2023/HN27GBGXN_R1/BMI_21S_23_2077_mms_HN27GBGXN_R1.fastq.gz"
+      ],
+      "input_fastq2": [
+        "https://storage.neonscience.org/neon-microbial-raw-seq-files/2023/HN27GBGXN_R2/BMI_21S_23_2077_mms_HN27GBGXN_R2.fastq.gz"
+      ]
+    },
+    "input_data_objects": [
+      {
+        "id": "nmdc:dobj-15-ey05e010",
+        "type": "nmdc:DataObject",
+        "name": "BMI_21S_23_2077_mms_HN27GBGXN_R1.fastq.gz",
+        "description": "sequencing results for BMI_21S_23_2077_mms_HN27GBGXN_R1",
+        "data_category": "instrument_data",
+        "data_object_type": "Metagenome Raw Read 1",
+        "md5_checksum": "e31aa5fbbe6e2b9fc1383779fa44be70",
+        "url": "https://storage.neonscience.org/neon-microbial-raw-seq-files/2023/HN27GBGXN_R1/BMI_21S_23_2077_mms_HN27GBGXN_R1.fastq.gz"
+      },
+      {
+        "id": "nmdc:dobj-15-fw2xxn07",
+        "type": "nmdc:DataObject",
+        "name": "BMI_21S_23_2077_mms_HN27GBGXN_R2.fastq.gz",
+        "description": "sequencing results for BMI_21S_23_2077_mms_HN27GBGXN_R2",
+        "data_category": "instrument_data",
+        "data_object_type": "Metagenome Raw Read 2",
+        "md5_checksum": "c2966c77d5630f705b0249a98ab1144d",
+        "url": "https://storage.neonscience.org/neon-microbial-raw-seq-files/2023/HN27GBGXN_R2/BMI_21S_23_2077_mms_HN27GBGXN_R2.fastq.gz"
+      }
+    ],
+    "activity": {
+      "name": "Read QC for {id}",
+      "input_read_bases": "{outputs.stats.input_read_bases}",
+      "input_read_count": "{outputs.stats.input_read_count}",
+      "output_read_bases": "{outputs.stats.output_read_bases}",
+      "output_read_count": "{outputs.stats.output_read_count}",
+      "type": "nmdc:ReadQcAnalysis"
+    },
+    "outputs": [
+      {
+        "output": "filtered_final",
+        "name": "Reads QC result fastq (clean data)",
+        "data_object_type": "Filtered Sequencing Reads",
+        "description": "Reads QC for {id}",
+        "id": "nmdc:dobj-11-rkjjm110"
+      },
+      {
+        "output": "filtered_stats_final",
+        "name": "Reads QC summary statistics",
+        "data_object_type": "QC Statistics",
+        "description": "Reads QC summary for {id}",
+        "id": "nmdc:dobj-11-rdmhyz17"
+      },
+      {
+        "output": "rqc_info",
+        "name": "File containing read filtering information",
+        "data_object_type": "Read Filtering Info File",
+        "description": "Read filtering info for {id}",
+        "id": "nmdc:dobj-11-hqgf5t87"
+      }
+    ]
+  },
+  "claims": [
+    {
+      "op_id": "nmdc:sys0pa082114",
+      "site_id": "NERSC"
+    }
+  ]
+}]

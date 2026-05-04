@@ -4,10 +4,13 @@ import os
 import time
 import re
 import requests
+import pytest
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from unittest.mock import patch, PropertyMock, Mock
 from tests.fixtures.db_utils import load_fixture, reset_db
+from unittest.mock import MagicMock
+from requests.exceptions import HTTPError
 
 
 #def test_basics(requests_mock, site_config_file, mock_api):
@@ -358,8 +361,8 @@ def test_actual_retry_delay_fast(site_config_file):
     # Assert no results were returned
     assert results is None
     
- 
-def test_list_from_collection_error_handling(monkeypatch, requests_mock, test_client):
+@patch('nmdc_automation.api.nmdcapi._sleep') # Don't wait 10s during the test
+def test_list_from_collection_error_handling(mock_sleep, monkeypatch, requests_mock, test_client):
     n = test_client
     # Give the mock a real requests.session because when we call the real method, it will expect it
     n.session = requests.Session()
@@ -368,7 +371,9 @@ def test_list_from_collection_error_handling(monkeypatch, requests_mock, test_cl
     
     monkeypatch.setattr(n, "list_from_collection", nmdcapi.list_from_collection.__get__(n, nmdcapi))
 
-    # Simulate a successful first page followed by a 400 Bad Request (Invalid Token)
+    # Simulate a successful first page followed by a 400 Bad Request (Invalid Token) 
+    # the requests_mock will repeat the last response in the list for any extra calls
+    # since it is a invalid token, it will reach the max attempt and raise exception
     responses = [
         {
             "status_code": 200,
@@ -386,14 +391,150 @@ def test_list_from_collection_error_handling(monkeypatch, requests_mock, test_cl
     # need to pass the target pattern so it triggers the mock even if there are params appended
     target_pattern = re.compile(f"{n._base_url}nmdcschema/{collection}.*")
     requests_mock.get(target_pattern, responses, complete_qs=False)
-
+    
+    # debug statement to make sure the monkeypatch is using the code and not magicmock
+    #print(f"DEBUG: Type of list_from_collection is: {type(n.list_from_collection)}")
+    
     try:
         n.list_from_collection(collection)
         assert False, "The code should have raised a RuntimeError"
     except RuntimeError as e:
-        assert "Crawl failed at token" in str(e)
+        assert "Crawl failed after " in str(e)
         assert "400 Client Error" in str(e.__cause__)
         
+    # validation that it hit the max retry limit of 3
+    # 2 calls in Attempt 1 (success then fail) + 1 call in Attempt 2 (fail) + 1 call in Attempt 3 (final fail)
+    assert requests_mock.call_count == 4
+    assert mock_sleep.call_count == 2
+
+
+@patch('nmdc_automation.api.nmdcapi._sleep') # Don't wait 10s during the test
+def test_list_from_collection_recovery_success(mock_sleep, monkeypatch, requests_mock, test_client):
+    n = test_client
+    n.session = requests.Session()
+    collection = "data_object_set"
     
-    # Verify it actually tried to fetch the second page before crashing
-    assert requests_mock.call_count == 2
+    # Temporarily bind the REAL method to the mock instance (as per your style)
+    monkeypatch.setattr(n, "list_from_collection", nmdcapi.list_from_collection.__get__(n, nmdcapi))
+
+    # Simulate a full restart followed by successful multi-page crawl
+    # Made this larger so that the number of call counts was more than testing the failures for variety
+    # 1. success (gives poison token)
+    # 2. failure (400 Bad Request / Invalid Token)
+    # 3. successful restart (page 1 again - no token)
+    # 4. success 2nd page
+    # 5. success (final page)
+    responses = [
+        {
+            "status_code": 200,
+            "json": {"resources": [{"id": "obj1"}], "next_page_token": "poison_token"}
+        },
+        {
+            "status_code": 400,
+            "text": "Invalid Token"
+        },
+        {
+            "status_code": 200,
+            "json": {"resources": [{"id": "obj1"}], "next_page_token": "good_token1"}
+        },
+        {
+            "status_code": 200,
+            "json": {"resources": [{"id": "obj2"}], "next_page_token": "good_token2"}
+        },
+        {
+            "status_code": 200,
+            "json": {"resources": [{"id": "obj3"}], "next_page_token": None}
+        }
+    ]
+
+    target_pattern = re.compile(f"{n._base_url}nmdcschema/{collection}.*")
+    requests_mock.get(target_pattern, responses)
+
+    # this call will go through the retries to eventually have success instead of raising RuntimeError
+    results = n.list_from_collection(collection)
+
+    # we should have three objects with the last one retrieved from the last pagination
+    assert len(results) == 3
+    assert results[2]["id"] == "obj3"
+    
+    # 5 calls to the api to match the responses we mock returned
+    assert requests_mock.call_count == 5
+    
+    # check reset on 3rd request, so does not have 'page_token' in the query string
+    # first call of attempt 2 is the restart.
+    history = requests_mock.request_history
+    assert "page_token" not in history[2].qs
+    
+    # check backoff sleep was triggered during the retry
+    assert mock_sleep.call_count == 1
+
+
+@patch("time.sleep", return_value=None)
+def test_get_op_tenacity_retry(mock_sleep, site_config_file):
+    """
+    Validates Tenacity retry logic for get_op:
+    1. Confirms 404 (Not Found) errors short-circuit and exit immediately (1 attempt).
+    2. Confirms 500 (Server Error) errors trigger the full retry policy (6 attempts).
+    
+    Note: 'time.sleep' is patched to ensure the test suite runs instantly. 
+    To manually verify the exponential backoff timing, temporarily remove 
+    the @patch decorator and the mock_sleep argument.
+    """
+
+    api = nmdcapi(site_config_file)
+    
+    mock_token_resp = MagicMock()
+    mock_token_resp.status_code = 200
+    mock_token_resp.json.return_value = {
+        "access_token": "fake_token",
+        "expires": {
+            "days": 0,
+            "hours": 1,
+            "minutes": 0,
+            "seconds": 0
+        }
+    }
+
+    # setup mock 404 response
+    mock_404_resp = MagicMock()
+    mock_404_resp.status_code = 404
+    mock_404_resp.ok = False
+    mock_404_resp.raise_for_status.side_effect = HTTPError("Not Found", response=mock_404_resp)
+
+    # setup mock 500 response
+    mock_500_resp = MagicMock()
+    mock_500_resp.status_code = 500
+    mock_500_resp.ok = False
+    mock_500_resp.raise_for_status.side_effect = HTTPError("500 Error", response=mock_500_resp)
+
+    # use the request-based side effect
+    def dynamic_resp(prep_request, **kwargs):
+        # Check the URL inside the PreparedRequest object
+        if "/token" in prep_request.url:
+            return mock_token_resp
+        return current_error
+
+    with patch('requests.Session.send', side_effect=dynamic_resp) as mock_send:
+
+        current_error = mock_404_resp
+        with pytest.raises(HTTPError) as excinfo:
+            api.get_op("nmdc:ghost-id")
+        
+    
+        assert excinfo.value.response.status_code == 404
+        # Expect 2 calls: 1 for token, 1 for the operation
+        assert mock_send.call_count == 2
+    
+        # reset for next api call
+        mock_send.reset_mock()
+        api.token = None 
+
+        # test 500 (Should retry 6 times, as defined in the decorator) 
+        current_error = mock_500_resp
+        with pytest.raises(HTTPError):
+            api.get_op("nmdc:test-id")
+        
+
+        # 1 token call + 6 op attempts = 7
+        assert mock_send.call_count == 7
+        
