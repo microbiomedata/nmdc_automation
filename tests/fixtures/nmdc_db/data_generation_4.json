@@ -1,0 +1,21 @@
+[{
+  "analyte_category": "metagenome",
+  "associated_studies": [
+    "nmdc:sty-11-34xj1150"
+  ],
+  "has_input": [
+    "nmdc:procsm-15-z0hess48"
+  ],
+  "has_output": [
+    "nmdc:dobj-15-ey05e010",
+    "nmdc:dobj-15-fw2xxn07"
+  ],
+  "id": "nmdc:dgns-15-bvywdf28",
+  "instrument_used": [
+    "nmdc:inst-14-xz5tb342"
+  ],
+  "name": "Terrestrial soil microbial communities - CPER_047-M-20210628-COMP-DNA1",
+  "ncbi_project_name": "PRJNA406974",
+  "processing_institution": "Battelle",
+  "type": "nmdc:NucleotideSequencing"
+}]

@@ -1,0 +1,70 @@
+[{
+  "analyte_category": "metagenome",
+  "associated_studies": [
+    "nmdc:sty-11-34xj1150"
+  ],
+  "has_input": [
+    "nmdc:procsm-15-z0hess48"
+  ],
+  "has_output": [
+    "nmdc:dobj-15-ey05e010",
+    "nmdc:dobj-15-fw2xxn07"
+  ],
+  "id": "nmdc:dgns-15-bvywdf28",
+  "instrument_used": [
+    "nmdc:inst-14-xz5tb342"
+  ],
+  "name": "Terrestrial soil microbial communities - CPER_047-M-20210628-COMP-DNA1",
+  "ncbi_project_name": "PRJNA406974",
+  "processing_institution": "Battelle",
+  "type": "nmdc:NucleotideSequencing"
+},
+{
+  "analyte_category": "metagenome",
+  "associated_studies": [
+    "nmdc:sty-11-34xj1150"
+  ],
+  "has_input": [
+    "nmdc:procsm-15-j2k9jz51"
+  ],
+  "has_output": [
+    "nmdc:dobj-15-s0y8p788",
+    "nmdc:dobj-15-3eq34624"
+  ],
+  "id": "nmdc:dgns-15-t2fsrq37",
+  "instrument_used": [
+    "nmdc:inst-14-xz5tb342"
+  ],
+  "name": "Terrestrial soil microbial communities - TALL_007-M-20210603-COMP-DNA1",
+  "ncbi_project_name": "PRJNA406974",
+  "processing_institution": "Battelle",
+  "type": "nmdc:NucleotideSequencing"
+},
+{
+  "has_input": [
+    "nmdc:procsm-11-k9htz473"
+  ],
+  "has_output": [
+    "nmdc:dobj-11-8ecwcj38",
+    "nmdc:dobj-11-stgwcv16"
+  ],
+  "id": "nmdc:omprc-11-4pjzvb35",
+  "name": "Terrestrial soil microbial communities - YELL_052-O-20190820-COMP-DNA1",
+  "ncbi_project_name": "PRJNA406974",
+  "processing_institution": "Battelle",
+  "type": "nmdc:NucleotideSequencing",
+  "gold_sequencing_project_identifiers": [
+    "gold:Gp0766093"
+  ],
+  "analyte_category": "metagenome",
+  "associated_studies": [
+    "nmdc:sty-11-34xj1150"
+  ],
+  "instrument_used": [
+    "nmdc:inst-14-xz5tb342"
+  ],
+  "provenance_metadata": {
+    "type": "nmdc:ProvenanceMetadata",
+    "mod_date": "2026-04-21T03:51:48Z"
+  }
+}]

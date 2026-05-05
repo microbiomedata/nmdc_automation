@@ -7,6 +7,7 @@ from pathlib import Path
 from pytest import fixture
 import requests
 import requests_mock
+from requests.exceptions import HTTPError
 import shutil
 from time import time
 import pandas as pd
@@ -261,6 +262,49 @@ def configured_api_mock(session_monkeypatch, test_db, test_data_dir):
         
     mock_api.list_jobs.side_effect = mock_list_jobs_side_effect
 
+    def mock_get_op_side_effect(op_id):
+        """
+        Retrieves a single operation from the operations collection by its id.
+        """
+        # Search the operations collection for the matching ID
+        op = test_db.operations.find_one({"id": op_id})
+        
+        if op:
+            return op
+        
+        # else data is missing so return a 404 error like the api:
+        mock_resp = MagicMock()
+        mock_resp.status_code = 404
+        mock_resp.reason = "Not Found"
+        mock_resp.url = f"https://api-dev.microbiomedata.org/operations/{op_id}"
+        
+        # This error will bubble up through Tenacity and crash the test 
+        # unless a try/except is added to the Scheduler code.
+        raise HTTPError(f"404 Client Error: Not Found for url: {mock_resp.url}", response=mock_resp)
+
+    mock_api.get_op.side_effect = mock_get_op_side_effect
+
+    def mock_update_operation_side_effect(op_id, done=None, meta=None):
+        """
+        Updates the operation in the test_db to reflect the new state.
+        """
+        update_fields = {}
+        if done is not None:
+            update_fields["done"] = done
+        if meta is not None:
+            update_fields["metadata"] = meta
+            
+        if update_fields:
+            test_db.operations.update_one(
+                {"id": op_id}, 
+                {"$set": update_fields}
+            )
+        
+        # Return the updated object to mimic a real API response
+        return test_db.operations.find_one({"id": op_id})
+
+    mock_api.update_operation = MagicMock()
+    mock_api.update_operation.side_effect = mock_update_operation_side_effect
 
     mock_api._base_url = "http://localhost:8000/" 
     mock_api.header = {
@@ -268,8 +312,16 @@ def configured_api_mock(session_monkeypatch, test_db, test_data_dir):
         'Content-Type': 'application/json' 
     }
 
+    def mock_mint_side_effect(id_type, informed_by=None):
+    
+        if id_type == "nmdc:DataObject":
+            return ["nmdc:dobj-01-abcd4321"]
+        
+        # Else this is a wf activity
+        return "nmdc:wfabc-01-abcd4321"
+    
     mock_api.minter = MagicMock()
-    mock_api.minter.return_value = ["nmdc:dobj-01-abcd4321"]
+    mock_api.minter.side_effect = mock_mint_side_effect
 
     session_monkeypatch.setenv("NMDC_API_URL", "http://localhost")
     session_monkeypatch.setenv("NMDC_CLIENT_ID", "anid")
