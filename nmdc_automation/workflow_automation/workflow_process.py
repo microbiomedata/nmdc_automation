@@ -73,10 +73,22 @@ def _get_latest_version(new_wfp_node, current_wfp_node):
         if curr_ver.patch > new_ver.patch:
             return current_wfp_node
     
-    # Else, choke?
+    # If we have matching version, then this could be due to an upgrade of a wf activity in the graph 
+    # upstream of this activity. In this case, we should return the wfp node with the latest iteration
+    # (note: current vs new doesn't imply latest, just what is being currently processed within the list)
+    if new_ver.major == curr_ver.major and new_ver.minor == curr_ver.minor and new_ver.patch == curr_ver.patch:
+        # Extract the iteration suffix 
+        new_iter = int(new_wfp_node.id.split(".")[-1])
+        curr_iter = int(current_wfp_node.id.split(".")[-1])
+        if new_iter > curr_iter:
+            return new_wfp_node
+        if curr_iter > new_iter:
+            return current_wfp_node
 
-    # Note: Is it possible to have two wf types with same version? i.e., wf_id.1 and wf_id.2 both have same version
-    # Assuming no above.
+    # Else, if it doesn't meet any of these criteria, something is awry and needs to be reviewed.
+    # e.g. same iteration for same wf version, could not properly parse version
+
+    
 
 
 @lru_cache

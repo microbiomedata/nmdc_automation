@@ -129,6 +129,30 @@ def test_load_workflow_process_nodes_with_obsolete_versions(test_db, test_client
     assert resolved_nodes
 
 
+def test_load_workflow_process_nodes_with_identical_versions(test_db, test_client, workflows_config_dir):
+    """
+    Test loading workflow process nodes for a case where has identical versions of the same workflow.
+    This can happen if rqc wf version was upgraded but downstream activies were not.
+    Example:
+    Run 1 (Legacy):       ReadsQC v1.0.8 (.1) -> other wfs -> Annotation v1.0.5 (.1)
+    Run 2 (Reprocessed):  ReadsQC v1.1.0 (.2) -> other wfs -> Annotation v1.0.5 (.2)
+                                  ^                                      ^
+                          (Version Upgrade)                   (Version Collision)
+    """
+    reset_db(test_db)
+    load_fixture(test_db, "data_objects_2.json", "data_object_set")
+    load_fixture(test_db, "data_generation_3.json", "data_generation_set")
+    load_fixture(test_db, "workflow_execution_5.json", "workflow_execution_set") #modified from workflow_execution_3.json
+
+    workflow_config = load_workflow_configs(workflows_config_dir / "workflows.yaml")
+    
+    workflow_process_nodes, manifest_map = load_workflow_process_nodes(test_client, workflow_config)
+
+    annotation_nodes = [n for n in workflow_process_nodes if n.type == "nmdc:MetagenomeAnnotation"]
+    assert len(annotation_nodes) == 1
+    assert annotation_nodes[0].id == "nmdc:wfmgan-11-kxtjhj81.2"
+
+
 def test_resolve_relationships(test_db, test_client, workflows_config_dir):
     """
     Test that the relationships between workflow process nodes are resolved
