@@ -296,7 +296,7 @@ Workflows:
     Enabled: True
     Analyte Category: Metagenome
     Git_repo: https://github.com/microbiomedata/metaMAGs
-    Version: v1.3.19
+    Version: v2.0.2
     WDL: mbin_nmdc.wdl
     Collection: workflow_execution_set
     Predecessors:
@@ -318,6 +318,7 @@ Workflows:
       gene_phylogeny_file: do:Gene Phylogeny tsv
       lineage_file: do:Scaffold Lineage tsv
       map_file: do:Contig Mapping File
+      seqtype: "short_reads"
     Optional Inputs:
       - map_file
     Workflow Execution:
@@ -338,15 +339,10 @@ Workflows:
       data_object_type: Metagenome HQMQ Bins Compression File
       description: Metagenome HQMQ Bins for {id}
       name: Metagenome hqmq bin zip archive
-    - output: final_gtdbtk_bac_summary
-      data_object_type: GTDBTK Bacterial Summary
-      description: Bacterial Summary for {id}
-      name: GTDBTK bacterial summary
-    - output: final_gtdbtk_ar_summary
-      data_object_type: GTDBTK Archaeal Summary
-      description: Archaeal Summary for {id}
-      name: GTDBTK archaeal summary
-      suffix: _gtdbtk.ar122.summary.tsv
+    - output: final_gtdbtk_json
+      data_object_type: GTDBTK Summary JSON
+      description: GTDBTK Summary for {id}
+      name: GTDBTK summary
     - output: mags_version
       data_object_type: Metagenome Bins Info File
       description: Metagenome Bins Info File for {id}
