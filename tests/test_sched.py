@@ -1017,3 +1017,53 @@ def test_get_existing_jobs_404_error(test_data_dir, test_db, test_client, workfl
         resp = jm.cycle(allowlist=allowlist)
         assert len(resp) == exp_num_jobs_initial
     
+
+def test_scheduler_mags_priority_selection(test_db, test_client, workflows_config_dir, site_config_file):
+    """
+    Test that the scheduler prioritizes Assembly Contigs from the upstream Assembly 
+    activity even though Metagenome Annotation is the sole trigger (Predecessor).
+    """
+    # 1. Setup the environment
+    reset_db(test_db)
+    # Ensure fixtures contain the parent-child link: Annotation -> was_informed_by -> Assembly
+    load_fixture(test_db, "data_objects_2.json", "data_object_set")
+    load_fixture(test_db, "data_generation_2.json", "data_generation_set")
+    load_fixture(test_db, "workflow_execution_2.json", "workflow_execution_set")
+
+    workflow_config = load_workflow_configs(workflows_config_dir / "workflows.yaml")
+
+    scheduler = Scheduler(workflow_yaml=workflows_config_dir / "workflows.yaml", 
+                          site_conf=site_config_file, 
+                          api=test_client)
+    
+    # 2. Find the MAGs job triggered by Annotation
+    workflow_process_nodes, manifest_map = load_workflow_process_nodes(scheduler.api, workflow_config)
+    
+    new_jobs = []
+    for node in workflow_process_nodes:
+        found_jobs = scheduler.find_new_jobs(node, manifest_map, new_jobs)
+        new_jobs.extend(found_jobs)
+    
+    mags_job = next((j for j in new_jobs if j.workflow.type == "nmdc:MagsAnalysis"), None)
+    assert mags_job, "MAGs job should be created with Annotation as the trigger"
+    assert mags_job.trigger_act.type == "nmdc:MetagenomeAnnotation"
+
+    # create_job_rec creates the inputs for the watcher to populate the inputs.json
+    job_req = scheduler.create_job_rec(mags_job, manifest_map)
+    
+    # retrieve the Data Object selection
+    input_data_objects = job_req["config"]["input_data_objects"]
+    selected_ids = [dobj["id"] for dobj in input_data_objects]
+    
+    # expected DO IDs from fixtures
+    assembly_raw_id = "nmdc:dobj-11-v41hsd93" 
+    annotation_renamed_id = "nmdc:dobj-11-tr910y56"
+
+    # contigs ID should be from assembly wf
+    assert assembly_raw_id in selected_ids
+    assert annotation_renamed_id not in selected_ids
+
+    
+    # since only Assembly has a BAM, it should be picked up even if not in filters
+    bam_id = "nmdc:dobj-11-t4b20t83" # Assuming this is the BAM ID in your fixture
+    assert bam_id in selected_ids
