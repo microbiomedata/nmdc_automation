@@ -145,6 +145,12 @@ class Scheduler:
         # Get all the data objects
         next_act = job.trigger_act
         do_by_type = dict()
+
+        # Extract the filters from the YAML for the current workflow (e.g., MAGs)
+        wf_filters = job.workflow.filter_input_objects or []
+        # Keep track of the source that provided the data for Filter Input Objects
+        type_source_map = dict()
+        
         while next_act:
 
             #
@@ -162,6 +168,17 @@ class Scheduler:
 
             else:
                 for do_type, data_object in next_act.data_objects_by_type.items():
+
+                    if do_type in wf_filters:
+                        current_source = type_source_map.get(do_type)
+                        # If we find this type in a new (higher) activity, wipe the downstream data
+                        if current_source and current_source != next_act.id:
+                            logging.debug(f"Using upstream type: {do_type} from {type_source_map[do_type]} "
+                                          f"from {next_act.id}")
+                            del do_by_type[do_type]
+                        type_source_map[do_type] = next_act.id
+                        
+
                     if do_type in do_by_type:
                         logger.debug(f"Ignoring Duplicate type: {do_type} {data_object.id} {next_act.id}")
                         continue

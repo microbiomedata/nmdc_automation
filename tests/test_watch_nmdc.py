@@ -382,6 +382,45 @@ def test_job_manager_process_successful_job(site_config, initial_state_file_1_fa
         jm.job_cache = []
 
 
+def test_job_manager_process_successful_job_optional_output(site_config, initial_state_file_1_failure, fixtures_dir, job_metadata_factory, mock_jaws_api):
+    '''
+    This test makes sure optional MAGs output that are set to optional will properly skip when making
+    the data object. It also tests that required data objects that are missing will skip but warn as expected.
+    The fixture mags_workflow_state_optional.json stores the state of v2.0.2 MAGs where outputs 
+    final_checkm and final_gtdbtk_json have "optional: true", such as the scheduler would
+    read the workflows config and write the outputs specs to the job record for the watcher to read 
+    and process. This also tests that a missing output skips without incident, even if it is required (final_lq_bins_zip).
+    The mags_jaws_status_optional.json is the fixture that represented the successful wf output.
+    '''
+
+
+    modified_job_metadata = job_metadata_factory(fixtures_dir / "mags_jaws_status_optional.json")
+    assert modified_job_metadata is not None
+
+    
+    with patch('nmdc_automation.workflow_automation.wfutils.JawsRunner.get_job_metadata') as mock_get_metadata:
+        mock_get_metadata.return_value = modified_job_metadata
+
+        # Arrange
+        fh = FileHandler(site_config, initial_state_file_1_failure)
+        jm = JobManager(site_config, fh)
+        new_job_state = json.load(open(fixtures_dir / "mags_workflow_state_optional.json"))
+        assert new_job_state
+        new_job = WorkflowJob(site_config, new_job_state, jaws_api=mock_jaws_api)
+        jm.job_cache.append(new_job)
+        # Act
+        db = jm.process_successful_job(new_job)
+        
+        # Assert
+        assert db
+        assert isinstance(db, Database)
+
+        assert new_job.done
+        assert new_job.job_status.lower() == "succeeded"
+        # cleanup
+        jm.job_cache = []
+
+
 def test_job_manager_get_finished_jobs_1_failure(site_config, initial_state_file_1_failure, fixtures_dir):
     # Arrange
     with requests_mock.Mocker() as mocker:

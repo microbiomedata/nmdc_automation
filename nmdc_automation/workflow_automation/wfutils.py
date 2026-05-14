@@ -889,16 +889,19 @@ class WorkflowJob:
             if output_key not in self.job.outputs:
                 logger.warning(f"Output key {output_key} not found in job outputs")
                 continue
-            output_file = Path(self.job.outputs[output_key])
-            logger.info(f"Create Data Object: {output_key} file path: {output_file}")
-            if not output_file.exists():
+            #safely get the path, in case it is None
+            output_path = self.job.outputs.get(output_key)
+            if output_path is None:
                 if output_spec.get("optional"):
                     logger.debug(f"Optional output {output_key} not found in job outputs")
                     continue
                 else:
                     logger.warning(f"Required output {output_key} not found in job outputs")
                     continue
-
+                
+            output_file = Path(self.job.outputs[output_key])
+            logger.info(f"Create Data Object: {output_key} file path: {output_file}")
+            
 
             md5_sum = _md5(output_file)
             file_size_bytes = output_file.stat().st_size
