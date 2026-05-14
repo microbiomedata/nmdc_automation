@@ -299,6 +299,8 @@ Workflows:
     Version: v2.0.2
     WDL: mbin_nmdc.wdl
     Collection: workflow_execution_set
+    Filter Input Objects:
+    - Assembly Contigs      
     Predecessors:
     - Metagenome Annotation
     Input_prefix: nmdc_mags
@@ -335,6 +337,7 @@ Workflows:
       data_object_type: CheckM Statistics
       description: CheckM for {id}
       name: CheckM statistics report
+      optional: true
     - output: final_hqmq_bins_zip
       data_object_type: Metagenome HQMQ Bins Compression File
       description: Metagenome HQMQ Bins for {id}
@@ -343,6 +346,7 @@ Workflows:
       data_object_type: GTDBTK Summary JSON
       description: GTDBTK Summary for {id}
       name: GTDBTK summary
+      optional: true
     - output: mags_version
       data_object_type: Metagenome Bins Info File
       description: Metagenome Bins Info File for {id}
