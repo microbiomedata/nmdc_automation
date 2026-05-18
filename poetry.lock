@@ -1886,18 +1886,18 @@ requests = "*"
 
 [[package]]
 name = "nmdc-schema"
-version = "11.18.1"
+version = "11.19.1"
 description = "Schema resources for the National Microbiome Data Collaborative (NMDC)"
 optional = false
 python-versions = "<4.0,>=3.10"
 groups = ["main"]
 files = [
-    {file = "nmdc_schema-11.18.1-py3-none-any.whl", hash = "sha256:f2cab9f83a9706bf5f61c5ecec8c1a200ca3b3f06b24bb27675ae8a2cf7606eb"},
-    {file = "nmdc_schema-11.18.1.tar.gz", hash = "sha256:e9bcc699bc5bec2a093cfcc47ef0dc8c995c574dca0c7683634d7ff87be8f23a"},
+    {file = "nmdc_schema-11.19.1-py3-none-any.whl", hash = "sha256:e2df19d58c45714641e2ec93b55bb6e90c9da470f8e7fc49ba437db859019a67"},
+    {file = "nmdc_schema-11.19.1.tar.gz", hash = "sha256:e258dfc31506dd325cd674a11284e9a9529c82d5a1b842184525f40a83927e30"},
 ]
 
 [package.dependencies]
-click = ">=8.0.0,<9.0.0"
+click = ">=8.0.0,<8.2"
 click-log = ">=0.4.0,<0.5.0"
 deprecated = ">=1.0.0,<2.0.0"
 jsonasobj2 = ">=1.0.0,<2.0.0"
@@ -4474,4 +4474,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.12"
-content-hash = "1085698c73ca38d6350788a4cd2117237a6d8694014c87162dc5a92bd74c65fc"
+content-hash = "ea26aaf0293fefc75f0a5fdb0d24b5f3655e3b925bcf2f9619a27bd2c02b1b15"
