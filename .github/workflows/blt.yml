@@ -13,7 +13,7 @@ jobs:
   build_lint_test:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
     - name: Ensure Docker configuration directory exists
       run: |
@@ -21,19 +21,19 @@ jobs:
 
     # Documentation: https://github.com/marketplace/actions/mongodb-in-github-actions
     - name: Set up MongoDB
-      uses: supercharge/mongodb-github-action@1.12.1
+      uses: supercharge/mongodb-github-action@315db7fe45ac2880b7758f1933e6e5d59afd5e94 # 1.12.1
       with:
         # Keep the MongoDB version in sync with the `nmdc-runtime` development environment; i.e.,
         # https://github.com/microbiomedata/nmdc-runtime/blob/46dd6fe5e4088cc6715ecaef3533ac19a8f171d6/docker-compose.yml#L118
         mongodb-version: 8.2.3
 
     - name: Set up Python 3.11
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
       with:
         python-version: "3.11"
 
     - name: Install Poetry
-      uses: snok/install-poetry@v1
+      uses: snok/install-poetry@76e04a911780d5b312d89783f7b1cd627778900a # v1.4.1
 
     - name: Install dependencies
       run: |
