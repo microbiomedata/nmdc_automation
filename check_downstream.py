@@ -258,8 +258,8 @@ def main():
         + "\n".join(missing_lines)
         + "\n"
     )
-    Path(f"{out_path}_missing.tsv").write_text(tsv_output)
-    logging.info(f"Wrote ({len(missing_lines)} entries) to {out_path}_missing.tsv")
+    Path(f"{out_path}_unfinished_details.tsv").write_text(tsv_output)
+    logging.info(f"Wrote ({len(missing_lines)} entries) to {out_path}_unfinished_details.tsv")
 
     # Make a list of DG IDs that are finished (i.e. can be removed from allow lst) and unfinished (i.e. keep in allow list or add to allow list if it has outputs)
     all_dg_ids_unfinished = set()
