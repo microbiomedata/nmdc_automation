@@ -305,22 +305,26 @@ class Scheduler:
         See if anything exist for this and if not
         mint a new id.
         """
-        # We need to see if any version exist and
-        # if so get its ID
-        ct = 0
-        last_id = None
-        
-        # Only look for ID for informed_by len=1, and handle multi later -jlp 20250722
-        # This should be ok to pass the array of was_informed_by to find the workflow in mongo -jlp 20250828
-        #if len(informed_by) == 1:
+        last_time = None
+        last_iteration = None
+        last_root = None
+
+
         q = {"was_informed_by": informed_by, "type": wf.type}
-        #for doc in self.db[wf.collection].find(q):
-        for doc in self.api.list_from_collection(wf.collection, q, "id"):
-            ct += 1
-            last_id = doc["id"]
+        for doc in self.api.list_from_collection(wf.collection, q, "id, started_at_time"):
+            curr_root = ".".join(doc["id"].split(".")[0:-1])
+            if last_root is None or curr_root == last_root:
+                last_root = curr_root
+                curr_iteration = int(doc["id"].split(".")[-1])
+                if last_iteration is None or curr_iteration > last_iteration:
+                    last_iteration = curr_iteration
+            else:
+                if doc["started_at_time"] > last_time:
+                    last_time = doc["started_at_time"]
+                    last_root = curr_root
+                    last_iteration = int(doc["id"].split(".")[-1])
 
-
-        if ct == 0 or last_id is None:
+        if last_root is None and last_iteration is None:
             # Get an ID
             if os.environ.get("MOCK_MINT"):
                 root_id = self.mock_mint(wf.type)
@@ -328,8 +332,8 @@ class Scheduler:
                 root_id = self.api.minter(wf.type, informed_by)
             return root_id, 1
         else:
-            root_id = ".".join(last_id.split(".")[0:-1])
-            return root_id, ct + 1
+            root_id = last_root
+            return root_id, last_iteration + 1
 
     @lru_cache(maxsize=128)
     def get_existing_jobs(self, wf: WorkflowConfig):

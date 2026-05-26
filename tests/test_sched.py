@@ -1067,3 +1067,24 @@ def test_scheduler_mags_priority_selection(test_db, test_client, workflows_confi
     # since only Assembly has a BAM, it should be picked up even if not in filters
     bam_id = "nmdc:dobj-11-t4b20t83" # Assuming this is the BAM ID in your fixture
     assert bam_id in selected_ids
+
+def test_get_activity_id_existing(test_db, test_client, workflows_config_dir, site_config_file):
+    """get_activity_id returns the next iteration when a matching record already exists."""
+    reset_db(test_db)
+
+    jm = Scheduler(workflow_yaml=workflows_config_dir / "workflows.yaml",
+                   site_conf=site_config_file, api=test_client)
+    wf = next(w for w in jm.workflows if w.name == "Reads QC")
+    informed_by = ["nmdc:dgns-11-abc123"]
+
+    # Seed an existing execution record with a iteration >1
+    test_db[wf.collection].insert_one({
+        "id": "nmdc:wfrqc-11-existing.3",
+        "was_informed_by": informed_by,
+        "type": wf.type,
+    })
+
+    base_id, iteration = jm.get_activity_id(wf, informed_by)
+
+    assert base_id == "nmdc:wfrqc-11-existing"
+    assert iteration == 4
