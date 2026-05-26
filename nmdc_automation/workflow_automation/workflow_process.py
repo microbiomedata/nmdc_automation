@@ -180,11 +180,17 @@ def get_current_workflow_process_nodes(
 
     if allowlist:
         allowlist_list = list(allowlist)
+        seen_dg_ids = set()
         for i in range(0, len(allowlist_list), chunk_size):
             id_chunk = allowlist_list[i:i + chunk_size]
             dg_query = {**q, "id": {"$in": id_chunk}}
             records = api.list_from_collection("data_generation_set", dg_query, max=max_page_size)
-            dg_execution_records.extend(records)
+            for rec in records:
+                rec_id = rec["id"]
+                if rec_id in seen_dg_ids:
+                    continue
+                seen_dg_ids.add(rec_id)
+                dg_execution_records.append(rec)
     else:
         dg_execution_records = api.list_from_collection("data_generation_set", q)
 
@@ -270,11 +276,17 @@ def get_current_workflow_process_nodes(
         records = []
         if allowlist: 
             allowlist_list = list(allowlist)
+            seen_wf_record_ids = set()
             for i in range(0, len(allowlist_list), chunk_size):
                 id_chunk = allowlist_list[i:i + chunk_size]
                 wf_query = {**q, "was_informed_by": {"$in": id_chunk}}
                 wf_records = api.list_from_collection(wf.collection, wf_query, max=max_page_size)
-                records.extend(wf_records)
+                for rec in wf_records:
+                    rec_id = rec["id"]
+                    if rec_id in seen_wf_record_ids:
+                        continue
+                    seen_wf_record_ids.add(rec_id)
+                    records.append(rec)
         else:
             records = api.list_from_collection(wf.collection, q)
         for rec in records:
@@ -328,7 +340,6 @@ def get_current_workflow_process_nodes(
                         # Reset latest for each check
                         latest = None
                         latest  = _get_latest_version(wfp_node, found_wfs[ current_found_rec_key ][wf.name])
-
                         if latest is None:
                             raise ValueError("Duplicate workflow process node with same version found")
                         
