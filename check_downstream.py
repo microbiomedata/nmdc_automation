@@ -102,7 +102,7 @@ def make_output_path(args) -> Path:
     return out_path
 
 
-def check_downstream(wfp_nodes, force=False):
+def check_downstream(wfp_nodes, manifest_map, force=False):
     """
     Walk the resolved workflow process node graph and find nodes whose
     expected child workflows are not yet represented.
@@ -114,8 +114,16 @@ def check_downstream(wfp_nodes, force=False):
     """
     complete = []
     missing = []
+    grouped_checks_seen = set()
 
     for node in wfp_nodes:
+        grouped_dg_ids = None
+        if getattr(node.workflow, "collection", None) == "data_generation_set" and len(getattr(node, "manifest", [])) == 1:
+            manifest_id = node.manifest[0]
+            grouped_dg_ids = sorted(manifest_map.get(manifest_id, {}).get("data_generation_set", []))
+            if len(grouped_dg_ids) <= 1:
+                grouped_dg_ids = None
+
         for child_wf in node.workflow.children:
             #print(f"\nChecking node {node.id}  [{node.type}]  ver={node.version or 'N/A'}  for child workflow type '{child_wf.type}' …")
             #print(f"    Child workflow1 version: {[child_node.workflow.version.lstrip('b').lstrip('v') for child_node in node.children]}")
@@ -123,17 +131,78 @@ def check_downstream(wfp_nodes, force=False):
             #print(f"    Satisfied: {any(within_range(child_node.workflow, child_wf, force=force) for child_node in node.children)}")
             if not child_wf.enabled:
                 continue
-            # Is there already a child node that satisfies this workflow?
-            satisfied = any(
-                within_range(child_node.workflow, child_wf, force=force)
-                for child_node in node.children
-            )
+
+            # For manifest groups, evaluate each child workflow exactly once for the full DG set.
+            if grouped_dg_ids is not None:
+                grouped_key = ("/".join(grouped_dg_ids), child_wf.name)
+                if grouped_key in grouped_checks_seen:
+                    continue
+                grouped_checks_seen.add(grouped_key)
+
+                satisfied = any(
+                    within_range(candidate.workflow, child_wf, force=force)
+                    and sorted(candidate.was_informed_by) == grouped_dg_ids
+                    for candidate in wfp_nodes
+                )
+            else:
+                # Is there already a child node that satisfies this workflow?
+                satisfied = any(
+                    within_range(child_node.workflow, child_wf, force=force)
+                    for child_node in node.children
+                )
+
             if satisfied:
                 complete.append((node, child_wf))
             else:
                 missing.append((node, child_wf))
 
     return complete, missing
+
+
+def _get_manifest_dg_key(node, manifest_map):
+    manifest_ids = getattr(node, "manifest", [])
+    if len(manifest_ids) != 1:
+        return None
+
+    manifest_id = manifest_ids[0]
+    manifest_data = manifest_map.get(manifest_id, {})
+    dg_ids = manifest_data.get("data_generation_set", [])
+    if len(dg_ids) <= 1:
+        return None
+
+    return _build_was_informed_by_key(dg_ids)
+
+
+def _build_was_informed_by_key(was_informed_by):
+    if not was_informed_by:
+        return None
+    if len(was_informed_by) == 1:
+        return was_informed_by[0]
+    return "_".join(sorted(was_informed_by))
+
+
+def _get_pending_job_triggers(node, manifest_map):
+    if getattr(node.workflow, "collection", None) != "data_generation_set":
+        return [node.id]
+
+    manifest_ids = getattr(node, "manifest", [])
+    if len(manifest_ids) == 1:
+        manifest_id = manifest_ids[0]
+        dg_ids = sorted(manifest_map.get(manifest_id, {}).get("data_generation_set", []))
+        if dg_ids:
+            return dg_ids
+
+    return list(node.was_informed_by)
+
+
+def _get_output_dg_ids(node, manifest_map):
+    manifest_dg_key = _get_manifest_dg_key(node, manifest_map)
+    if manifest_dg_key:
+        manifest_id = node.manifest[0]
+        dg_ids = manifest_map.get(manifest_id, {}).get("data_generation_set", [])
+        return ["/".join(sorted(dg_ids))]
+
+    return list(node.was_informed_by)
 
 
 def main():
@@ -182,7 +251,7 @@ def main():
         sys.exit(0)
     
     # ── Check downstream completeness ─────────────────────────────────────────
-    complete, missing = check_downstream(wfp_nodes)
+    complete, missing = check_downstream(wfp_nodes, manifest_map)
 
     # Make list of DG IDs in allow list but with no downstream workflows
     dg_ids_no_workflows = set(allowlist) - {dg_id for node in wfp_nodes for dg_id in node.was_informed_by}
@@ -202,13 +271,9 @@ def main():
     # Fetch job ids where the trigger activity was the last workflow id or the dg id if no existing workflows
     pending_job: dict[str, str] = {}
     last_wf_ids_list = list({
-        workflow_id
+        trigger_id
         for node, _ in missing
-        for workflow_id in (
-            node.was_informed_by
-            if getattr(node.workflow, "collection", None) == "data_generation_set"
-            else [node.id]
-        )
+        for trigger_id in _get_pending_job_triggers(node, manifest_map)
     } | set(dg_ids_no_workflows))
     for i in range(0, len(last_wf_ids_list), CHUNK_SIZE):
         id_chunk = last_wf_ids_list[i:i + CHUNK_SIZE]
@@ -229,14 +294,22 @@ def main():
     # Make output rows for DG ids that are missing some downstream workflow
     missing_rows = set()
     for node, child_wf in missing:
-        for dg_id in node.was_informed_by:
+        output_dg_ids = _get_output_dg_ids(node, manifest_map)
+        for dg_id in output_dg_ids:
             is_data_generation = getattr(node.workflow, "collection", None) == "data_generation_set"
             last_wf_id = "" if is_data_generation else node.id
-            processing_institution = dg_processing_institution.get(dg_id, "")
-            has_output = dg_has_output.get(dg_id, "")
-            trigger = dg_id if is_data_generation else last_wf_id
-            last_job_id = pending_job.get(trigger, "")
-            fail_flag = "fail" if dg_id in failed_dg_ids else ""
+            grouped_dg_ids = dg_id.split("/")
+            processing_institution = "/".join(
+                dg_processing_institution.get(grouped_dg_id, "") for grouped_dg_id in grouped_dg_ids
+            )
+            has_output = all(dg_has_output.get(grouped_dg_id, False) for grouped_dg_id in grouped_dg_ids)
+            trigger_ids = _get_pending_job_triggers(node, manifest_map) if is_data_generation else [last_wf_id]
+            last_job_id = ""
+            for trigger_id in trigger_ids:
+                if trigger_id in pending_job:
+                    last_job_id = pending_job[trigger_id]
+                    break
+            fail_flag = "fail" if any(grouped_dg_id in failed_dg_ids for grouped_dg_id in grouped_dg_ids) else ""
             missing_rows.add((dg_id, last_wf_id, last_job_id, child_wf.type, fail_flag, processing_institution, has_output))
 
     # Make output rows for DG IDs with no downstream workflows (never made it into wfp_nodes at all (ie malformed input DOs))
