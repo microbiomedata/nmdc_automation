@@ -338,14 +338,16 @@ def main():
     all_dg_ids_unfinished = set()
     for line in missing_lines:
         dg_id = line.split("\t")[0]
-        all_dg_ids_unfinished.add(dg_id)
+        dg_ids = dg_id.split("/")  # for manifest groups, take both dg ids
+        all_dg_ids_unfinished.update(dg_ids)
     ready_for_processing_but_unfinished = {dg_id for dg_id in all_dg_ids_unfinished if dg_has_output.get(dg_id, "TRUE")}
-    Path(f"{out_path}_unfinished.lst").write_text("\n".join(ready_for_processing_but_unfinished) + "\n")
-    logging.info(f"Wrote ({len(ready_for_processing_but_unfinished)} entries) to {out_path}_unfinished.lst")
+    not_ready_for_processing = all_dg_ids_unfinished - ready_for_processing_but_unfinished
+    logging.info(f"{len(not_ready_for_processing)} DG IDs have no outputs yet: {', '.join(sorted(not_ready_for_processing))}")
+    Path(f"{out_path}_unfinished.lst").write_text("\n".join(sorted(all_dg_ids_unfinished)) + "\n")
+    logging.info(f"Wrote ({len(all_dg_ids_unfinished)} entries) to {out_path}_unfinished.lst")
     dg_ids_finished = sorted(set(allowlist) - all_dg_ids_unfinished)
     Path(f"{out_path}_finished.lst").write_text("\n".join(dg_ids_finished) + "\n")
     logging.info(f"Wrote ({len(dg_ids_finished)} entries) to {out_path}_finished.lst")
-
 
 if __name__ == "__main__":
     main()
