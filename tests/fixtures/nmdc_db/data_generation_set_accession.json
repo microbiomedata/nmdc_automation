@@ -44,5 +44,24 @@
         "type": "nmdc:PersonValue"
     },
     "type" : "nmdc:NucleotideSequencing"
+},
+  {
+    "id" : "nmdc:omprc-11-metag3",
+    "name" : "Test Metagenome Processing",
+    "has_input" : [
+        "nmdc:bsm-11-qezc0h51"
+    ],
+    "analyte_category": "metagenome",
+    "associated_studies" : [
+        "nmdc:sty-11-test001"
+    ],
+    "processing_institution": "JGI",
+    "principal_investigator" : {
+        "has_raw_value" : "PI Name",
+        "email" : "pi_name@example.com",
+        "name" : "PI Name",
+        "type": "nmdc:PersonValue"
+    },
+    "type" : "nmdc:NucleotideSequencing"
 }
 ]

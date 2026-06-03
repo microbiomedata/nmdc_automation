@@ -193,7 +193,6 @@ class Scheduler:
             # do_by_type.update(next_act.data_objects_by_type.__dict__)
             next_act = next_act.parent
 
-        # Keep deterministic order, remove duplicates.
         if accessions:
             accessions = list(dict.fromkeys(accessions))
 
@@ -203,24 +202,28 @@ class Scheduler:
         input_data_objects = []
         inputs = dict()
         optional_inputs = wf.optional_inputs
+        fq_inputs = ["input_files", "input_fq1", "input_fq2", "input_fastq1", "input_fastq2"]
         for k, v in job.workflow.inputs.items():
             # some inputs are booleans and should not be modified
             if isinstance(v, bool):
                 inputs[k] = v
                 continue
+            # some inputs are data objects that we need to translate to urls
             elif v.startswith("do:"):
                 do_type = v[3:]
                 dobj_list = do_by_type.get(do_type)
                 if not dobj_list:
-                    if accessions and k in ["input_files", "input_fq1", "input_fq2", "input_fastq1", "input_fastq2"]:
-                        continue
                     if k in optional_inputs:
                         continue
+                    if k in fq_inputs:
+                        if accessions:
+                            continue
+                        raise MissingDataObjectException(f"Unable to find {do_type} in {do_by_type} and no accession(s) provided")
                     raise MissingDataObjectException(f"Unable to find {do_type} in {do_by_type}")
                 if len(dobj_list) == 1:
                     input_data_objects.append(dobj_list[0].as_dict())
                 
-                    if k in ["input_files", "input_fq1", "input_fq2", "input_fastq1", "input_fastq2"]:
+                    if k in fq_inputs:
                         v = [dobj_list[0]["url"]]
                     else:
                         v = dobj_list[0]["url"]

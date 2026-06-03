@@ -8,6 +8,7 @@ import time
 
 from nmdc_automation.workflow_automation.workflow_process import load_workflow_process_nodes
 from nmdc_automation.workflow_automation.workflows import load_workflow_configs
+from nmdc_automation.models.workflow import WorkflowProcessNode
 from tests.fixtures.db_utils import init_test, load_fixture, read_json, reset_db
 from unittest.mock import patch, PropertyMock, Mock
 from nmdc_automation.api.nmdcapi import NmdcRuntimeApi
@@ -400,19 +401,34 @@ def test_scheduler_create_job_rec_handles_data_generation_without_has_output(tes
         api=test_client,
     )
 
-    resp = scheduler.cycle()
-    rqc_jobs = [j for j in resp if j["config"]["activity"]["type"] == "nmdc:ReadQcAnalysis"]
+    workflow_config = load_workflow_configs(workflows_config_dir / "workflows.yaml")
+    workflow_process_nodes, manifest_map = load_workflow_process_nodes(scheduler.api, workflow_config)
+
+    new_jobs = []
+    for node in workflow_process_nodes:
+        found_jobs = scheduler.find_new_jobs(node, manifest_map, new_jobs)
+        new_jobs.extend(found_jobs)
+
+    rqc_jobs = [j for j in new_jobs if j.workflow.type == "nmdc:ReadQcAnalysis"]
     assert len(rqc_jobs) == 2
 
-    print(rqc_jobs)
+    raw_read_job = next(j for j in rqc_jobs if j.trigger_id == "nmdc:omprc-11-metag1")
+    raw_read_job_req = scheduler.create_job_rec(raw_read_job, manifest_map)
+    assert "accessions" not in raw_read_job_req["config"]["inputs"]
 
-    raw_read_job = [j for j in rqc_jobs if j["config"]["trigger_activity"] == "nmdc:omprc-11-metag1"][0]
-    assert "accessions" not in raw_read_job["config"]["inputs"]
+    accession_job = next(j for j in rqc_jobs if j.trigger_id == "nmdc:omprc-11-metag2")
+    accession_job_req = scheduler.create_job_rec(accession_job, manifest_map)
+    assert accession_job_req["config"]["inputs"]["accessions"] == ["SRX123456", "SRX789012"]
+    assert "input_fq1" not in accession_job_req["config"]["inputs"]
+    assert "input_fq2" not in accession_job_req["config"]["inputs"]
 
-    accession_job = [j for j in rqc_jobs if j["config"]["trigger_activity"] == "nmdc:omprc-11-metag2"][0]
-    assert accession_job["config"]["inputs"]["accessions"] == ["SRX123456", "SRX789012"]
-    assert "input_fq1" not in accession_job["config"]["inputs"]
-    assert "input_fq2" not in accession_job["config"]["inputs"]
+    metag3_record = test_db.data_generation_set.find_one({"id": "nmdc:omprc-11-metag3"})
+    metag3_node = WorkflowProcessNode(metag3_record, raw_read_job.trigger_act.workflow)
+    bad_job = SchedulerJob(raw_read_job.workflow, metag3_node, manifest_map)
+    with pytest.raises(MissingDataObjectException):
+        scheduler.create_job_rec(bad_job, manifest_map)
+
+
 
 @pytest.mark.parametrize("job_fixture", [
     "job_req_2.json",
