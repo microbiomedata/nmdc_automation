@@ -150,6 +150,8 @@ class Scheduler:
         wf_filters = job.workflow.filter_input_objects or []
         # Keep track of the source that provided the data for Filter Input Objects
         type_source_map = dict()
+        # Make list of accession ids
+        accessions = []
         
         while next_act:
 
@@ -158,14 +160,12 @@ class Scheduler:
             # Note: Currently only support one manifest per workflowprocessnode/datagen
             #
             if len(next_act.manifest) == 1 and job.trigger_id in manifest_map[next_act.manifest[0]]['data_generation_set']:
-
                 # Find the data objects associated with the manifest using manifest_map
                 for data_object in manifest_map[next_act.manifest[0]]['data_object_set']:
                     do_type = data_object.data_object_type_text
                     if do_type not in do_by_type:    
                         do_by_type[do_type] = []
                     do_by_type[do_type].append(data_object)
-
             else:
                 for do_type, data_object in next_act.data_objects_by_type.items():
 
@@ -185,9 +185,17 @@ class Scheduler:
                     do_by_type[do_type] = []
                     do_by_type[do_type].append(data_object)
                     #do_by_type[do_type] = data_object #used to be scalar
+
+            dg_accessions = getattr(next_act.process, "insdc_experiment_identifiers", [])
+            if dg_accessions:
+                accessions.extend(dg_accessions)
             
             # do_by_type.update(next_act.data_objects_by_type.__dict__)
             next_act = next_act.parent
+
+        # Keep deterministic order, remove duplicates.
+        if accessions:
+            accessions = list(dict.fromkeys(accessions))
 
         wf = job.workflow
         base_id, iteration = self.get_activity_id(wf, job.informed_by)
@@ -204,6 +212,8 @@ class Scheduler:
                 do_type = v[3:]
                 dobj_list = do_by_type.get(do_type)
                 if not dobj_list:
+                    if accessions and k in ["input_files", "input_fq1", "input_fq2", "input_fastq1", "input_fastq2"]:
+                        continue
                     if k in optional_inputs:
                         continue
                     raise MissingDataObjectException(f"Unable to find {do_type} in {do_by_type}")
@@ -231,6 +241,11 @@ class Scheduler:
                 v = workflow_execution_id
             elif v == "{predecessor_activity_id}":
                 v = job.trigger_act.id
+            elif v == "Accessions":
+                if accessions:
+                    v = accessions
+                else:
+                    continue
 
             inputs[k] = v
 

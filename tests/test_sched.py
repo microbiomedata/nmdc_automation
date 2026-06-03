@@ -385,6 +385,34 @@ def test_scheduler_create_job_rec_has_input_files_as_array(test_db, test_client,
     assert assembly["config"]["inputs"]["shortRead"] == True
     assert isinstance(assembly["config"]["inputs"]["input_files"], list)
 
+def test_scheduler_create_job_rec_handles_data_generation_without_has_output(test_db, test_client, workflows_config_dir, site_config_file):
+    """
+    If a data_generation trigger has no has_output, create_job_rec should use
+    insdc_experiment_identifiers as accessions input.
+    """
+    reset_db(test_db)
+    load_fixture(test_db, "data_object_set_accession.json", "data_object_set")
+    load_fixture(test_db, "data_generation_set_accession.json", "data_generation_set")
+
+    scheduler = Scheduler(
+        workflow_yaml=workflows_config_dir / "workflows.yaml",
+        site_conf=site_config_file,
+        api=test_client,
+    )
+
+    resp = scheduler.cycle()
+    rqc_jobs = [j for j in resp if j["config"]["activity"]["type"] == "nmdc:ReadQcAnalysis"]
+    assert len(rqc_jobs) == 2
+
+    print(rqc_jobs)
+
+    raw_read_job = [j for j in rqc_jobs if j["config"]["trigger_activity"] == "nmdc:omprc-11-metag1"][0]
+    assert "accessions" not in raw_read_job["config"]["inputs"]
+
+    accession_job = [j for j in rqc_jobs if j["config"]["trigger_activity"] == "nmdc:omprc-11-metag2"][0]
+    assert accession_job["config"]["inputs"]["accessions"] == ["SRX123456", "SRX789012"]
+    assert "input_fq1" not in accession_job["config"]["inputs"]
+    assert "input_fq2" not in accession_job["config"]["inputs"]
 
 @pytest.mark.parametrize("job_fixture", [
     "job_req_2.json",
