@@ -392,7 +392,7 @@ def test_scheduler_create_job_rec_handles_data_generation_without_has_output(tes
     insdc_experiment_identifiers as accessions input.
     """
     reset_db(test_db)
-    load_fixture(test_db, "data_object_set_accession.json", "data_object_set")
+    load_fixture(test_db, "data_object_set.json", "data_object_set")
     load_fixture(test_db, "data_generation_set_accession.json", "data_generation_set")
 
     scheduler = Scheduler(
