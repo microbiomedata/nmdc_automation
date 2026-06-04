@@ -7,7 +7,7 @@
     "data_object_type": "Metagenome Raw Read 2",
     "type": "nmdc:DataObject",
     "data_category": "instrument_data",
-    "url": "https://portal.nersc.gov"
+    "url": "https://data.microbiomedata.org"
   },
   {
     "id": "nmdc:dobj-11-rawreads1",
@@ -17,7 +17,7 @@
     "data_object_type": "Metagenome Raw Read 1",
     "type": "nmdc:DataObject",
     "data_category": "instrument_data",
-    "url": "https://portal.nersc.gov"
+    "url": "https://data.microbiomedata.org"
   },
   {
     "id": "nmdc:dobj-11-qcstats",
@@ -501,7 +501,7 @@
     "data_object_type": "Metatranscriptome Raw Read 1",
     "data_category": "instrument_data",
     "type": "nmdc:DataObject",
-    "url": "https://portal.nersc.gov"
+    "url": "https://data.microbiomedata.org"
   },
   {
     "id": "nmdc:dobj-11-rawreads4",
@@ -512,7 +512,7 @@
     "data_object_type": "Metatranscriptome Raw Read 2",
     "data_category": "instrument_data",
     "type": "nmdc:DataObject",
-    "url": "https://portal.nersc.gov"
+    "url": "https://data.microbiomedata.org"
   },
   {
     "id": "nmdc:dobj-11-filteredreads1",
