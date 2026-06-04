@@ -14,6 +14,7 @@ from nmdc_automation.models.workflow import WorkflowConfig, WorkflowProcessNode
 from semver.version import Version
 import sys
 from requests.exceptions import HTTPError
+import requests
 
 
 _POLL_INTERVAL = 60
@@ -47,6 +48,27 @@ def within_range(wf1: WorkflowConfig, wf2: WorkflowConfig, force=False) -> bool:
     if v1.major == v2.major and v1.minor == v2.minor:
         return True
     return False
+
+def resolve_url(url):
+    """
+    Resolve a URL, checking if a URL is accessible and returning the final destination after any redirects.
+
+    Args:
+        url (str): The URL to resolve.
+
+    Returns:
+        str: The final URL after any redirects.
+
+    Raises:
+        HTTPError: If the request to the URL fails.
+    """
+    try:
+        response = requests.head(url, allow_redirects=True)
+        response.raise_for_status()
+        return response.url
+    except HTTPError as e:
+        logger.error(f"Failed to resolve URL {url}: {e}")
+        raise
 
 
 class SchedulerJob:
@@ -211,9 +233,9 @@ class Scheduler:
                     input_data_objects.append(dobj_list[0].as_dict())
                 
                     if k in ["input_files", "input_fq1", "input_fq2", "input_fastq1", "input_fastq2"]:
-                        v = [dobj_list[0]["url"]]
+                        v = [resolve_url(dobj_list[0]["url"])]
                     else:
-                        v = dobj_list[0]["url"]
+                        v = resolve_url(dobj_list[0]["url"])
                 
                 # For multi-input, it goes here to produce []
                 else:
@@ -221,7 +243,7 @@ class Scheduler:
                     for dobj in dobj_list:
                         input_data_objects.append(dobj.as_dict())
     
-                        v.append(dobj["url"])
+                        v.append(resolve_url(dobj["url"]))
                         
                     
             # TODO: Make this smarter
