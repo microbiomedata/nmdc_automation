@@ -1132,3 +1132,34 @@ def test_get_activity_id_existing(test_db, test_client, workflows_config_dir, si
 
     assert base_id == "nmdc:wfrqc-11-existing"
     assert iteration == 4
+
+def test_resolve_data_object_urls(test_db, test_client, workflows_config_dir, site_config_file):
+    """Test that the scheduler resolves URLs for data objects that have a redirect."""
+
+    reset_db(test_db)
+    load_fixture(test_db, "data_objects_6.json", col="data_object_set")
+    load_fixture(test_db, "data_generation_6.json", col="data_generation_set")
+    load_fixture(test_db, "data_objects_in_manifest.json", "data_object_set")
+    load_fixture(test_db, "data_generation_in_manifest.json", "data_generation_set")
+    load_fixture(test_db, "manifest_set.json", "manifest_set")
+
+    assert "storage.neonscience.org" in test_db['data_object_set'].find_one({'id':'nmdc:dobj-11-redirect1'})['url']
+
+    jm = Scheduler(workflow_yaml=workflows_config_dir / "workflows.yaml",
+                   site_conf=site_config_file, api=test_client)
+    resp = jm.cycle()
+
+    assert len(resp)==3
+    for workflow in resp:
+        print(f"\n{workflow['config']['inputs']}")
+        if workflow['config']['was_informed_by'][0] == 'nmdc:omprc-11-redirected':
+            assert "storage.googleapis.com" in workflow['config']['inputs']['input_fq1'][0]
+            assert "storage.neonscience.org" not in workflow['config']['inputs']['input_fq1'][0]
+            assert "storage.googleapis.com" in workflow['config']['inputs']['input_fq2'][0]
+        if workflow['config']['was_informed_by'][0] == 'nmdc:omprc-11-direct':
+            assert "data.microbiomedata.org/data/raw/" in workflow['config']['inputs']['input_files'][0]
+        if 'nmdc:dgns-11-qmpge038' in workflow['config']['was_informed_by']:
+            input_fq1s = workflow['config']['inputs']['input_fq1']
+            for fq1 in input_fq1s:
+                assert "storage.googleapis.com" in fq1
+                assert "storage.neonscience.org" not in fq1

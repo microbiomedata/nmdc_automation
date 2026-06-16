@@ -1,0 +1,33 @@
+[
+    {
+    "id": "nmdc:dobj-11-redirect1",
+    "name": "metaG_R1_001.fastq.gz",
+    "description": "Sequencing results for MetaG_R1",
+    "md5_checksum": "4c7f1be37f805836162b49da4ed9c7e5",
+    "data_object_type": "Metagenome Raw Read 1",
+    "type": "nmdc:DataObject",
+    "data_category": "instrument_data",
+    "url": "https://storage.neonscience.org/neon-microbial-raw-seq-files/2023/BMI_HCNKKBGX5_mms_R1/BMI_HCNKKBGX5_Tube93_R1.fastq.gz"
+  },
+  {
+    "id": "nmdc:dobj-11-redirect2",
+    "name": "metaG_R2_001.fastq.gz",
+    "description": "Sequencing results for MetaG_R2",
+    "md5_checksum": "ed9467e690babb683b024ed47dd97b85",
+    "data_object_type": "Metagenome Raw Read 2",
+    "type": "nmdc:DataObject",
+    "data_category": "instrument_data",
+    "url": "https://storage.neonscience.org/neon-microbial-raw-seq-files/2023/BMI_HCNKKBGX5_mms_R2/BMI_HCNKKBGX5_Tube93_R2.fastq.gz"
+  },
+  {
+    "id": "nmdc:dobj-11-direct",
+    "name": "SAMEA7724288_ERR5003332_interleaved.fq.gz",
+    "description": "Raw interleaved fastq for SAMEA7724288_ERR5003332 (gold:Gp0452564)",
+    "file_size_bytes": 813387064,
+    "md5_checksum": "aab32bc3c31de86e2a469cec09c8dbd4",
+    "data_object_type": "Metagenome Raw Reads",
+    "url": "https://data.microbiomedata.org/data/raw/SAMEA7724288_ERR5003332_interleaved.fq.gz",
+    "type": "nmdc:DataObject",
+    "data_category": "instrument_data"
+  }
+]
