@@ -8,11 +8,7 @@ import time
 
 from nmdc_automation.workflow_automation.workflow_process import load_workflow_process_nodes
 from nmdc_automation.workflow_automation.workflows import load_workflow_configs
-<<<<<<< HEAD
-from tests.conftest import test_db
-=======
 from nmdc_automation.models.workflow import WorkflowProcessNode
->>>>>>> main
 from tests.fixtures.db_utils import init_test, load_fixture, read_json, reset_db
 from unittest.mock import patch, PropertyMock, Mock
 from nmdc_automation.api.nmdcapi import NmdcRuntimeApi
