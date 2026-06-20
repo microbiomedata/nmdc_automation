@@ -294,7 +294,7 @@ Workflows:
 
   - Name: MAGs
     Type: nmdc:MagsAnalysis
-    Enabled: True
+    Enabled: False
     Analyte Category: Metagenome
     Git_repo: https://github.com/microbiomedata/metaMAGs
     Version: v2.0.3
