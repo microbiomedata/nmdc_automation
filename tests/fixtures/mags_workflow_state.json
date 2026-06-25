@@ -28,7 +28,8 @@
           "product_names_file": "https://data.microbiomedata.org/data/nmdc:omprc-11-hwz45c12/nmdc:wfmgan-12-1hfw7y63.1/nmdc_wfmgan-12-1hfw7y63.1_product_names.tsv",
           "gene_phylogeny_file": "https://data.microbiomedata.org/data/nmdc:omprc-11-hwz45c12/nmdc:wfmgan-12-1hfw7y63.1/nmdc_wfmgan-12-1hfw7y63.1_gene_phylogeny.tsv",
           "lineage_file": "https://data.microbiomedata.org/data/nmdc:omprc-11-hwz45c12/nmdc:wfmgan-12-1hfw7y63.1/nmdc_wfmgan-12-1hfw7y63.1_scaffold_lineage.tsv",
-          "map_file": "https://data.microbiomedata.org/data/nmdc:omprc-11-hwz45c12/nmdc:wfmgan-12-1hfw7y63.1/nmdc_wfmgan-12-1hfw7y63.1_contig_names_mapping.tsv"
+          "map_file": "https://data.microbiomedata.org/data/nmdc:omprc-11-hwz45c12/nmdc:wfmgan-12-1hfw7y63.1/nmdc_wfmgan-12-1hfw7y63.1_contig_names_mapping.tsv",
+          "use_gpu": false
         },
         "input_data_objects": [
           {
