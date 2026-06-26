@@ -322,6 +322,7 @@ Workflows:
       lineage_file: do:Scaffold Lineage tsv
       map_file: do:Contig Mapping File
       seqtype: "short_reads"
+      use_gpu: false
     Optional Inputs:
       - map_file
     Workflow Execution:
