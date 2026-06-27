@@ -376,12 +376,15 @@ class Scheduler:
             return root_id, last_iteration + 1
 
     @lru_cache(maxsize=128)
-    def get_existing_jobs(self, wf: WorkflowConfig):
+    def get_existing_jobs(self, wf: WorkflowConfig, manifest_id: str = None):
         """
         we return an existing job if an exact version match was found,
         no other version is currently running, 
         and no existing version is newer than our current config (so that we don't schedule 
         a downgraded new job record). 
+
+        Added: manifest_id filter to allow re-pooling data generation IDs 
+        that were previously run as individual (non-manifest) jobs.
         """
         existing_jobs = set()
 
@@ -393,11 +396,24 @@ class Scheduler:
         current_v = get_v_obj(wf.version)
         
         q = {"config.git_repo": wf.git_repo}
+
+        # If we are evaluating a manifest pool, target jobs matching this manifest
+        if manifest_id:
+            q["config.manifest"] = manifest_id
         
         for j in self.api.list_jobs(q):
             # the assumption is that a job in any state has been triggered by an activity
             # that was the result of an existing (completed) job
             act = j["config"]["trigger_activity"]
+
+            if not manifest_id and j["config"].get("manifest"):
+                logger.warning(
+                    f"Data integrity mismatch for activity {act}: Live data object is individual, "
+                    f"but historical job {j.get('id')} was run as part of manifest '{j['config']['manifest']}'. "
+                    f"Upstream database may have changed. Proceeding with individual scheduling."
+                )
+                continue
+            
             job_version_str = j["config"].get("release")
             job_v = get_v_obj(job_version_str)
             claims = j.get("claims", [])
@@ -469,6 +485,10 @@ class Scheduler:
         - Is for a workflow that is enabled
         """
         new_jobs = []
+
+        # Extract current manifest string if it exists for this node
+        current_manifest_id = wfp_node.manifest[0] if len(wfp_node.manifest) == 1 else None
+
         # Loop over the derived workflows for this
         # activities' workflow
         for wf in wfp_node.workflow.children:
@@ -480,7 +500,7 @@ class Scheduler:
                     self._messages.append(msg)
                 continue
             # See if we already have a job for this
-            if wfp_node.id in self.get_existing_jobs(wf):
+            if wfp_node.id in self.get_existing_jobs(wf, manifest_id=current_manifest_id):
                 msg = f"Skipping existing job for {wfp_node.id} {wf.name}:{wf.version}"
                 if msg not in self._messages:
                     logger.info(msg)
@@ -500,7 +520,7 @@ class Scheduler:
                     for dgns_id in manifest_map[wfp_node.manifest[0]]['data_generation_set']:
                         # Only need to check for others dgns since already checked itself above
                         if dgns_id != wfp_node.id:
-                            if dgns_id in self.get_existing_jobs(wf):
+                            if dgns_id in self.get_existing_jobs(wf, manifest_id=current_manifest_id):
                                 found_existing_manifest_job = True
                                 associated_wfp_node_id = dgns_id
                                 break
