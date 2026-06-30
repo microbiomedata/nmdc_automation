@@ -8,7 +8,7 @@
     ],
     "name": "BMI_HCNKKBGX5_Tube93_R1.fastq.gz",
     "type": "nmdc:DataObject",
-    "url": "https://storage.neonscience.org/neon-microbial-raw-seq-files/2023/BMI_HCNKKBGX5_mms_R1/BMI_HCNKKBGX5_Tube93_R1.fastq.gz",
+    "url": "https://data.microbiomedata.org",
     "data_category": "instrument_data"
   },
   {
@@ -20,7 +20,7 @@
     ],
     "name": "BMI_HCNKKBGX5_Tube93_R2.fastq.gz",
     "type": "nmdc:DataObject",
-    "url": "https://storage.neonscience.org/neon-microbial-raw-seq-files/2023/BMI_HCNKKBGX5_mms_R2/BMI_HCNKKBGX5_Tube93_R2.fastq.gz",
+    "url": "https://data.microbiomedata.org",
     "data_category": "instrument_data"
   },
   {
@@ -32,7 +32,7 @@
     ],
     "name": "BMI_HLGJLBGX5_Tube93_R1.fastq.gz",
     "type": "nmdc:DataObject",
-    "url": "https://storage.neonscience.org/neon-microbial-raw-seq-files/2023/BMI_HLGJLBGX5_mms_R1/BMI_HLGJLBGX5_Tube93_R1.fastq.gz",
+    "url": "https://data.microbiomedata.org",
     "data_category": "instrument_data"
   },
   {
@@ -44,7 +44,7 @@
     ],
     "name": "BMI_HLGJLBGX5_Tube93_R2.fastq.gz",
     "type": "nmdc:DataObject",
-    "url": "https://storage.neonscience.org/neon-microbial-raw-seq-files/2023/BMI_HLGJLBGX5_mms_R2/BMI_HLGJLBGX5_Tube93_R2.fastq.gz",
+    "url": "https://data.microbiomedata.org",
     "data_category": "instrument_data"
   },
   {
@@ -56,7 +56,7 @@
   "data_object_type": "Filtered Sequencing Reads",
   "file_size_bytes": 1784035188,
   "md5_checksum": "24106eaa91ec4d02e4287bffccaf020a",
-  "url": "https://data.microbiomedata.org/data/dev/nmdc:manif-11-behhtd03/nmdc:wfrqc-15-8rcjpy94.1/nmdc_wfrqc-15-8rcjpy94.1_filtered.fastq.gz",
+  "url": "https://data.microbiomedata.org",
   "was_generated_by": "nmdc:wfrqc-15-8rcjpy94.1"
   },
   {
@@ -68,7 +68,7 @@
   "data_object_type": "Read Filtering Info File",
   "file_size_bytes": 620,
   "md5_checksum": "436b791048f5c24824d1a29b02e6004b",
-  "url": "https://data.microbiomedata.org/data/dev/nmdc:manif-11-behhtd03/nmdc:wfrqc-15-8rcjpy94.1/nmdc_wfrqc-15-8rcjpy94.1_readsQC.info",
+  "url": "https://data.microbiomedata.org",
   "was_generated_by": "nmdc:wfrqc-15-8rcjpy94.1"
   },
  {
@@ -80,7 +80,7 @@
   "data_object_type": "QC Statistics",
   "file_size_bytes": 282,
   "md5_checksum": "1700fd3f1762f48fc74525ead9f510c1",
-  "url": "https://data.microbiomedata.org/data/dev/nmdc:manif-11-behhtd03/nmdc:wfrqc-15-8rcjpy94.1/nmdc_wfrqc-15-8rcjpy94.1_filterStats.txt",
+  "url": "https://data.microbiomedata.org",
   "was_generated_by": "nmdc:wfrqc-15-8rcjpy94.1"
  }
 ]

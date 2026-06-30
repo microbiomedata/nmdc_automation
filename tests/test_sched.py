@@ -1163,3 +1163,66 @@ def test_resolve_data_object_urls(test_db, test_client, workflows_config_dir, si
             for fq1 in input_fq1s:
                 assert "storage.googleapis.com" in fq1
                 assert "storage.neonscience.org" not in fq1
+
+
+
+@mark.parametrize("allowlist_permutation", [
+    ("nmdc:dgns-11-syr2vn62",),  # has historical individual jobs in the DB
+    ("nmdc:dgns-11-kwb7eq83",),  # new, zero job history
+    ("nmdc:dgns-11-syr2vn62","nmdc:dgns-11-kwb7eq83")  # Both together
+])
+def test_manifest_repooling_permutations_multicycle(allowlist_permutation, test_db, test_client, workflows_config_dir, site_config_file):
+    """
+    Validates a complete multi-cycle manifest pipeline across all allowlist permutations.
+    No matter which ID (or combination of IDs) is allowed, the scheduler should always
+    ignore legacy single-sample records and properly schedule a unified manifest pool.
+    """
+
+    # Reset the database state completely
+    reset_db(test_db)
+
+    # Load all manifest infrastructure components at once
+    load_fixture(test_db, "data_objects_in_manifest_update.json", "data_object_set")
+    load_fixture(test_db, "data_generation_in_manifest_update.json", "data_generation_set")
+    load_fixture(test_db, "manifest_set_update.json", "manifest_set")
+    
+    # Load the legacy individual job history with mdc:dgns-11-syr2vn62
+    load_fixture(test_db, "job_manifest_update_indiv_done.json", "jobs")
+
+
+    # Scheduler cycle expected jobs count
+    exp_num_jobs_initial = 1
+    exp_num_jobs_cycle_1 = 0
+    exp_num_jobs_cycle_2 = 2
+    exp_num_jobs_cycle_3 = 0
+    
+    jm = Scheduler(workflow_yaml=workflows_config_dir / "workflows.yaml",
+                   site_conf=site_config_file, api=test_client)
+    
+    current_allowlist = set(allowlist_permutation)
+    with patch.object(jm.api, 'minter', return_value="mock-id-123"):
+        resp = jm.cycle(allowlist=current_allowlist)
+
+        # The scheduler must bypass the individual jobs and create exactly 1 manifest job
+        assert len(resp) == exp_num_jobs_initial
+        assert resp[0]["config"]["activity"]["type"] == "nmdc:ReadQcAnalysis"
+
+        # All jobs should now be in a submitted state
+        resp = jm.cycle(allowlist=current_allowlist)
+        assert len(resp) == exp_num_jobs_cycle_1
+
+
+        #
+        # Now make the ReadsQC job complete
+        #
+    
+        # Load the finished readsQC so that assembly and readbased taxnomy will schedule
+        load_fixture(test_db, "workflow_execution_manifest_update_readsqc.json", "workflow_execution_set")
+
+        # Schedule the next 2 jobs downstream
+        resp = jm.cycle(allowlist=current_allowlist)
+        assert len(resp) == exp_num_jobs_cycle_2
+
+        # All jobs should now be in a submitted state
+        resp = jm.cycle(allowlist=current_allowlist)
+        assert len(resp) == exp_num_jobs_cycle_3
