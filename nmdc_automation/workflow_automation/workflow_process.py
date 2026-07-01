@@ -185,11 +185,25 @@ def get_current_workflow_process_nodes(
 
     # I think the cycling should start here, not from querying all data objects. 20260219 KL
     # override query with allowlist
+    chunk_size = 100
+    max_page_size = 1000
+    dg_execution_records = []
+
     if allowlist:
-        q["id"] = {"$in": list(allowlist)}
-    #dg_execution_records = db["data_generation_set"].find(q)
-    dg_execution_records = api.list_from_collection("data_generation_set", q)
-    dg_execution_records = list(dg_execution_records)
+        allowlist_list = list(allowlist)
+        seen_dg_ids = set()
+        for i in range(0, len(allowlist_list), chunk_size):
+            id_chunk = allowlist_list[i:i + chunk_size]
+            dg_query = {**q, "id": {"$in": id_chunk}}
+            records = api.list_from_collection("data_generation_set", dg_query, max=max_page_size)
+            for rec in records:
+                rec_id = rec["id"]
+                if rec_id in seen_dg_ids:
+                    continue
+                seen_dg_ids.add(rec_id)
+                dg_execution_records.append(rec)
+    else:
+        dg_execution_records = api.list_from_collection("data_generation_set", q)
 
     for wf in data_generation_workflows:
         # Sequencing workflows don't have a git repo
@@ -270,11 +284,22 @@ def get_current_workflow_process_nodes(
         if wf.git_repo:
             q = {"git_url": wf.git_repo}
         # override query with allowlist
+        records = []
         if allowlist: 
-            q = {"was_informed_by": {"$in": list(allowlist)}}
-
-        #records = db[wf.collection].find(q)
-        records = api.list_from_collection(wf.collection, q)
+            allowlist_list = list(allowlist)
+            seen_wf_record_ids = set()
+            for i in range(0, len(allowlist_list), chunk_size):
+                id_chunk = allowlist_list[i:i + chunk_size]
+                wf_query = {**q, "was_informed_by": {"$in": id_chunk}}
+                wf_records = api.list_from_collection(wf.collection, wf_query, max=max_page_size)
+                for rec in wf_records:
+                    rec_id = rec["id"]
+                    if rec_id in seen_wf_record_ids:
+                        continue
+                    seen_wf_record_ids.add(rec_id)
+                    records.append(rec)
+        else:
+            records = api.list_from_collection(wf.collection, q)
         for rec in records:
             if rec['type'] != wf.type:
                 continue
@@ -326,7 +351,6 @@ def get_current_workflow_process_nodes(
                         # Reset latest for each check
                         latest = None
                         latest  = _get_latest_version(wfp_node, found_wfs[ current_found_rec_key ][wf.name])
-
                         if latest is None:
                             raise ValueError("Duplicate workflow process node with same version found")
                         
