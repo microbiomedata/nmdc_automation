@@ -424,10 +424,20 @@ class Scheduler:
             # so return it as an existing job.
             is_active = False
             for claim in claims:
+
+                # If the claim is cancelled, skip checking this claim completely.
+                if claim.get("cancelled") is True:
+                    continue  # move to the next claim in the loop
+
                 op_id = claim.get("op_id")
                 if op_id:
                     try:
                         op_obj = self.api.get_op(op_id)
+
+                        # Again ensure that is not a cancelled operation
+                        if op_obj.get("metadata", {}).get("cancelled") is True:
+                            continue
+                        
                         if op_obj.get("done") is False:
                             is_active = True
                             break # Stop checking claims for this job
