@@ -1,0 +1,61 @@
+[
+{
+  "id": "nmdc:sys0h6qqfe06",
+  "done": true,
+  "expire_time": {
+    "$date": "2025-07-10T19:20:04.319Z"
+  },
+  "result": null,
+  "metadata": {
+    "model": "nmdc_runtime.api.models.job.JobOperationMetadata",
+    "cancelled": null,
+    "job": {
+      "workflow": {
+        "name": null,
+        "description": null,
+        "capability_ids": null,
+        "id": "MAGs: v1.3.16",
+        "created_at": null
+      },
+      "name": null,
+      "description": null,
+      "id": "nmdc:330fe2ca-3043-11f0-9188-6e3122654c51",
+      "created_at": null,
+      "config": {
+      },
+      "claims": []
+    },
+    "site_id": "NERSC"
+  }
+},
+{
+  "id": "nmdc:sys0m7kgp585",
+  "done": false,
+  "expire_time": {
+    "$date": "2025-06-12T22:05:04.506Z"
+  },
+  "result": null,
+  "metadata": {
+    "model": "nmdc_runtime.api.models.job.JobOperationMetadata",
+    "cancelled": true,
+    "job": {
+      "workflow": {
+        "name": null,
+        "description": null,
+        "capability_ids": null,
+        "id": "MAGs: v1.3.16",
+        "created_at": null
+      },
+      "name": null,
+      "description": null,
+      "id": "nmdc:330fe2ca-3043-11f0-9188-6e3122654c51",
+      "created_at": null,
+      "config": {
+      },
+      "claims": []
+    },
+    "site_id": "NERSC",
+    "done": true
+  }
+}
+]

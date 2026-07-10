@@ -464,6 +464,49 @@ def test_scheduler_find_new_jobs_with_existing_job(job_fixture, test_db, test_cl
 
     assert not new_jobs
 
+
+def test_scheduler_find_new_jobs2(test_db, test_client, workflows_config_dir, site_config_file):
+    """
+:
+    Test that we schedule a new MAGs when a cancelled MAGs job exists.  The scheduler should find
+    a new job for this.
+    """
+    reset_db(test_db)
+    load_fixture(test_db, "data_objects_2.json", "data_object_set")
+    load_fixture(test_db, "data_generation_2.json", "data_generation_set")
+    load_fixture(test_db, "workflow_execution_2.json", "workflow_execution_set")
+    load_fixture(test_db, "job_req_4.json", "jobs")
+    load_fixture(test_db, "operations_4_cancelled_done.json", col="operations")
+
+    workflow_config = load_workflow_configs(workflows_config_dir / "workflows.yaml")
+
+    #scheduler = Scheduler(test_db, workflow_yaml=workflows_config_dir / "workflows.yaml", site_conf=site_config_file)
+    scheduler = Scheduler(workflow_yaml=workflows_config_dir / "workflows.yaml", 
+                          site_conf=site_config_file, 
+                          api=test_client)
+    assert scheduler
+
+    workflow_process_nodes, manifest_map = load_workflow_process_nodes(scheduler.api, workflow_config)
+    # sanity check
+    assert workflow_process_nodes
+
+    
+
+    new_jobs = []
+    found_jobs = []
+    for node in workflow_process_nodes:
+        found_jobs = scheduler.find_new_jobs(node, manifest_map, new_jobs)
+        new_jobs.extend(found_jobs)
+    assert new_jobs
+    assert len(new_jobs) == 1
+    new_job = new_jobs[0]
+    assert isinstance(new_job, SchedulerJob)
+    assert new_job.workflow.type == "nmdc:MagsAnalysis"
+    assert new_job.trigger_act.type == "nmdc:MetagenomeAnnotation"
+    assert new_job.trigger_act.data_objects_by_type
+
+    
+
 #def test_scheduler_find_new_jobs3(test_db, mock_api, workflows_config_dir, site_config_file):
 def test_scheduler_find_new_jobs3(test_db, test_client, workflows_config_dir, site_config_file):
     """
