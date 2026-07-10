@@ -2,9 +2,14 @@
   {
   "claims": [
     {
-      "op_id": "nmdc:sys-test",
+      "op_id": "nmdc:sys0m7kgp585",
       "site_id": "NERSC",
+      "done": true,
       "cancelled": true
+    },
+    {
+      "op_id": "nmdc:sys0h6qqfe06",
+      "site_id": "NERSC"
     }
   ],
   "config": {
@@ -248,14 +253,14 @@
         "output": "kronaplot"
       }
     ],
-    "release": "v2.0.3",
+    "release": "v2.0.2",
     "trigger_activity": "nmdc:wfmgan-11-6x59p192.2",
     "was_informed_by": ["nmdc:omprc-11-cegmwy02"],
     "wdl": "mbin_nmdc.wdl"
   },
   "id": "nmdc:9f55ca6a-5075-11f0-8adc-d61879508756",
   "workflow": {
-    "id": "MAGs: v2.0.3"
+    "id": "MAGs: v2.0.2"
   }
 }
 ]

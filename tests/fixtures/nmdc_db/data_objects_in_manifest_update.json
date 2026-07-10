@@ -1,0 +1,88 @@
+[{
+  "id": "nmdc:dobj-11-4kx0h490",
+  "name": "BMI_HFWLLBGX7_Plate68WellC3_R2.fastq.gz",
+  "url": "https://data.microbiomedata.org",
+  "description": "sequencing results for BMI_HFWLLBGX7_Plate68WellC3_R2",
+  "type": "nmdc:DataObject",
+  "data_category": "instrument_data",
+  "data_object_type": "Metagenome Raw Read 2",
+  "md5_checksum": "de636b75c791f62711864b4301c131b2",
+  "in_manifest": [
+    "nmdc:manif-11-f8gt6f52"
+  ]
+},
+{
+  "id": "nmdc:dobj-11-dpb8yd39",
+  "type": "nmdc:DataObject",
+  "name": "nmdc_wfrqc-11-2rg3xg37.1_filterStats.txt",
+  "description": "Reads QC summary for nmdc:wfrqc-11-2rg3xg37.1",
+  "data_category": "processed_data",
+  "data_object_type": "QC Statistics",
+  "file_size_bytes": 262,
+  "md5_checksum": "d0f1e9b15161cc33c162969f0e292613",
+  "url": "https://data.microbiomedata.org",
+  "was_generated_by": "nmdc:wfrqc-11-2rg3xg37.1"
+},
+{
+  "id": "nmdc:dobj-11-j5xkvb53",
+  "type": "nmdc:DataObject",
+  "name": "nmdc_wfrqc-11-2rg3xg37.1_readsQC.info",
+  "description": "Read filtering info for nmdc:wfrqc-11-2rg3xg37.1",
+  "data_category": "processed_data",
+  "data_object_type": "Read Filtering Info File",
+  "file_size_bytes": 620,
+  "md5_checksum": "436b791048f5c24824d1a29b02e6004b",
+  "url": "https://data.microbiomedata.org",
+  "was_generated_by": "nmdc:wfrqc-11-2rg3xg37.1"
+},
+{
+  "id": "nmdc:dobj-11-kpt53f77",
+  "type": "nmdc:DataObject",
+  "name": "BMI_HFWM5BGX7_Plate68WellC3_srt_R1.fastq.gz",
+  "description": "sequencing results for BMI_HFWM5BGX7_Plate68WellC3_srt_R1",
+  "data_object_type": "Metagenome Raw Read 1",
+  "md5_checksum": "0c8cd298c47550bb18e320ab380d2ddc",
+  "url": "https://data.microbiomedata.org",
+  "data_category": "instrument_data",
+  "in_manifest": [
+    "nmdc:manif-11-f8gt6f52"
+  ]
+},
+{
+  "id": "nmdc:dobj-11-r1dngr87",
+  "type": "nmdc:DataObject",
+  "name": "nmdc_wfrqc-11-2rg3xg37.1_filtered.fastq.gz",
+  "description": "Reads QC for nmdc:wfrqc-11-2rg3xg37.1",
+  "data_category": "processed_data",
+  "data_object_type": "Filtered Sequencing Reads",
+  "file_size_bytes": 224596346,
+  "md5_checksum": "1b98dbead8b2d8515ede70023f3e563d",
+  "url": "https://data.microbiomedata.org",
+  "was_generated_by": "nmdc:wfrqc-11-2rg3xg37.1"
+},
+{
+  "id": "nmdc:dobj-11-tv9g1670",
+  "type": "nmdc:DataObject",
+  "name": "BMI_HFWM5BGX7_Plate68WellC3_srt_R2.fastq.gz",
+  "description": "sequencing results for BMI_HFWM5BGX7_Plate68WellC3_srt_R2",
+  "data_object_type": "Metagenome Raw Read 2",
+  "md5_checksum": "2ecf576a571a4cd0b6b9a92261a2c720",
+  "url": "https://data.microbiomedata.org",
+  "data_category": "instrument_data",
+  "in_manifest": [
+    "nmdc:manif-11-f8gt6f52"
+  ]
+},
+{
+  "id": "nmdc:dobj-11-xdqgt848",
+  "name": "BMI_HFWLLBGX7_Plate68WellC3_R1.fastq.gz",
+  "url": "https://data.microbiomedata.org",
+  "description": "sequencing results for BMI_HFWLLBGX7_Plate68WellC3_R1",
+  "type": "nmdc:DataObject",
+  "data_category": "instrument_data",
+  "data_object_type": "Metagenome Raw Read 1",
+  "md5_checksum": "281d56cc8868c72729beed17218144c3",
+  "in_manifest": [
+    "nmdc:manif-11-f8gt6f52"
+  ]
+}]

@@ -8,6 +8,7 @@ import time
 
 from nmdc_automation.workflow_automation.workflow_process import load_workflow_process_nodes
 from nmdc_automation.workflow_automation.workflows import load_workflow_configs
+from nmdc_automation.models.workflow import WorkflowProcessNode
 from tests.fixtures.db_utils import init_test, load_fixture, read_json, reset_db
 from unittest.mock import patch, PropertyMock, Mock
 from nmdc_automation.api.nmdcapi import NmdcRuntimeApi
@@ -385,6 +386,49 @@ def test_scheduler_create_job_rec_has_input_files_as_array(test_db, test_client,
     assert assembly["config"]["inputs"]["shortRead"] == True
     assert isinstance(assembly["config"]["inputs"]["input_files"], list)
 
+def test_scheduler_create_job_rec_handles_data_generation_without_has_output(test_db, test_client, workflows_config_dir, site_config_file):
+    """
+    If a data_generation trigger has no has_output, create_job_rec should use
+    insdc_experiment_identifiers as accessions input.
+    """
+    reset_db(test_db)
+    load_fixture(test_db, "data_object_set.json", "data_object_set")
+    load_fixture(test_db, "data_generation_set_accession.json", "data_generation_set")
+
+    scheduler = Scheduler(
+        workflow_yaml=workflows_config_dir / "workflows.yaml",
+        site_conf=site_config_file,
+        api=test_client,
+    )
+
+    workflow_config = load_workflow_configs(workflows_config_dir / "workflows.yaml")
+    workflow_process_nodes, manifest_map = load_workflow_process_nodes(scheduler.api, workflow_config)
+
+    new_jobs = []
+    for node in workflow_process_nodes:
+        found_jobs = scheduler.find_new_jobs(node, manifest_map, new_jobs)
+        new_jobs.extend(found_jobs)
+
+    rqc_jobs = [j for j in new_jobs if j.workflow.type == "nmdc:ReadQcAnalysis"]
+    assert len(rqc_jobs) == 2
+
+    raw_read_job = next(j for j in rqc_jobs if j.trigger_id == "nmdc:omprc-11-metag1")
+    raw_read_job_req = scheduler.create_job_rec(raw_read_job, manifest_map)
+    assert "accessions" not in raw_read_job_req["config"]["inputs"]
+
+    accession_job = next(j for j in rqc_jobs if j.trigger_id == "nmdc:omprc-11-metag2")
+    accession_job_req = scheduler.create_job_rec(accession_job, manifest_map)
+    assert accession_job_req["config"]["inputs"]["accessions"] == ["SRX123456", "SRX789012"]
+    assert "input_fq1" not in accession_job_req["config"]["inputs"]
+    assert "input_fq2" not in accession_job_req["config"]["inputs"]
+
+    metag3_record = test_db.data_generation_set.find_one({"id": "nmdc:omprc-11-metag3"})
+    metag3_node = WorkflowProcessNode(metag3_record, raw_read_job.trigger_act.workflow)
+    bad_job = SchedulerJob(raw_read_job.workflow, metag3_node, manifest_map)
+    with pytest.raises(MissingDataObjectException):
+        scheduler.create_job_rec(bad_job, manifest_map)
+
+
 
 @pytest.mark.parametrize("job_fixture", [
     "job_req_2.json",
@@ -419,6 +463,49 @@ def test_scheduler_find_new_jobs_with_existing_job(job_fixture, test_db, test_cl
         new_jobs.extend(found_jobs)
 
     assert not new_jobs
+
+
+def test_scheduler_find_new_jobs2(test_db, test_client, workflows_config_dir, site_config_file):
+    """
+:
+    Test that we schedule a new MAGs when a cancelled MAGs job exists.  The scheduler should find
+    a new job for this.
+    """
+    reset_db(test_db)
+    load_fixture(test_db, "data_objects_2.json", "data_object_set")
+    load_fixture(test_db, "data_generation_2.json", "data_generation_set")
+    load_fixture(test_db, "workflow_execution_2.json", "workflow_execution_set")
+    load_fixture(test_db, "job_req_4.json", "jobs")
+    load_fixture(test_db, "operations_4_cancelled_done.json", col="operations")
+
+    workflow_config = load_workflow_configs(workflows_config_dir / "workflows.yaml")
+
+    #scheduler = Scheduler(test_db, workflow_yaml=workflows_config_dir / "workflows.yaml", site_conf=site_config_file)
+    scheduler = Scheduler(workflow_yaml=workflows_config_dir / "workflows.yaml", 
+                          site_conf=site_config_file, 
+                          api=test_client)
+    assert scheduler
+
+    workflow_process_nodes, manifest_map = load_workflow_process_nodes(scheduler.api, workflow_config)
+    # sanity check
+    assert workflow_process_nodes
+
+    
+
+    new_jobs = []
+    found_jobs = []
+    for node in workflow_process_nodes:
+        found_jobs = scheduler.find_new_jobs(node, manifest_map, new_jobs)
+        new_jobs.extend(found_jobs)
+    assert new_jobs
+    assert len(new_jobs) == 1
+    new_job = new_jobs[0]
+    assert isinstance(new_job, SchedulerJob)
+    assert new_job.workflow.type == "nmdc:MagsAnalysis"
+    assert new_job.trigger_act.type == "nmdc:MetagenomeAnnotation"
+    assert new_job.trigger_act.data_objects_by_type
+
+    
 
 #def test_scheduler_find_new_jobs3(test_db, mock_api, workflows_config_dir, site_config_file):
 def test_scheduler_find_new_jobs3(test_db, test_client, workflows_config_dir, site_config_file):
@@ -1067,3 +1154,118 @@ def test_scheduler_mags_priority_selection(test_db, test_client, workflows_confi
     # since only Assembly has a BAM, it should be picked up even if not in filters
     bam_id = "nmdc:dobj-11-t4b20t83" # Assuming this is the BAM ID in your fixture
     assert bam_id in selected_ids
+
+def test_get_activity_id_existing(test_db, test_client, workflows_config_dir, site_config_file):
+    """get_activity_id returns the next iteration when a matching record already exists."""
+    reset_db(test_db)
+
+    jm = Scheduler(workflow_yaml=workflows_config_dir / "workflows.yaml",
+                   site_conf=site_config_file, api=test_client)
+    wf = next(w for w in jm.workflows if w.name == "Reads QC")
+    informed_by = ["nmdc:dgns-11-abc123"]
+
+    # Seed an existing execution record with a iteration >1
+    test_db[wf.collection].insert_one({
+        "id": "nmdc:wfrqc-11-existing.3",
+        "was_informed_by": informed_by,
+        "type": wf.type,
+    })
+
+    base_id, iteration = jm.get_activity_id(wf, informed_by)
+
+    assert base_id == "nmdc:wfrqc-11-existing"
+    assert iteration == 4
+
+def test_resolve_data_object_urls(test_db, test_client, workflows_config_dir, site_config_file):
+    """Test that the scheduler resolves URLs for data objects that have a redirect."""
+
+    reset_db(test_db)
+    load_fixture(test_db, "data_objects_6.json", col="data_object_set")
+    load_fixture(test_db, "data_generation_6.json", col="data_generation_set")
+    load_fixture(test_db, "data_objects_in_manifest.json", "data_object_set")
+    load_fixture(test_db, "data_generation_in_manifest.json", "data_generation_set")
+    load_fixture(test_db, "manifest_set.json", "manifest_set")
+
+    assert "storage.neonscience.org" in test_db['data_object_set'].find_one({'id':'nmdc:dobj-11-redirect1'})['url']
+
+    jm = Scheduler(workflow_yaml=workflows_config_dir / "workflows.yaml",
+                   site_conf=site_config_file, api=test_client)
+    resp = jm.cycle()
+
+    assert len(resp)==3
+    for workflow in resp:
+        print(f"\n{workflow['config']['inputs']}")
+        if workflow['config']['was_informed_by'][0] == 'nmdc:omprc-11-redirected':
+            assert "storage.googleapis.com" in workflow['config']['inputs']['input_fq1'][0]
+            assert "storage.neonscience.org" not in workflow['config']['inputs']['input_fq1'][0]
+            assert "storage.googleapis.com" in workflow['config']['inputs']['input_fq2'][0]
+        if workflow['config']['was_informed_by'][0] == 'nmdc:omprc-11-direct':
+            assert "data.microbiomedata.org/data/raw/" in workflow['config']['inputs']['input_files'][0]
+        if 'nmdc:dgns-11-qmpge038' in workflow['config']['was_informed_by']:
+            input_fq1s = workflow['config']['inputs']['input_fq1']
+            for fq1 in input_fq1s:
+                assert "storage.googleapis.com" in fq1
+                assert "storage.neonscience.org" not in fq1
+
+
+
+@mark.parametrize("allowlist_permutation", [
+    ("nmdc:dgns-11-syr2vn62",),  # has historical individual jobs in the DB
+    ("nmdc:dgns-11-kwb7eq83",),  # new, zero job history
+    ("nmdc:dgns-11-syr2vn62","nmdc:dgns-11-kwb7eq83")  # Both together
+])
+def test_manifest_repooling_permutations_multicycle(allowlist_permutation, test_db, test_client, workflows_config_dir, site_config_file):
+    """
+    Validates a complete multi-cycle manifest pipeline across all allowlist permutations.
+    No matter which ID (or combination of IDs) is allowed, the scheduler should always
+    ignore legacy single-sample records and properly schedule a unified manifest pool.
+    """
+
+    # Reset the database state completely
+    reset_db(test_db)
+
+    # Load all manifest infrastructure components at once
+    load_fixture(test_db, "data_objects_in_manifest_update.json", "data_object_set")
+    load_fixture(test_db, "data_generation_in_manifest_update.json", "data_generation_set")
+    load_fixture(test_db, "manifest_set_update.json", "manifest_set")
+    
+    # Load the legacy individual job history with mdc:dgns-11-syr2vn62
+    load_fixture(test_db, "job_manifest_update_indiv_done.json", "jobs")
+
+
+    # Scheduler cycle expected jobs count
+    exp_num_jobs_initial = 1
+    exp_num_jobs_cycle_1 = 0
+    exp_num_jobs_cycle_2 = 2
+    exp_num_jobs_cycle_3 = 0
+    
+    jm = Scheduler(workflow_yaml=workflows_config_dir / "workflows.yaml",
+                   site_conf=site_config_file, api=test_client)
+    
+    current_allowlist = set(allowlist_permutation)
+    with patch.object(jm.api, 'minter', return_value="mock-id-123"):
+        resp = jm.cycle(allowlist=current_allowlist)
+
+        # The scheduler must bypass the individual jobs and create exactly 1 manifest job
+        assert len(resp) == exp_num_jobs_initial
+        assert resp[0]["config"]["activity"]["type"] == "nmdc:ReadQcAnalysis"
+
+        # All jobs should now be in a submitted state
+        resp = jm.cycle(allowlist=current_allowlist)
+        assert len(resp) == exp_num_jobs_cycle_1
+
+
+        #
+        # Now make the ReadsQC job complete
+        #
+    
+        # Load the finished readsQC so that assembly and readbased taxnomy will schedule
+        load_fixture(test_db, "workflow_execution_manifest_update_readsqc.json", "workflow_execution_set")
+
+        # Schedule the next 2 jobs downstream
+        resp = jm.cycle(allowlist=current_allowlist)
+        assert len(resp) == exp_num_jobs_cycle_2
+
+        # All jobs should now be in a submitted state
+        resp = jm.cycle(allowlist=current_allowlist)
+        assert len(resp) == exp_num_jobs_cycle_3

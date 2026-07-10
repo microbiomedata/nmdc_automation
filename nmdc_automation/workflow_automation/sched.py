@@ -14,6 +14,7 @@ from nmdc_automation.models.workflow import WorkflowConfig, WorkflowProcessNode
 from semver.version import Version
 import sys
 from requests.exceptions import HTTPError
+import requests
 
 
 _POLL_INTERVAL = 60
@@ -47,6 +48,27 @@ def within_range(wf1: WorkflowConfig, wf2: WorkflowConfig, force=False) -> bool:
     if v1.major == v2.major and v1.minor == v2.minor:
         return True
     return False
+
+def resolve_url(url):
+    """
+    Resolve a URL, checking if a URL is accessible and returning the final destination after any redirects.
+
+    Args:
+        url (str): The URL to resolve.
+
+    Returns:
+        str: The final URL after any redirects.
+
+    Raises:
+        HTTPError: If the request to the URL fails.
+    """
+    try:
+        response = requests.head(url, allow_redirects=True)
+        response.raise_for_status()
+        return response.url
+    except HTTPError as e:
+        logger.error(f"Failed to resolve URL {url}: {e}")
+        raise
 
 
 class SchedulerJob:
@@ -150,6 +172,8 @@ class Scheduler:
         wf_filters = job.workflow.filter_input_objects or []
         # Keep track of the source that provided the data for Filter Input Objects
         type_source_map = dict()
+        # Make list of accession ids
+        accessions = []
         
         while next_act:
 
@@ -158,14 +182,12 @@ class Scheduler:
             # Note: Currently only support one manifest per workflowprocessnode/datagen
             #
             if len(next_act.manifest) == 1 and job.trigger_id in manifest_map[next_act.manifest[0]]['data_generation_set']:
-
                 # Find the data objects associated with the manifest using manifest_map
                 for data_object in manifest_map[next_act.manifest[0]]['data_object_set']:
                     do_type = data_object.data_object_type_text
                     if do_type not in do_by_type:    
                         do_by_type[do_type] = []
                     do_by_type[do_type].append(data_object)
-
             else:
                 for do_type, data_object in next_act.data_objects_by_type.items():
 
@@ -185,9 +207,16 @@ class Scheduler:
                     do_by_type[do_type] = []
                     do_by_type[do_type].append(data_object)
                     #do_by_type[do_type] = data_object #used to be scalar
+
+            dg_accessions = getattr(next_act.process, "insdc_experiment_identifiers", [])
+            if dg_accessions:
+                accessions.extend(dg_accessions)
             
             # do_by_type.update(next_act.data_objects_by_type.__dict__)
             next_act = next_act.parent
+
+        if accessions:
+            accessions = list(dict.fromkeys(accessions))
 
         wf = job.workflow
         base_id, iteration = self.get_activity_id(wf, job.informed_by)
@@ -195,25 +224,31 @@ class Scheduler:
         input_data_objects = []
         inputs = dict()
         optional_inputs = wf.optional_inputs
+        fq_inputs = ["input_files", "input_fq1", "input_fq2", "input_fastq1", "input_fastq2"]
         for k, v in job.workflow.inputs.items():
             # some inputs are booleans and should not be modified
             if isinstance(v, bool):
                 inputs[k] = v
                 continue
+            # some inputs are data objects that we need to translate to urls
             elif v.startswith("do:"):
                 do_type = v[3:]
                 dobj_list = do_by_type.get(do_type)
                 if not dobj_list:
                     if k in optional_inputs:
                         continue
+                    if k in fq_inputs:
+                        if accessions:
+                            continue
+                        raise MissingDataObjectException(f"Unable to find {do_type} in {do_by_type} and no accession(s) provided")
                     raise MissingDataObjectException(f"Unable to find {do_type} in {do_by_type}")
                 if len(dobj_list) == 1:
                     input_data_objects.append(dobj_list[0].as_dict())
                 
-                    if k in ["input_files", "input_fq1", "input_fq2", "input_fastq1", "input_fastq2"]:
-                        v = [dobj_list[0]["url"]]
+                    if k in fq_inputs:
+                        v = [resolve_url(dobj_list[0]["url"])]
                     else:
-                        v = dobj_list[0]["url"]
+                        v = resolve_url(dobj_list[0]["url"])
                 
                 # For multi-input, it goes here to produce []
                 else:
@@ -221,7 +256,7 @@ class Scheduler:
                     for dobj in dobj_list:
                         input_data_objects.append(dobj.as_dict())
     
-                        v.append(dobj["url"])
+                        v.append(resolve_url(dobj["url"]))
                         
                     
             # TODO: Make this smarter
@@ -231,6 +266,11 @@ class Scheduler:
                 v = workflow_execution_id
             elif v == "{predecessor_activity_id}":
                 v = job.trigger_act.id
+            elif v == "Accessions":
+                if accessions:
+                    v = accessions
+                else:
+                    continue
 
             inputs[k] = v
 
@@ -305,22 +345,26 @@ class Scheduler:
         See if anything exist for this and if not
         mint a new id.
         """
-        # We need to see if any version exist and
-        # if so get its ID
-        ct = 0
-        last_id = None
-        
-        # Only look for ID for informed_by len=1, and handle multi later -jlp 20250722
-        # This should be ok to pass the array of was_informed_by to find the workflow in mongo -jlp 20250828
-        #if len(informed_by) == 1:
+        last_time = None
+        last_iteration = None
+        last_root = None
+
+
         q = {"was_informed_by": informed_by, "type": wf.type}
-        #for doc in self.db[wf.collection].find(q):
-        for doc in self.api.list_from_collection(wf.collection, q, "id"):
-            ct += 1
-            last_id = doc["id"]
+        for doc in self.api.list_from_collection(wf.collection, q, "id, started_at_time"):
+            curr_root = ".".join(doc["id"].split(".")[0:-1])
+            if last_root is None or curr_root == last_root:
+                last_root = curr_root
+                curr_iteration = int(doc["id"].split(".")[-1])
+                if last_iteration is None or curr_iteration > last_iteration:
+                    last_iteration = curr_iteration
+            else:
+                if doc["started_at_time"] > last_time:
+                    last_time = doc["started_at_time"]
+                    last_root = curr_root
+                    last_iteration = int(doc["id"].split(".")[-1])
 
-
-        if ct == 0 or last_id is None:
+        if last_root is None and last_iteration is None:
             # Get an ID
             if os.environ.get("MOCK_MINT"):
                 root_id = self.mock_mint(wf.type)
@@ -328,16 +372,19 @@ class Scheduler:
                 root_id = self.api.minter(wf.type, informed_by)
             return root_id, 1
         else:
-            root_id = ".".join(last_id.split(".")[0:-1])
-            return root_id, ct + 1
+            root_id = last_root
+            return root_id, last_iteration + 1
 
     @lru_cache(maxsize=128)
-    def get_existing_jobs(self, wf: WorkflowConfig):
+    def get_existing_jobs(self, wf: WorkflowConfig, manifest_id: str = None):
         """
         we return an existing job if an exact version match was found,
         no other version is currently running, 
         and no existing version is newer than our current config (so that we don't schedule 
         a downgraded new job record). 
+
+        Added: manifest_id filter to allow re-pooling data generation IDs 
+        that were previously run as individual (non-manifest) jobs.
         """
         existing_jobs = set()
 
@@ -349,11 +396,24 @@ class Scheduler:
         current_v = get_v_obj(wf.version)
         
         q = {"config.git_repo": wf.git_repo}
+
+        # If we are evaluating a manifest pool, target jobs matching this manifest
+        if manifest_id:
+            q["config.manifest"] = manifest_id
         
         for j in self.api.list_jobs(q):
             # the assumption is that a job in any state has been triggered by an activity
             # that was the result of an existing (completed) job
             act = j["config"]["trigger_activity"]
+
+            if not manifest_id and j["config"].get("manifest"):
+                logger.warning(
+                    f"Data integrity mismatch for activity {act}: Live data object is individual, "
+                    f"but historical job {j.get('id')} was run as part of manifest '{j['config']['manifest']}'. "
+                    f"Upstream database may have changed. Proceeding with individual scheduling."
+                )
+                continue
+            
             job_version_str = j["config"].get("release")
             job_v = get_v_obj(job_version_str)
             claims = j.get("claims", [])
@@ -380,10 +440,20 @@ class Scheduler:
             # so return it as an existing job.
             is_active = False
             for claim in claims:
+
+                # If the claim is cancelled, skip checking this claim completely.
+                if claim.get("cancelled") is True:
+                    continue  # move to the next claim in the loop
+
                 op_id = claim.get("op_id")
                 if op_id:
                     try:
                         op_obj = self.api.get_op(op_id)
+
+                        # Again ensure that is not a cancelled operation
+                        if op_obj.get("metadata", {}).get("cancelled") is True:
+                            continue
+                        
                         if op_obj.get("done") is False:
                             is_active = True
                             break # Stop checking claims for this job
@@ -425,6 +495,10 @@ class Scheduler:
         - Is for a workflow that is enabled
         """
         new_jobs = []
+
+        # Extract current manifest string if it exists for this node
+        current_manifest_id = wfp_node.manifest[0] if len(wfp_node.manifest) == 1 else None
+
         # Loop over the derived workflows for this
         # activities' workflow
         for wf in wfp_node.workflow.children:
@@ -436,7 +510,7 @@ class Scheduler:
                     self._messages.append(msg)
                 continue
             # See if we already have a job for this
-            if wfp_node.id in self.get_existing_jobs(wf):
+            if wfp_node.id in self.get_existing_jobs(wf, manifest_id=current_manifest_id):
                 msg = f"Skipping existing job for {wfp_node.id} {wf.name}:{wf.version}"
                 if msg not in self._messages:
                     logger.info(msg)
@@ -456,7 +530,7 @@ class Scheduler:
                     for dgns_id in manifest_map[wfp_node.manifest[0]]['data_generation_set']:
                         # Only need to check for others dgns since already checked itself above
                         if dgns_id != wfp_node.id:
-                            if dgns_id in self.get_existing_jobs(wf):
+                            if dgns_id in self.get_existing_jobs(wf, manifest_id=current_manifest_id):
                                 found_existing_manifest_job = True
                                 associated_wfp_node_id = dgns_id
                                 break

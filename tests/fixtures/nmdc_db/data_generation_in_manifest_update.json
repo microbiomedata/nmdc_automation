@@ -1,0 +1,59 @@
+[{
+  "id": "nmdc:dgns-11-kwb7eq83",
+  "type": "nmdc:NucleotideSequencing",
+  "name": "Terrestrial soil microbial communities - STER_028-M-20170605-COMP-DNA1 (BMI_HFWLLBGX7_Plate68WellC3)",
+  "has_output": [
+    "nmdc:dobj-11-xdqgt848",
+    "nmdc:dobj-11-4kx0h490"
+  ],
+  "has_input": [
+    "nmdc:procsm-11-1v407908"
+  ],
+  "associated_studies": [
+    "nmdc:sty-11-34xj1150"
+  ],
+  "instrument_used": [
+    "nmdc:inst-14-xz5tb342"
+  ],
+  "processing_institution": "Battelle",
+  "ncbi_project_name": "PRJNA406974",
+  "analyte_category": "metagenome",
+  "gold_sequencing_project_identifiers": [
+    "gold:Gp0766865"
+  ],
+  "provenance_metadata": {
+    "type": "nmdc:ProvenanceMetadata",
+    "add_date": "2026-06-11T21:52:15Z",
+    "source_system_of_record": "NEON_Data_Portal",
+    "git_url": "https://github.com/microbiomedata/nmdc-runtime",
+    "mod_date": "2026-06-11T21:52:17Z"
+  }
+},
+{
+  "id": "nmdc:dgns-11-syr2vn62",
+  "type": "nmdc:NucleotideSequencing",
+  "name": "Terrestrial soil microbial communities - STER_028-M-20170605-COMP-DNA1",
+  "has_input": [
+    "nmdc:procsm-11-1v407908"
+  ],
+  "has_output": [
+    "nmdc:dobj-11-kpt53f77",
+    "nmdc:dobj-11-tv9g1670"
+  ],
+  "processing_institution": "Battelle",
+  "analyte_category": "metagenome",
+  "associated_studies": [
+    "nmdc:sty-11-34xj1150"
+  ],
+  "instrument_used": [
+    "nmdc:inst-14-xz5tb342"
+  ],
+  "ncbi_project_name": "PRJNA406974",
+  "gold_sequencing_project_identifiers": [
+    "gold:Gp0766865"
+  ],
+  "provenance_metadata": {
+    "type": "nmdc:ProvenanceMetadata",
+    "mod_date": "2026-04-21T03:57:56Z"
+  }
+}]

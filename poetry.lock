@@ -1125,14 +1125,14 @@ pyreadline3 = {version = "*", markers = "sys_platform == \"win32\" and python_ve
 
 [[package]]
 name = "idna"
-version = "3.13"
+version = "3.18"
 description = "Internationalized Domain Names in Applications (IDNA)"
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "idna-3.13-py3-none-any.whl", hash = "sha256:892ea0cde124a99ce773decba204c5552b69c3c67ffd5f232eb7696135bc8bb3"},
-    {file = "idna-3.13.tar.gz", hash = "sha256:585ea8fe5d69b9181ec1afba340451fba6ba764af97026f92a91d4eef164a242"},
+    {file = "idna-3.18-py3-none-any.whl", hash = "sha256:7f952cbe720b688055e3f87de14f5c3e5fdaa8bc3928985c4077ca689de849a2"},
+    {file = "idna-3.18.tar.gz", hash = "sha256:ffb385a7e039654cef1ab9ef32c6fafe283c0c0467bba1d9029738ce4a14a848"},
 ]
 
 [package.extras]
@@ -1886,30 +1886,32 @@ requests = "*"
 
 [[package]]
 name = "nmdc-schema"
-version = "11.19.1"
+version = "11.21.0"
 description = "Schema resources for the National Microbiome Data Collaborative (NMDC)"
 optional = false
-python-versions = "<4.0,>=3.10"
+python-versions = "<3.14,>=3.10"
 groups = ["main"]
 files = [
-    {file = "nmdc_schema-11.19.1-py3-none-any.whl", hash = "sha256:e2df19d58c45714641e2ec93b55bb6e90c9da470f8e7fc49ba437db859019a67"},
-    {file = "nmdc_schema-11.19.1.tar.gz", hash = "sha256:e258dfc31506dd325cd674a11284e9a9529c82d5a1b842184525f40a83927e30"},
+    {file = "nmdc_schema-11.21.0-py3-none-any.whl", hash = "sha256:093881b0aed97ff7898e2db978bdd4eab8101b7475417c61d49408250369f121"},
+    {file = "nmdc_schema-11.21.0.tar.gz", hash = "sha256:6d2cf2793fc256666b524500a7a5b7a4b81c870de0dbcb66036f5606f7db97ad"},
 ]
 
 [package.dependencies]
-click = ">=8.0.0,<8.2"
+click = ">=8.0.0,<9.0.0"
 click-log = ">=0.4.0,<0.5.0"
 deprecated = ">=1.0.0,<2.0.0"
+idna = ">=3.15,<4.0.0"
 jsonasobj2 = ">=1.0.0,<2.0.0"
 jsonschema = ">=4.0.0,<5.0.0"
 linkml = ">=1.9.0,<2.0.0"
 linkml-runtime = ">=1.9.0,<2.0.0"
-pymdown-extensions = ">=10.16.1,<11.0.0"
+pymdown-extensions = ">=10.21.3,<11.0.0"
 pymongo = ">=4.7.2,<5.0.0"
 python-dotenv = ">=0.21.0,<2.0.0"
 pyyaml = ">=6.0.0,<7.0.0"
 rdflib = ">=6.2.0,<8.0.0"
 requests = ">=2.0.0,<3.0.0"
+urllib3 = ">=2.7.0,<3.0.0"
 
 [[package]]
 name = "numpy"
@@ -2666,14 +2668,14 @@ requests = "*"
 
 [[package]]
 name = "pymdown-extensions"
-version = "10.21.2"
+version = "10.21.3"
 description = "Extension pack for Python Markdown."
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "pymdown_extensions-10.21.2-py3-none-any.whl", hash = "sha256:5c0fd2a2bea14eb39af8ff284f1066d898ab2187d81b889b75d46d4348c01638"},
-    {file = "pymdown_extensions-10.21.2.tar.gz", hash = "sha256:c3f55a5b8a1d0edf6699e35dcbea71d978d34ff3fa79f3d807b8a5b3fa90fbdc"},
+    {file = "pymdown_extensions-10.21.3-py3-none-any.whl", hash = "sha256:d7a5d08014fc571e80ca21dd6f854e31f94c489800350564d55d15b3c41e76b6"},
+    {file = "pymdown_extensions-10.21.3.tar.gz", hash = "sha256:72cfcf55f07aea0d4af2c4f11dd4e52466ddfb1bb819673146398e0bd3a77354"},
 ]
 
 [package.dependencies]
@@ -4253,14 +4255,14 @@ dev = ["flake8", "flake8-annotations", "flake8-bandit", "flake8-bugbear", "flake
 
 [[package]]
 name = "urllib3"
-version = "2.6.3"
+version = "2.7.0"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
 optional = false
-python-versions = ">=3.9"
+python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "urllib3-2.6.3-py3-none-any.whl", hash = "sha256:bf272323e553dfb2e87d9bfd225ca7b0f467b919d7bbd355436d3fd37cb0acd4"},
-    {file = "urllib3-2.6.3.tar.gz", hash = "sha256:1b62b6884944a57dbe321509ab94fd4d3b307075e0c2eae991ac71ee15ad38ed"},
+    {file = "urllib3-2.7.0-py3-none-any.whl", hash = "sha256:9fb4c81ebbb1ce9531cce37674bbc6f1360472bc18ca9a553ede278ef7276897"},
+    {file = "urllib3-2.7.0.tar.gz", hash = "sha256:231e0ec3b63ceb14667c67be60f2f2c40a518cb38b03af60abc813da26505f4c"},
 ]
 
 [package.extras]
@@ -4474,4 +4476,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.12"
-content-hash = "ea26aaf0293fefc75f0a5fdb0d24b5f3655e3b925bcf2f9619a27bd2c02b1b15"
+content-hash = "ed132db8ceb25a0161c231734bfe49c10b4b80b3e08e6855daf9ddf8a734f8fb"
