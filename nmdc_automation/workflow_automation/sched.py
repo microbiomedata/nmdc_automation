@@ -164,6 +164,7 @@ class Scheduler:
         resolves all the information needed to create a
         job record.
         """
+
         # Get all the data objects
         next_act = job.trigger_act
         do_by_type = dict()
@@ -172,8 +173,6 @@ class Scheduler:
         wf_filters = job.workflow.filter_input_objects or []
         # Keep track of the source that provided the data for Filter Input Objects
         type_source_map = dict()
-        # Make list of accession ids
-        accessions = []
         
         while next_act:
 
@@ -182,6 +181,7 @@ class Scheduler:
             # Note: Currently only support one manifest per workflowprocessnode/datagen
             #
             if len(next_act.manifest) == 1 and job.trigger_id in manifest_map[next_act.manifest[0]]['data_generation_set']:
+                print(f"Found manifest: {next_act.manifest[0]}")
                 # Find the data objects associated with the manifest using manifest_map
                 for data_object in manifest_map[next_act.manifest[0]]['data_object_set']:
                     do_type = data_object.data_object_type_text
@@ -190,7 +190,8 @@ class Scheduler:
                     do_by_type[do_type].append(data_object)
             else:
                 for do_type, data_object in next_act.data_objects_by_type.items():
-
+                    print(f"Processing data object of type: {do_type} with ID: {data_object.id}")
+                    print(f"Workflow filters: {wf_filters}")
                     if do_type in wf_filters:
                         current_source = type_source_map.get(do_type)
                         # If we find this type in a new (higher) activity, wipe the downstream data
@@ -203,20 +204,14 @@ class Scheduler:
 
                     if do_type in do_by_type:
                         logger.debug(f"Ignoring Duplicate type: {do_type} {data_object.id} {next_act.id}")
+                        print(f"Ignoring Duplicate type: {do_type} {data_object.id} {next_act.id}")
                         continue
                     do_by_type[do_type] = []
                     do_by_type[do_type].append(data_object)
                     #do_by_type[do_type] = data_object #used to be scalar
-
-            dg_accessions = getattr(next_act.process, "insdc_experiment_identifiers", [])
-            if dg_accessions:
-                accessions.extend(dg_accessions)
             
             # do_by_type.update(next_act.data_objects_by_type.__dict__)
             next_act = next_act.parent
-
-        if accessions:
-            accessions = list(dict.fromkeys(accessions))
 
         wf = job.workflow
         base_id, iteration = self.get_activity_id(wf, job.informed_by)
@@ -225,7 +220,14 @@ class Scheduler:
         inputs = dict()
         optional_inputs = wf.optional_inputs
         fq_inputs = ["input_files", "input_fq1", "input_fq2", "input_fastq1", "input_fastq2"]
+        data_object_types = [
+            str(obj.data_object_type)
+            for obj_list in do_by_type.values()
+            for obj in obj_list
+        ]
+        sra = 'SRA toolkit-accessible sequence data' in data_object_types
         for k, v in job.workflow.inputs.items():
+            print(f"Processing input key: {k} with value: {v}")
             # some inputs are booleans and should not be modified
             if isinstance(v, bool):
                 inputs[k] = v
@@ -233,32 +235,37 @@ class Scheduler:
             # some inputs are data objects that we need to translate to urls
             elif v.startswith("do:"):
                 do_type = v[3:]
+                print(f"do_type: {do_type}")
                 dobj_list = do_by_type.get(do_type)
+                print(f"dobj_list: {dobj_list}")
                 if not dobj_list:
                     if k in optional_inputs:
                         continue
-                    if k in fq_inputs:
-                        if accessions:
-                            continue
-                        raise MissingDataObjectException(f"Unable to find {do_type} in {do_by_type} and no accession(s) provided")
+                    if (do_type == 'Metagenome Raw Read 1' or do_type == 'Metagenome Raw Read 2') and sra:
+                        continue
+                    if do_type == 'SRA toolkit-accessible sequence data' and not sra:
+                        continue
                     raise MissingDataObjectException(f"Unable to find {do_type} in {do_by_type}")
                 if len(dobj_list) == 1:
                     input_data_objects.append(dobj_list[0].as_dict())
-                
-                    if k in fq_inputs:
+                    if k == "accessions":
+                        for accession in dobj_list[0].insdc_run_identifiers:
+                            v = [accession.split('insdc.run:')[1]]
+                            print(f"Resolved input for key {k}: {v}")
+                    elif k in fq_inputs:
                         v = [resolve_url(dobj_list[0]["url"])]
                     else:
                         v = resolve_url(dobj_list[0]["url"])
-                
                 # For multi-input, it goes here to produce []
                 else:
                     v = []
                     for dobj in dobj_list:
                         input_data_objects.append(dobj.as_dict())
-    
-                        v.append(resolve_url(dobj["url"]))
-                        
-                    
+                        if k == "accessions":
+                            for accession in dobj.insdc_run_identifiers:
+                                v.append(accession.split('insdc.run:')[1])
+                        else:
+                            v.append(resolve_url(dobj["url"]))
             # TODO: Make this smarter
             elif v == "{was_informed_by}":
                 v = job.informed_by  #Check that this works for 1 or >1 todojp 20250911
@@ -266,13 +273,9 @@ class Scheduler:
                 v = workflow_execution_id
             elif v == "{predecessor_activity_id}":
                 v = job.trigger_act.id
-            elif v == "Accessions":
-                if accessions:
-                    v = accessions
-                else:
-                    continue
 
             inputs[k] = v
+            print(f"job inputs: {inputs}")
 
         # Build the respoonse
         job_config = {

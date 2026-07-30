@@ -6,6 +6,7 @@ Workflows:
     Filter Output Objects:
     - Metagenome Raw Read 1
     - Metagenome Raw Read 2
+    - SRA toolkit-accessible sequence data
 
   - Name: Sequencing Interleaved
     Collection: data_generation_set
@@ -68,10 +69,11 @@ Workflows:
       input_fq2: do:Metagenome Raw Read 2
       shortRead: true
       interleaved: false
-      accessions: Accessions
+      accessions: do:SRA toolkit-accessible sequence data
     Filter Input Objects:
     - Metagenome Raw Read 1
     - Metagenome Raw Read 2
+    - SRA toolkit-accessible sequence data
     Predecessors:
     - Sequencing Noninterleaved
     Workflow Execution:

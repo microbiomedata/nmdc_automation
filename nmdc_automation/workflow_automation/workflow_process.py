@@ -141,15 +141,25 @@ def _is_missing_required_input_output(wf: WorkflowConfig, rec: dict, data_object
         wf.filter_output_objects, rec.get("has_output"), data_objects_by_id
     )
 
-    # Legacy sequencing records may not have has_output but can still be scheduled
-    # when INSDC experiment identifiers are present.
+    do_types = next(iter(data_objects_by_id.values()))['data_object_type']
+
+    # Special handling for data generation record outputs, which can have Raw Reads OR SRA types
     if (
         not match_out
         and wf.collection == "data_generation_set"
-        and not rec.get("has_output")
-        and rec.get("insdc_experiment_identifiers")
-    ):
-        match_out = True
+    ): 
+        if (
+            not 'Metagenome Raw Read 1' in str(do_types)
+            and not 'Metagenome Raw Read 2' in str(do_types)
+            and 'SRA toolkit-accessible sequence data' in str(do_types)
+        ):
+            match_out = True
+        if (
+            not 'SRA toolkit-accessible sequence data' in str(do_types)
+            and 'Metagenome Raw Read 1' in str(do_types)
+            and 'Metagenome Raw Read 2' in str(do_types)
+        ):
+            match_out = True
 
     return not (match_in and match_out)
 
@@ -208,7 +218,7 @@ def get_current_workflow_process_nodes(
             #If the dg record has outputs that are part of a manifest set, check that is the correct category to process,
             # and find the other data objects within the manifest set (in case it wasn't included in the allowlist)
             # Try to see if the has_output has a manifest set
-            do_ids = rec.get("has_output", [])
+            do_ids = rec.get("has_output")
 
             # Loop through the data_object IDs in the data genereation record's "has_output"
             for do_id in do_ids:
