@@ -181,7 +181,6 @@ class Scheduler:
             # Note: Currently only support one manifest per workflowprocessnode/datagen
             #
             if len(next_act.manifest) == 1 and job.trigger_id in manifest_map[next_act.manifest[0]]['data_generation_set']:
-                print(f"Found manifest: {next_act.manifest[0]}")
                 # Find the data objects associated with the manifest using manifest_map
                 for data_object in manifest_map[next_act.manifest[0]]['data_object_set']:
                     do_type = data_object.data_object_type_text
@@ -190,8 +189,6 @@ class Scheduler:
                     do_by_type[do_type].append(data_object)
             else:
                 for do_type, data_object in next_act.data_objects_by_type.items():
-                    print(f"Processing data object of type: {do_type} with ID: {data_object.id}")
-                    print(f"Workflow filters: {wf_filters}")
                     if do_type in wf_filters:
                         current_source = type_source_map.get(do_type)
                         # If we find this type in a new (higher) activity, wipe the downstream data
@@ -204,7 +201,6 @@ class Scheduler:
 
                     if do_type in do_by_type:
                         logger.debug(f"Ignoring Duplicate type: {do_type} {data_object.id} {next_act.id}")
-                        print(f"Ignoring Duplicate type: {do_type} {data_object.id} {next_act.id}")
                         continue
                     do_by_type[do_type] = []
                     do_by_type[do_type].append(data_object)
@@ -227,7 +223,6 @@ class Scheduler:
         ]
         sra = 'SRA toolkit-accessible sequence data' in data_object_types
         for k, v in job.workflow.inputs.items():
-            print(f"Processing input key: {k} with value: {v}")
             # some inputs are booleans and should not be modified
             if isinstance(v, bool):
                 inputs[k] = v
@@ -235,9 +230,7 @@ class Scheduler:
             # some inputs are data objects that we need to translate to urls
             elif v.startswith("do:"):
                 do_type = v[3:]
-                print(f"do_type: {do_type}")
                 dobj_list = do_by_type.get(do_type)
-                print(f"dobj_list: {dobj_list}")
                 if not dobj_list:
                     if k in optional_inputs:
                         continue
@@ -251,7 +244,6 @@ class Scheduler:
                     if k == "accessions":
                         for accession in dobj_list[0].insdc_run_identifiers:
                             v = [accession.split('insdc.run:')[1]]
-                            print(f"Resolved input for key {k}: {v}")
                     elif k in fq_inputs:
                         v = [resolve_url(dobj_list[0]["url"])]
                     else:
@@ -275,7 +267,6 @@ class Scheduler:
                 v = job.trigger_act.id
 
             inputs[k] = v
-            print(f"job inputs: {inputs}")
 
         # Build the respoonse
         job_config = {

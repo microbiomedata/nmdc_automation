@@ -126,7 +126,23 @@ def _check(match_types, data_object_ids, data_objs):
     for doid in data_object_ids:
         if doid in data_objs:
             do_types.add(data_objs[doid].data_object_type.code.text)
-    return match_set.issubset(do_types)
+    all_types = match_set.issubset(do_types)
+
+    # Special handling for data generation record outputs, which can have Raw Reads OR SRA types
+    if not all_types:
+        if (
+            not 'Metagenome Raw Read 1' in do_types
+            and not 'Metagenome Raw Read 2' in do_types
+            and 'SRA toolkit-accessible sequence data' in do_types
+        ):
+            all_types = True
+        if (
+            not 'SRA toolkit-accessible sequence data' in do_types
+            and 'Metagenome Raw Read 1' in do_types
+            and 'Metagenome Raw Read 2' in do_types
+        ):
+            all_types = True
+    return all_types
 
 
 def _is_missing_required_input_output(wf: WorkflowConfig, rec: dict, data_objects_by_id: Dict[str, DataObject]) -> bool:
@@ -140,26 +156,6 @@ def _is_missing_required_input_output(wf: WorkflowConfig, rec: dict, data_object
     match_out = _check(
         wf.filter_output_objects, rec.get("has_output"), data_objects_by_id
     )
-
-    do_types = next(iter(data_objects_by_id.values()))['data_object_type']
-
-    # Special handling for data generation record outputs, which can have Raw Reads OR SRA types
-    if (
-        not match_out
-        and wf.collection == "data_generation_set"
-    ): 
-        if (
-            not 'Metagenome Raw Read 1' in str(do_types)
-            and not 'Metagenome Raw Read 2' in str(do_types)
-            and 'SRA toolkit-accessible sequence data' in str(do_types)
-        ):
-            match_out = True
-        if (
-            not 'SRA toolkit-accessible sequence data' in str(do_types)
-            and 'Metagenome Raw Read 1' in str(do_types)
-            and 'Metagenome Raw Read 2' in str(do_types)
-        ):
-            match_out = True
 
     return not (match_in and match_out)
 
