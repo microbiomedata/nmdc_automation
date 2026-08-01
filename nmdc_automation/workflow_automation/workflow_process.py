@@ -112,37 +112,32 @@ def _within_range(ver1: str, ver2: str) -> bool:
     return False
 
 
-def _check(match_types, data_object_ids, data_objs):
+def _check(wf_input_types, data_object_ids, data_objs):
     """
     This iterates through a list of data objects and
     checks the type against the match types.
     """
     if not data_object_ids:
         return False
-    if not match_types or len(match_types) == 0:
+    if not wf_input_types or len(wf_input_types) == 0:
         return True
-    match_set = set(match_types)
+    wf_input_set = set(wf_input_types)
     do_types = set()
     for doid in data_object_ids:
         if doid in data_objs:
             do_types.add(data_objs[doid].data_object_type.code.text)
-    all_types = match_set.issubset(do_types)
 
-    # Special handling for data generation record outputs, which can have Raw Reads OR SRA types
-    if not all_types:
-        if (
-            not 'Metagenome Raw Read 1' in do_types
-            and not 'Metagenome Raw Read 2' in do_types
-            and 'SRA toolkit-accessible sequence data' in do_types
-        ):
-            all_types = True
-        if (
-            not 'SRA toolkit-accessible sequence data' in do_types
-            and 'Metagenome Raw Read 1' in do_types
-            and 'Metagenome Raw Read 2' in do_types
-        ):
-            all_types = True
-    return all_types
+    all_do_types = bool()
+    sra_data = 'SRA toolkit-accessible sequence data' in do_types
+
+    # only allow sra dataobjects if they're the one and only data object type
+    if sra_data and len(do_types)==1:
+        all_do_types = True
+    else:
+        wf_input_set_nosra = wf_input_set - {'SRA toolkit-accessible sequence data'}
+        all_do_types = wf_input_set_nosra.issubset(do_types)
+
+    return all_do_types
 
 
 def _is_missing_required_input_output(wf: WorkflowConfig, rec: dict, data_objects_by_id: Dict[str, DataObject]) -> bool:

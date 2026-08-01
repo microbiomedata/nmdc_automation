@@ -389,12 +389,9 @@ def test_scheduler_create_job_rec_has_input_files_as_array(test_db, test_client,
 
 def test_scheduler_create_job_rec_handles_data_generation_without_has_output(test_db, test_client, workflows_config_dir, site_config_file):
     """
-    If a data_generation trigger has no has_output, create_job_rec should use
-    insdc_experiment_identifiers as accessions input.
+    Test that data objects with accession ids successfully make input jsons
     """
     reset_db(test_db)
-    #load_fixture(test_db, "data_object_set.json", "data_object_set")
-    #load_fixture(test_db, "data_generation_set.json", "data_generation_set")
     load_fixture(test_db, "data_object_set_accession.json", "data_object_set")
     load_fixture(test_db, "data_generation_set_accession.json", "data_generation_set")
     load_fixture(test_db, "manifest_accession.json", "manifest_set")
@@ -412,13 +409,20 @@ def test_scheduler_create_job_rec_handles_data_generation_without_has_output(tes
     for node in workflow_process_nodes:
         found_jobs = scheduler.find_new_jobs(node, manifest_map, new_jobs)
         new_jobs.extend(found_jobs)
-        #print(f"Found jobs for node {node.process}:")
-        #for job in found_jobs:
-            #print(f"Found job: {job.trigger_act.data_objects_by_type}")
 
+    # Filter to ReadsQC jobs
     rqc_jobs = [j for j in new_jobs if j.workflow.type == "nmdc:ReadQcAnalysis"]
     assert len(rqc_jobs) == 3 # one for metag1/metag2, one for access1, one for access2/access3
 
+    # Confirm job created for data objects associated with accession id
+    single_accession_job = next(j for j in rqc_jobs if j.trigger_id == "nmdc:dgns-11-access1")
+    single_accession_job_req = scheduler.create_job_rec(single_accession_job, manifest_map)
+    assert "accessions" in single_accession_job_req["config"]["inputs"]
+    assert len(single_accession_job_req["config"]["inputs"]["accessions"]) == 1
+    assert "input_fq1" not in single_accession_job_req["config"]["inputs"]
+    assert "input_fq2" not in single_accession_job_req["config"]["inputs"]
+
+    # Confirm data objects associated by manifest create single job
     accession_manifest_job = next(
         j for j in rqc_jobs
         if set(j.informed_by) == {"nmdc:dgns-11-access2", "nmdc:dgns-11-access3"}
@@ -429,13 +433,7 @@ def test_scheduler_create_job_rec_handles_data_generation_without_has_output(tes
     assert "input_fq1" not in accession_manifest_job_req["config"]["inputs"]
     assert "input_fq2" not in accession_manifest_job_req["config"]["inputs"]
 
-    single_accession_job = next(j for j in rqc_jobs if j.trigger_id == "nmdc:dgns-11-access1")
-    single_accession_job_req = scheduler.create_job_rec(single_accession_job, manifest_map)
-    assert "accessions" in single_accession_job_req["config"]["inputs"]
-    assert len(single_accession_job_req["config"]["inputs"]["accessions"]) == 1
-    assert "input_fq1" not in single_accession_job_req["config"]["inputs"]
-    assert "input_fq2" not in single_accession_job_req["config"]["inputs"]
-
+    # Confirm jobs still created for raw read objects associated by manifest
     dg_manifest_job = next(
         j for j in rqc_jobs
         if set(j.informed_by) == {"nmdc:omprc-11-metag1", "nmdc:omprc-11-metag2"}
@@ -443,22 +441,13 @@ def test_scheduler_create_job_rec_handles_data_generation_without_has_output(tes
     dg_manifest_job_req = scheduler.create_job_rec(dg_manifest_job, manifest_map)
     assert "accessions" not in dg_manifest_job_req["config"]["inputs"]
     assert "input_fq1" in dg_manifest_job_req["config"]["inputs"]
+    assert len(dg_manifest_job_req["config"]["inputs"]["input_fq1"]) == 2
     assert "input_fq2" in dg_manifest_job_req["config"]["inputs"]
+    assert len(dg_manifest_job_req["config"]["inputs"]["input_fq2"]) == 2
 
-
-    ## IM HERE: next need to add problem scenarios liek input_fq AND accessions
-    # also look at simplifying logic / making it more intuitive and less complicated
-
-    assert 1 == 2
-    '''
-
-    metag3_record = test_db.data_generation_set.find_one({"id": "nmdc:omprc-11-metag3"})
-    metag3_node = WorkflowProcessNode(metag3_record, raw_read_job.trigger_act.workflow)
-    bad_job = SchedulerJob(raw_read_job.workflow, metag3_node, manifest_map)
-    with pytest.raises(MissingDataObjectException):
-        scheduler.create_job_rec(bad_job, manifest_map)
-    '''
-
+    # Confirm no job created when a dg has one data object with a read and one with an accession
+    with pytest.raises(StopIteration):
+        next(j for j in rqc_jobs if j.trigger_id == "nmdc:omprc-11-duo")
 
 @pytest.mark.parametrize("job_fixture", [
     "job_req_2.json",
