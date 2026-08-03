@@ -9,7 +9,10 @@ from nmdc_automation.api.nmdcapi import NmdcRuntimeApi
 #from nmdc_automation.db.nmdc_mongo import get_db
 from nmdc_automation.workflow_automation.workflows import load_workflow_configs
 from functools import lru_cache
-from nmdc_automation.workflow_automation.workflow_process import load_workflow_process_nodes
+from nmdc_automation.workflow_automation.workflow_process import (
+    load_workflow_process_nodes,
+    required_data_object_types_satisfied,
+)
 from nmdc_automation.models.workflow import WorkflowConfig, WorkflowProcessNode
 from semver.version import Version
 import sys
@@ -221,7 +224,6 @@ class Scheduler:
             for obj_list in do_by_type.values()
             for obj in obj_list
         ]
-        sra = 'SRA toolkit-accessible sequence data' in data_object_types
         for k, v in job.workflow.inputs.items():
             # some inputs are booleans and should not be modified
             if isinstance(v, bool):
@@ -234,9 +236,7 @@ class Scheduler:
                 if not dobj_list:
                     if k in optional_inputs:
                         continue
-                    if (do_type == 'Metagenome Raw Read 1' or do_type == 'Metagenome Raw Read 2') and sra:
-                        continue
-                    if do_type == 'SRA toolkit-accessible sequence data' and not sra:
+                    if required_data_object_types_satisfied([do_type], data_object_types):
                         continue
                     raise MissingDataObjectException(f"Unable to find {do_type} in {do_by_type}")
                 if len(dobj_list) == 1:

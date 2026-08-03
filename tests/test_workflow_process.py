@@ -6,6 +6,7 @@ from nmdc_automation.workflow_automation.workflow_process import (
     load_workflow_process_nodes,
     _resolve_relationships,
     _map_nodes_to_data_objects,
+    _check,
     _within_range
 )
 from nmdc_automation.workflow_automation.workflows import load_workflow_configs
@@ -271,3 +272,24 @@ def test_within_range():
     assert _within_range('v1.0.8', 'v1.0.0')
     # Major version - out of range
     assert not _within_range('v1.0.8', 'v2.0.0')
+
+
+def test_check_accepts_sra_when_reads_are_required(test_db, test_client, workflows_config_dir):
+    """SRA-only input should satisfy workflows that otherwise expect paired raw reads."""
+    reset_db(test_db)
+    load_fixture(test_db, "data_object_set_accession.json", "data_object_set")
+
+    workflow_config = load_workflow_configs(workflows_config_dir / "workflows.yaml")
+    data_objects_by_id = get_required_data_objects_map(test_client, workflow_config)
+
+    sra_object_id = next(
+        doid
+        for doid, data_object in data_objects_by_id.items()
+        if data_object.data_object_type.code.text == "SRA toolkit-accessible sequence data"
+    )
+
+    assert _check(
+        ["Metagenome Raw Read 1", "Metagenome Raw Read 2"],
+        [sra_object_id],
+        data_objects_by_id,
+    )
