@@ -387,7 +387,7 @@ def test_scheduler_create_job_rec_has_input_files_as_array(test_db, test_client,
     assert assembly["config"]["inputs"]["shortRead"] == True
     assert isinstance(assembly["config"]["inputs"]["input_files"], list)
 
-def test_scheduler_create_job_rec_handles_data_generation_without_has_output(test_db, test_client, workflows_config_dir, site_config_file):
+def test_scheduler_create_job_rec_do_sra(test_db, test_client, workflows_config_dir, site_config_file):
     """
     Test that data objects with accession ids successfully make input jsons
     """
