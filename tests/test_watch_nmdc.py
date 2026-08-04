@@ -334,7 +334,7 @@ def test_job_manager_get_finished_jobs(site_config, initial_state_file_1_failure
             )
         # Mock the failed job status
         m.get(
-            "http://localhost:8088/api/workflows/v1/12345678-abcd-efgh-ijkl-9876543210/status",
+            "http://localhost:8088/api/workflows/v1/149426/status",
             json={"status": "Failed"}
             )
         # Mock for the manifest job
@@ -443,8 +443,10 @@ def test_job_manager_get_finished_jobs_1_failure(site_config, initial_state_file
         assert failed_job.job_status.lower() == "failed"
 
 @mock.patch("nmdc_automation.workflow_automation.wfutils.WorkflowStateManager.generate_submission_files")
-def test_job_manager_process_failed_job_1_failure(
-        mock_generate_submission_files, site_config, initial_state_file_1_failure, mock_cromwell_api):
+def test_job_manager_process_failed_job_1_failure(mock_generate_submission_files, site_config, initial_state_file_1_failure, mock_cromwell_api):
+    '''
+    This processes a failed job that already had one failed attempt (so it will increment the count and submit a new job attempt)
+    '''
     # Arrange
     mock_generate_submission_files.return_value = {
         "workflowSource": "workflowSource",
@@ -454,24 +456,36 @@ def test_job_manager_process_failed_job_1_failure(
     }
     fh = FileHandler(site_config, initial_state_file_1_failure)
     jm = JobManager(site_config, fh)
+
+    # Pin threshold for fixture alignment
+    # to ensure test continues to pass in case this constant in the code changes in the future
+    jm._MAX_FAILS = 3
+
     failed_job = jm.job_cache[0]
     # Act
-    jobid = jm.process_failed_job(failed_job)
-    assert jobid
-
+    is_max_failed, jobid = jm.process_failed_job(failed_job)
+    assert is_max_failed is False
+    assert jobid is not None
 
 
 def test_job_manager_process_failed_job_2_failures(site_config, initial_state_file_1_failure, fixtures_dir, mock_jaws_api):
     # Arrange
     fh = FileHandler(site_config, initial_state_file_1_failure)
     jm = JobManager(site_config, fh, jaws_api=mock_jaws_api)
+    
+    # Pin threshold for fixture alignment
+    # to ensure test continues to pass in case this constant in the code changes in the future
+    jm._MAX_FAILS = 3
+
     failed_job_state = json.load(open(fixtures_dir / "failed_job_state_2.json"))
     assert failed_job_state
     failed_job = WorkflowJob(site_config, failed_job_state, jaws_api=mock_jaws_api)
     jm.job_cache.append(failed_job)
     # Act
-    jm.process_failed_job(failed_job)
+    is_max_failed, jobid = jm.process_failed_job(failed_job)
     # Assert
+    assert is_max_failed is True
+    assert jobid is None
     assert failed_job.done
     assert failed_job.job_status.lower() == "failed"
 
@@ -698,6 +712,7 @@ def test_watcher_restore_from_checkpoint_and_report(site_config_file, fixtures_d
     assert rpt['wdl'] == "mbin_nmdc.wdl"
     assert rpt['last_status'] == "failed"
 
+
 @pytest.mark.parametrize("site_id, expected_resource", [
     ("nmdc", "NERSC-Perlmutter"),
     ("nmdc_tahoma", "EMSL-Tahoma"),
@@ -755,3 +770,48 @@ def test_watcher_validate_exec_resource_mapping(site_config, initial_state_file_
 
         # cleanup
         jm.job_cache = []
+
+
+def test_watcher_cycle_updates_ops_on_max_failures(site_config_file, site_config, initial_state_file_1_failure, fixtures_dir, mock_jaws_api):
+    '''
+    Test that watcher.cycle() sets operation done=True in the runtime API 
+    when a job reaches max failures. 
+    '''
+    # 1. Arrange - Set up FileHandler and JobManager
+    fh = FileHandler(site_config, initial_state_file_1_failure)
+    jm = JobManager(site_config, fh, jaws_api=mock_jaws_api)
+    
+    # Ensure threshold is fixed to 3 for this test to match static fixture data
+    jm._MAX_FAILS = 3
+
+    # Load the failed job state fixture with 2 failed attempts and last_status = failed
+    failed_job_state = json.load(open(fixtures_dir / "failed_job_state_2.json"))
+    failed_job = WorkflowJob(site_config, failed_job_state, jaws_api=mock_jaws_api)
+    
+    # Place job into the manager's cache
+    jm.job_cache = [failed_job]
+
+    # Initialize Watcher using site_config_file and initial state
+    w = Watcher(site_config_file, state_file=initial_state_file_1_failure)
+    w.job_manager = jm
+
+    # Mock Runtime API Handler methods to avoid real network/DB calls
+    w.runtime_api_handler.get_unclaimed_jobs = MagicMock(return_value=[])
+    w.claim_jobs = MagicMock()
+    w.restore_from_checkpoint = MagicMock()
+    w.runtime_api_handler.update_operation = MagicMock(return_value={"id": "mock_opid_123"})
+
+    # Mock status check so get_finished_jobs identifies the job as "failed"
+    with patch.object(failed_job.job, "get_job_status", return_value="failed"):
+        w.cycle()
+
+    # 3. Assert
+    # Verify update_operation was called on runtime_api_handler with done=True
+    w.runtime_api_handler.update_operation.assert_called_once_with(
+        failed_job.opid,
+        done=True,
+        meta=failed_job.job.metadata
+    )
+    
+    # Verify the local job in cache was marked as done
+    assert failed_job.done is True
