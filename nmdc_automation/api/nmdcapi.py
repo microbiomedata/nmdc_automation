@@ -14,6 +14,8 @@ from requests.exceptions import HTTPError
 from nmdc_client.minter import Minter
 from nmdc_client.collection_search import CollectionSearch
 from nmdc_client import DataObjectSearch
+from nmdc_client.metadata import Metadata
+from nmdc_client.auth import NMDCAuth
 
 logging_level = os.getenv("NMDC_LOG_LEVEL", logging.INFO)
 logging.basicConfig(
@@ -121,9 +123,9 @@ class NmdcRuntimeApi:
 
     @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
     def post_workflow_executions(self, obj_data):
-        url = self._base_url + "workflows/workflow_executions"
-
-        resp = requests.post(url, headers=self.header, data=json.dumps(obj_data))
+        obj_json = {}
+        obj_json["workflow_execution_set"] = obj_data
+        resp = self.submit_metadata(obj_json)
         if not resp.ok:
             resp.raise_for_status()
         return resp.json()
@@ -135,9 +137,45 @@ class NmdcRuntimeApi:
         if not resp.ok:
             resp.raise_for_status()
         return resp.json()
-    
-    
+
     # TODO test that this concatenates multi-page results
+    @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
+    def list_jobs(self, filt=None, max=100) -> List[dict]:
+        url = "%sjobs" % (self._base_url) 
+
+        params = {
+            "max_page_size": max
+        }
+        if filt:
+            #url += "&filter=%s" % (json.dumps(filt))
+            params["filter"] = json.dumps(filt)
+        
+        results = []
+        while True:
+            resp = requests.get(url, headers=self.header, params=params)
+            if resp.status_code != 200:
+                # todo make this exit with failure more cleanly -jlp 20251104
+                resp.raise_for_status()
+            try:
+                response_json = resp.json()
+            except Exception as e:
+                logging.error(f"Failed to parse response: {resp.text}")
+                raise e
+            if "resources" not in response_json:
+                logging.warning(str(response_json))
+                break
+            
+            results.extend(response_json["resources"])
+            
+            # Handle pagination
+            next_token = response_json.get("next_page_token")
+            if not next_token:
+                break
+            
+            params["page_token"] = next_token
+
+        return results
+    
     @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
     def list_jobs(self, filt=None, max=100) -> List[dict]:
         jobs_client = CollectionSearch("jobs", api_base_url=self._base_url)
@@ -278,24 +316,20 @@ class NmdcRuntimeApi:
             resp.raise_for_status()
         return resp.json()["results"]
 
-    @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
-    def find_data_objects(self, data_object_id):
-        url = "%sdata_objects/%s" % (self._base_url, data_object_id)
-        resp = requests.get(url, headers=self.header)
-        if not resp.ok:
-            resp.raise_for_status()
-        return resp.json()
-
     def validate_metadata(self, metadata):
-        url = "%smetadata/json:validate" % self._base_url
-        resp = requests.post(url, headers=self.header, data=json.dumps(metadata))
-        if not resp.ok:
-            resp.raise_for_status()
-        return resp.json()
+        auth = NMDCAuth(
+            client_id=self.client_id,
+            client_secret=self.client_secret,
+            api_base_url=self._base_url,
+        )
+        metadata_client = Metadata(api_base_url=self._base_url, auth=auth)
+        return metadata_client.validate_json(metadata)
 
     def submit_metadata(self, metadata):
-        url = "%smetadata/json:submit" % self._base_url
-        resp = requests.post(url, headers=self.header, data=json.dumps(metadata))
-        if not resp.ok:
-            resp.raise_for_status()
-        return resp.json()
+        auth = NMDCAuth(
+            client_id=self.client_id,
+            client_secret=self.client_secret,
+            api_base_url=self._base_url,
+        )
+        metadata_client = Metadata(api_base_url=self._base_url, auth=auth)
+        return metadata_client.submit_json(metadata)

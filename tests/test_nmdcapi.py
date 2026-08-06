@@ -9,7 +9,7 @@ def test_objects(monkeypatch, requests_mock, test_client):
 
     # Temporarily bind the REAL method to the mock instance
     monkeypatch.setattr(n, "post_workflow_executions", nmdcapi.post_workflow_executions.__get__(n, nmdcapi))
-    url = "http://localhost:8000/workflows/workflow_executions"
+    url = "http://localhost:8000/metadata/json:submit"
     requests_mock.post(url, json={"a": "b"})
     resp = n.post_workflow_executions({"a": "b"})
     assert "a" in resp

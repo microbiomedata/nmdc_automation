@@ -255,7 +255,7 @@ class ImportMapper:
         if 'has_output' in data_generation and len(data_generation['has_output']) > 0:
             # Retrieve the first output DataObject
             data_object_id = data_generation['has_output'][0]
-            data_object = self.runtime_api.find_data_objects(data_object_id)
+            data_object = self.runtime_api.list_from_collection("data_object_set", filt={"id": data_object_id})
         else:
             # No output object found; use None
             data_object = None
@@ -316,7 +316,7 @@ class ImportMapper:
         for workflow_execution in workflow_execution_recs:
             data_object_ids = workflow_execution['has_output']
             for data_object_id in data_object_ids:
-                data_object = self.runtime_api.find_data_objects(data_object_id)
+                data_object = self.runtime_api.list_from_collection("data_object_set", filt={"id": data_object_id})
                 import_spec = self.import_specs_by_data_object_type.get(data_object["data_object_type"])
                 if not import_spec:
                     logger.warning(f"Cannot find an import specification for data object {data_object_id} / {data_object['data_object_type']}")
