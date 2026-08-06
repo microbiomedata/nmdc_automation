@@ -20,6 +20,7 @@ from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_excep
 from requests.exceptions import HTTPError
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+from nmdc_client.minter import Minter
 
 logging_level = os.getenv("NMDC_LOG_LEVEL", logging.INFO)
 logging.basicConfig(
@@ -164,32 +165,32 @@ class NmdcRuntimeApi:
 
     @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
     @refresh_token
-    def minter(self, id_type, informed_by=None):
-        url = f"{self._base_url}pids/mint"
-        data = {"schema_class": {"id": id_type}, "how_many": 1}
-        resp = requests.post(url, data=json.dumps(data), headers=self.header)
-        if not resp.ok:
-            logging.error(f"Response failed for: url: {url}, data: {data}, header: {self.header}")
-            raise ValueError(f"Failed to mint ID of type {id_type} HTTP status: {resp.status_code} / ({resp.reason})")
-        id = resp.json()[0]
-        return id
+    def minter(self, id_type):
+        minter = Minter(api_base_url=self._base_url)
+        try:
+            new_id = minter.mint(
+                nmdc_type=id_type,
+                count=1,
+                client_id=self.client_id,
+                client_secret=self.client_secret,
+            )
+            return new_id
+        except Exception as e:
+            logging.error(f"Failed to mint ID using Minter: {e}")
+            raise
 
-    @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
-    @refresh_token
-    def mint(self, ns, typ, ct):
+    def mock_mint(self, id_type):  # pragma: no cover
         """
-        Mint a new ID.
-        Inputs: token (obtained using get_token)
-                namespace (e.g. nmdc)
-                type/shoulder (e.g. mga0, mta0)
-                count/number of IDs to generate
+        Return a fixed pattern used for testing
         """
-        url = self._base_url + "ids/mint"
-        d = {"populator": "", "naa": ns, "shoulder": typ, "number": ct}
-        resp = requests.post(url, headers=self.header, data=json.dumps(d))
-        if not resp.ok:
-            resp.raise_for_status()
-        return resp.json()
+        mapping = {
+            "nmdc:ReadQcAnalysisActivity": "mgrqc",
+            "nmdc:MetagenomeAssembly": "mgasm",
+            "nmdc:MetagenomeAnnotationActivity": "mgann",
+            "nmdc:MAGsAnalysisActivity": "mgmag",
+            "nmdc:ReadBasedTaxonomyAnalysisActivity": "mgrbt",
+        }
+        return f"nmdc:wf{mapping[id_type]}-11-xxxxxx"
 
     @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
     @refresh_token
