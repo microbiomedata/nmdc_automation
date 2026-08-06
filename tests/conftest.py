@@ -312,13 +312,12 @@ def configured_api_mock(session_monkeypatch, test_db, test_data_dir):
         'Content-Type': 'application/json' 
     }
 
-    def mock_mint_side_effect(id_type, informed_by=None):
-    
+    def mock_mint_side_effect(id_type):
         if id_type == "nmdc:DataObject":
             return ["nmdc:dobj-01-abcd4321"]
-        
-        # Else this is a wf activity
-        return "nmdc:wfabc-01-abcd4321"
+
+        # The production minter returns a list for all mint types.
+        return ["nmdc:wfabc-01-abcd4321"]
     
     mock_api.minter = MagicMock()
     mock_api.minter.side_effect = mock_mint_side_effect
@@ -622,7 +621,7 @@ class MockNmdcRuntimeApi:
         }
         self.counter += 1
         prefix = type_code_map[id_type]
-        return f"{prefix}-{self.counter:02d}-abcd1234"
+        return [f"{prefix}-{self.counter:02d}-abcd1234"]
 
     def get_token(self):
         return {"expires": {"minutes": time()+60},

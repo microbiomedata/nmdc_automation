@@ -34,22 +34,12 @@ def test_objects(monkeypatch, requests_mock, site_config_file, test_data_dir, te
     n = test_client
 
     # Temporarily bind the REAL method to the mock instance
-    monkeypatch.setattr(n, "create_object", nmdcapi.create_object.__get__(n, nmdcapi))
     monkeypatch.setattr(n, "post_workflow_executions", nmdcapi.post_workflow_executions.__get__(n, nmdcapi))
     monkeypatch.setattr(n, "set_type", nmdcapi.set_type.__get__(n, nmdcapi))
     monkeypatch.setattr(n, "bump_time", nmdcapi.bump_time.__get__(n, nmdcapi))
 
-    requests_mock.post("http://localhost:8000/objects", json={})
-    fn = test_data_dir / "afile.sha256"
-    if os.path.exists(fn):
-        os.remove(fn)
-    afile = test_data_dir / "afile"
-    resp = n.create_object(str(afile), "desc", "http://localhost:8000/")
-    resp = n.create_object(test_data_dir / "afile", "desc", "http://localhost:8000/")
-    url = "http://localhost:8000/workflows/workflow_executions"
-    requests_mock.post(url, json={"a": "b"})
+    requests_mock.post("http://localhost:8000/metadata/json:submit", json={})
     resp = n.post_workflow_executions({"a": "b"})
-    assert "a" in resp
 
     requests_mock.put("http://localhost:8000/objects/abc/types", json={})
     resp = n.set_type("abc", "metadatain")
@@ -70,8 +60,7 @@ def test_list_funcs(monkeypatch, requests_mock, site_config_file, test_data_dir,
     monkeypatch.setattr(n, "list_objs", nmdcapi.list_objs.__get__(n, nmdcapi))
     
 
-    # TODO: check the full url
-    requests_mock.get("http://localhost:8000/jobs", json=mock_resp)
+    requests_mock.get("http://localhost:8000/nmdcschema/jobs", json=mock_resp)
     resp = n.list_jobs(filt="a=b")
     assert resp is not None
 

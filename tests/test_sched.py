@@ -1,6 +1,8 @@
 from nmdc_automation.workflow_automation.sched import Scheduler, SchedulerJob, MissingDataObjectException
 from pytest import mark
 import pytest
+import os
+import json
 from unittest.mock import patch, MagicMock
 from requests.exceptions import HTTPError
 import copy
@@ -932,6 +934,34 @@ def test_scheduler_mock_minter(test_db, test_client, workflows_config_dir, site_
         resp = jm.cycle()
         
         assert jm.api.minter.called
+
+def test_nmdc_runtime_api_minter_live():
+    site_config_path = Path("configs/.local_site_configuration.toml")
+
+    api = NmdcRuntimeApi(site_config_path)
+    minted_id = api.minter("nmdc:DataObject")
+    print(f"is list: {isinstance(minted_id, list)}")
+    assert len(minted_id) == 1
+    assert minted_id[0].startswith("nmdc:dobj-")
+    assert 1 == 4
+
+def test_nmdc_runtime_api_get_object_live():
+    site_config_path = Path("configs/.local_site_configuration.toml")
+
+    api = NmdcRuntimeApi(site_config_path)
+    obj_info = api.get_object("nmdc:dobj-11-rhjsg657", decode=True)
+
+    assert isinstance(obj_info, dict)
+    assert "metadata" in obj_info
+
+def test_nmdc_runtime_api_list_from_collection():
+    site_config_path = Path("configs/.local_site_configuration.toml")
+
+    api = NmdcRuntimeApi(site_config_path)
+    obj_info = api.list_from_collection(collection="data_object_set", filt={"id": "nmdc:dobj-11-rhjsg657"}, projection=None, max=100)
+
+    assert isinstance(obj_info, list)
+    assert isinstance(obj_info[0], dict)
 
 
 def test_no_schedule_minor_upgrade_of_running_job(test_db, test_client, workflows_config_dir, site_config_file):
