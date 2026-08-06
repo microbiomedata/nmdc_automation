@@ -7,6 +7,8 @@ from semver.version import Version
 
 from nmdc_automation.models.nmdc import DataObject
 from nmdc_automation.models.workflow import WorkflowConfig, WorkflowProcessNode
+from nmdc_client.collection_search import CollectionSearch
+import json
 
 logging.basicConfig(level=logging.INFO,
     format="%(asctime)s %(levelname)s: %(message)s"
