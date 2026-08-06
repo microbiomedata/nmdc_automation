@@ -22,6 +22,7 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from nmdc_client.minter import Minter
 from nmdc_client.collection_search import CollectionSearch
+from nmdc_client import DataObjectSearch
 
 logging_level = os.getenv("NMDC_LOG_LEVEL", logging.INFO)
 logging.basicConfig(
@@ -195,21 +196,27 @@ class NmdcRuntimeApi:
 
     @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
     @refresh_token
-    def get_object(self, obj, decode=False):
+    def get_object(self, obj:str, decode=False):
         """
         Helper function to get object info
         """
-        url = "%sobjects/%s" % (self._base_url, obj)
-        resp = requests.get(url, headers=self.header)
-        if not resp.ok:
-            resp.raise_for_status()
-        data = resp.json()
+        do_client = DataObjectSearch(api_base_url=self._base_url)
+        try:
+            data = do_client.get_record_by_attribute(
+                attribute_name="id",
+                attribute_value=obj,
+                exact_match=True,
+            )[0]
+        except Exception as e:
+            logging.error(f"Failed to get object info using DataObjectSearch: {e}")
+            raise
+        ## TODO: why does the below code exist? is it used somewhere?
+        # its function adds metadata slot if description is a json (not a string)
         if decode and "description" in data:
             try:
                 data["metadata"] = json.loads(data["description"])
             except Exception:
                 data["metadata"] = None
-
         return data
 
 

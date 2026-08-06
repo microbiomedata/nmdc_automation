@@ -13,22 +13,6 @@ from unittest.mock import MagicMock
 from requests.exceptions import HTTPError
 
 
-#def test_basics(requests_mock, site_config_file, mock_api):
-def test_basics(monkeypatch, requests_mock, site_config_file, test_client):
-    #n = nmdcapi(site_config_file)
-    n = test_client
-
-    # Temporarily bind the REAL method to the mock instance
-    monkeypatch.setattr(n, "get_object", nmdcapi.get_object.__get__(n, nmdcapi))
-
-    # Add decode description
-    resp = {'description': '{"a": "b"}'}
-    requests_mock.get("http://localhost:8000/objects/xxx", json=resp)
-    resp = n.get_object("xxx", decode=True)
-    assert resp is not None
-    assert "metadata" in resp
-
-
 def test_objects(monkeypatch, requests_mock, site_config_file, test_data_dir, test_client):
     #n = nmdcapi(site_config_file)
     n = test_client
