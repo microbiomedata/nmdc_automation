@@ -647,7 +647,7 @@ def test_runtime_manager_get_unclaimed_jobs(site_config, test_data_dir, test_db,
             with open(rqcf, 'r') as f:
                 rqc = json.load(f)
             rqc_resp = {"resources": [rqc]}
-            m.get("http://localhost:8000/jobs", json=rqc_resp)
+            m.get("http://localhost:8000/nmdcschema/jobs", json=rqc_resp)
             
             # 3. Restore the list_jobs implementation (to hit the mocks above)
             n.list_jobs.side_effect = lambda *args, **kwargs: NmdcRuntimeApi.list_jobs(

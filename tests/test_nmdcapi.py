@@ -71,7 +71,7 @@ def test_list_funcs(monkeypatch, requests_mock, site_config_file, test_data_dir,
     
 
     # TODO: check the full url
-    requests_mock.get("http://localhost:8000/jobs", json=mock_resp)
+    requests_mock.get("http://localhost:8000/nmdcschema/jobs", json=mock_resp)
     resp = n.list_jobs(filt="a=b")
     assert resp is not None
 

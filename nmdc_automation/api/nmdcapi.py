@@ -21,6 +21,7 @@ from requests.exceptions import HTTPError
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from nmdc_client.minter import Minter
+from nmdc_client.collection_search import CollectionSearch
 
 logging_level = os.getenv("NMDC_LOG_LEVEL", logging.INFO)
 logging.basicConfig(
@@ -363,40 +364,13 @@ class NmdcRuntimeApi:
     @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
     @refresh_token
     def list_jobs(self, filt=None, max=100) -> List[dict]:
-        url = "%sjobs" % (self._base_url) 
-
-        params = {
-            "max_page_size": max
-        }
-        if filt:
-            #url += "&filter=%s" % (json.dumps(filt))
-            params["filter"] = json.dumps(filt)
-        
-        results = []
-        while True:
-            resp = requests.get(url, headers=self.header, params=params)
-            if resp.status_code != 200:
-                # todo make this exit with failure more cleanly -jlp 20251104
-                resp.raise_for_status()
-            try:
-                response_json = resp.json()
-            except Exception as e:
-                logging.error(f"Failed to parse response: {resp.text}")
-                raise e
-            if "resources" not in response_json:
-                logging.warning(str(response_json))
-                break
-            
-            results.extend(response_json["resources"])
-            
-            # Handle pagination
-            next_token = response_json.get("next_page_token")
-            if not next_token:
-                break
-            
-            params["page_token"] = next_token
-
-        return results
+        jobs_client = CollectionSearch("jobs", api_base_url=self._base_url)
+        filt_args = filt if isinstance(filt, str) else json.dumps(filt) if filt else ""
+        return jobs_client.get_record_by_filter(
+            filter=filt_args,
+            max_page_size=max,
+            all_pages=True,
+        )
 
     @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
     @refresh_token
