@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-
 import json
+from typing import List
 import os
 from time import sleep as _sleep
 from urllib.parse import urlencode
@@ -37,7 +37,7 @@ class NmdcRuntimeApi:
         self.client_secret = self.config.client_secret
 
     @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
-    def minter(self, id_type):
+    def minter(self, id_type) -> str:
         minter = Minter(api_base_url=self._base_url)
         try:
             new_id = minter.mint(
@@ -65,7 +65,7 @@ class NmdcRuntimeApi:
         return f"nmdc:wf{mapping[id_type]}-11-xxxxxx"
 
     @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
-    def get_object(self, obj:str, decode=False):
+    def get_object(self, obj:str, decode=False) -> dict:
         """
         Helper function to get object info
         """
@@ -88,7 +88,7 @@ class NmdcRuntimeApi:
                 data["metadata"] = None
         return data
 
-    def list_from_collection(self, collection, filt=None, projection=None, max=100):
+    def list_from_collection(self, collection, filt=None, projection=None, max=100) -> List[dict]:
         collection_client = CollectionSearch(collection, api_base_url=self._base_url)
         max_attempts = 3 # Defining max_attempts to retrieve from collection in case of API instability
         attempt = 0
@@ -119,16 +119,6 @@ class NmdcRuntimeApi:
                     raise RuntimeError(f"Crawl failed after {max_attempts} full restarts.") from e
 
         return results
-    
-
-    @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
-    def post_workflow_executions(self, obj_data):
-        obj_json = {}
-        obj_json["workflow_execution_set"] = obj_data
-        resp = self.submit_metadata(obj_json)
-        if not resp.ok:
-            resp.raise_for_status()
-        return resp.json()
 
     @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
     def create_job(self, job_obj):
@@ -175,16 +165,18 @@ class NmdcRuntimeApi:
             params["page_token"] = next_token
 
         return results
-    
+
     @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
-    def list_jobs(self, filt=None, max=100) -> List[dict]:
-        jobs_client = CollectionSearch("jobs", api_base_url=self._base_url)
-        filt_args = filt if isinstance(filt, str) else json.dumps(filt) if filt else ""
-        return jobs_client.get_record_by_filter(
-            filter=filt_args,
-            max_page_size=max,
-            all_pages=True,
-        )
+    def claim_job(self, job_id: str):
+        url = "%sjobs/%s:claim" % (self._base_url, job_id)
+        resp = requests.post(url, headers=self.header)
+        if resp.status_code == 409:
+            claimed = True
+        else:
+            claimed = False
+        data = resp.json()
+        data["claimed"] = claimed
+        return data
 
     @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
     def release_job(self, job_id: str):
@@ -319,8 +311,7 @@ class NmdcRuntimeApi:
     def validate_metadata(self, metadata):
         auth = NMDCAuth(
             client_id=self.client_id,
-            client_secret=self.client_secret,
-            api_base_url=self._base_url,
+            client_secret=self.client_secret
         )
         metadata_client = Metadata(api_base_url=self._base_url, auth=auth)
         return metadata_client.validate_json(metadata)
@@ -328,8 +319,7 @@ class NmdcRuntimeApi:
     def submit_metadata(self, metadata):
         auth = NMDCAuth(
             client_id=self.client_id,
-            client_secret=self.client_secret,
-            api_base_url=self._base_url,
+            client_secret=self.client_secret
         )
         metadata_client = Metadata(api_base_url=self._base_url, auth=auth)
         return metadata_client.submit_json(metadata)

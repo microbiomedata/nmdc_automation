@@ -283,8 +283,8 @@ def import_projects(ctx,  import_file, import_yaml, site_configuration, update_d
                 # check if there are any workflow executions or data objects to add
                 if 'data_object_set' in import_db or 'workflow_execution_set' in import_db:
                     logger.info(f"Updating Database")
-                    resp = runtime_api.post_workflow_executions(import_db)
-                    logger.info(f"workflows/workflow_executions response: {resp}")
+                    resp = runtime_api.submit_metadata(import_db)
+                    logger.info(f"metadata/json:submit response: {resp}")
                 else:
                     logger.info(f"No new data objects or workflow executions to add")
 

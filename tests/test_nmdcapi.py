@@ -1,19 +1,34 @@
 from nmdc_automation.api.nmdcapi import NmdcRuntimeApi as nmdcapi
 import json
+from pathlib import Path
 from unittest.mock import patch
 from tests.fixtures.db_utils import load_fixture, reset_db
 
-def test_objects(monkeypatch, requests_mock, test_client):
-    #n = nmdcapi(site_config_file)
-    n = test_client
+def test_nmdc_runtime_api_minter_live():
+    site_config_path = Path("configs/.local_site_configuration.toml")
 
-    # Temporarily bind the REAL method to the mock instance
-    monkeypatch.setattr(n, "post_workflow_executions", nmdcapi.post_workflow_executions.__get__(n, nmdcapi))
-    url = "http://localhost:8000/metadata/json:submit"
-    requests_mock.post(url, json={"a": "b"})
-    resp = n.post_workflow_executions({"a": "b"})
-    assert "a" in resp
+    api = nmdcapi(site_config_path)
+    minted_id = api.minter("nmdc:DataObject")
+    assert isinstance(minted_id, str), f"Expected single minted ID to be a string, got {type(minted_id)}"
+    assert minted_id.startswith("nmdc:dobj-")
 
+def test_nmdc_runtime_api_get_object_live():
+    site_config_path = Path("configs/.local_site_configuration.toml")
+
+    api = nmdcapi(site_config_path)
+    obj_info = api.get_object("nmdc:dobj-11-rhjsg657", decode=True)
+
+    assert isinstance(obj_info, dict)
+    assert "metadata" in obj_info
+
+def test_nmdc_runtime_api_list_from_collection_live():
+    site_config_path = Path("configs/.local_site_configuration.toml")
+
+    api = nmdcapi(site_config_path)
+    obj_info = api.list_from_collection(collection="data_object_set", filt={"id": "nmdc:dobj-11-rhjsg657"}, projection=None, max=100)
+
+    assert isinstance(obj_info, list)
+    assert isinstance(obj_info[0], dict)
 
 def test_list_funcs(monkeypatch, requests_mock, site_config_file, test_data_dir, test_client):
    #n = nmdcapi(site_config_file)
@@ -24,7 +39,7 @@ def test_list_funcs(monkeypatch, requests_mock, site_config_file, test_data_dir,
     monkeypatch.setattr(n, "list_jobs", nmdcapi.list_jobs.__get__(n, nmdcapi))
     
     # TODO: check the full url
-    requests_mock.get("http://localhost:8000/nmdcschema/jobs", json=mock_resp)
+    requests_mock.get("http://localhost:8000/jobs", json=mock_resp)
     resp = n.list_jobs(filt="a=b")
     assert resp is not None
 
@@ -46,6 +61,24 @@ def test_update_op(monkeypatch, requests_mock, site_config_file, test_client):
     # monkeypatch.setattr(requests, "patch", mock_patch)
     resp = n.update_op("abc", done=True, results={"a": "b"}, meta={"d": "e"})
     assert "b" in resp["metadata"]
+
+def test_jobs(monkeypatch, requests_mock, site_config_file, test_client):
+    #n = nmdcapi(site_config_file)
+    n = test_client
+
+    # Temporarily bind the REAL method to the mock instance
+    monkeypatch.setattr(n, "claim_job", nmdcapi.claim_job.__get__(n, nmdcapi))
+
+    resp = {"url": "jobs:claim"}
+    url = "http://localhost:8000/jobs/abc:claim"
+    requests_mock.post(url, json=resp, status_code=200)
+    resp = n.claim_job("abc")
+    assert ":claim" in resp["url"]
+    assert resp["claimed"] is False
+
+    requests_mock.post(url, json={}, status_code=409)
+    resp = n.claim_job("abc")
+    assert resp["claimed"] is True
 
 def test_run_query(test_db, test_client):
     reset_db(test_db)
