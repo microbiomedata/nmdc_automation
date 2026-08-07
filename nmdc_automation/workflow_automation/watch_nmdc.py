@@ -129,7 +129,7 @@ class JobManager:
         self.file_handler = file_handler
         self.jaws_api = jaws_api
         self._job_cache = []
-        self._MAX_FAILS = 2
+        self._MAX_FAILS = 3
         if init_cache:
             self.restore_from_state()
 
@@ -299,19 +299,24 @@ class JobManager:
         self.save_checkpoint()
         return database
 
-    def process_failed_job(self, job: WorkflowJob) -> Optional[str]:
-        """ Process a failed job """
+    def process_failed_job(self, job: WorkflowJob) -> tuple[bool, Optional[str]]:
+        """ Process a failed job and determine if max retries are reached """
+        
+        job.workflow.state["failed_count"] = job.workflow.state.get("failed_count", 0) + 1
+        job.workflow.state["last_status"] = job.job_status
+
         if job.workflow.state.get("failed_count", 0) >= self._MAX_FAILS:
             logger.error(f"Job {job.opid} failed {self._MAX_FAILS} times. Skipping.")
             job.done = True
             self.save_checkpoint()
-            return None
-        job.workflow.state["failed_count"] = job.workflow.state.get("failed_count", 0) + 1
-        job.workflow.state["last_status"] = job.job_status
+            # Return boolean if max_failed is reached 
+            return True, None
+        
+        # Otherwise retry
         self.save_checkpoint()
         logger.warning(f"Job {job.opid} failed {job.workflow.state['failed_count']} times. Retrying.")
         jobid = job.job.submit_job()
-        return jobid
+        return False, jobid
 
     def report(self) -> List[dict]:
         """ Report the current state of the JobManager's job cache """
@@ -400,7 +405,7 @@ class Watcher:
     """ Watcher class for monitoring and managing jobs """
     def __init__(self, site_configuration_file: Union[str, Path],  state_file: Union[str, Path] = None, use_jaws: bool = False):
         self._POLL_INTERVAL_SEC = 600   # 10 minutes to avoid spamming the API
-        self._MAX_FAILS = 2
+        #self._MAX_FAILS = 3 (20260731 - slated for removal - unused as we use the one in JobManager)
         self.should_skip_claim = False
         self.config = SiteConfig(site_configuration_file)
         self.file_handler = FileHandler(self.config, state_file)
@@ -479,7 +484,15 @@ class Watcher:
 
         for job in failed_jobs:
             logger.info(f"Processing failed job: {job.opid}, {job.workflow_execution_id}")
-            self.job_manager.process_failed_job(job)
+            is_max_failed, new_jobid = self.job_manager.process_failed_job(job)
+            
+            if is_max_failed:
+                logger.info(f"Job op {job.opid} reached max retries. Unlocking operation record.")
+                # update the operation record
+                resp = self.runtime_api_handler.update_operation(
+                    job.opid, done=True, meta=job.job.metadata
+                )
+                logging.info(f"Updated operation {job.opid} response id: {resp['id']}")
 
     def watch(self):
         """ Maintain a polling loop to 'cycle' through job claims and processing """
