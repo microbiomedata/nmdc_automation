@@ -1885,6 +1885,23 @@ pandas = "*"
 requests = "*"
 
 [[package]]
+name = "nmdc-client"
+version = "1.0.1"
+description = "Python client library for the NMDC API (formerly nmdc-api-utilities)"
+optional = false
+python-versions = ">=3.10"
+groups = ["main"]
+files = [
+    {file = "nmdc_client-1.0.1-py3-none-any.whl", hash = "sha256:754d79ffa31813688f1fce24644c7dd77458ae1826931a6360c9b397b6e8c8af"},
+    {file = "nmdc_client-1.0.1.tar.gz", hash = "sha256:4483f3f14862840e43e99eaec46bffda0d7392e7f3391e2b3c5e19db4d83065a"},
+]
+
+[package.dependencies]
+deprecated = ">=1.3.1"
+dotenv = ">=0.9.9,<1"
+requests = ">=2.33.1,<3"
+
+[[package]]
 name = "nmdc-schema"
 version = "11.21.0"
 description = "Schema resources for the National Microbiome Data Collaborative (NMDC)"
@@ -4476,4 +4493,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.12"
-content-hash = "ed132db8ceb25a0161c231734bfe49c10b4b80b3e08e6855daf9ddf8a734f8fb"
+content-hash = "1fb958adedbb4bc123a678e76f94df7efccd53a496213e38296cbb9f80e253f5"
