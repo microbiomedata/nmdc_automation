@@ -49,7 +49,7 @@ class NmdcRuntimeApi:
             password=self.config.password,
             api_base_url=self._base_url
         )
-        self.header = self.refresh_auth_header()
+        self.header = None
 
     def refresh_auth_header(self):
         '''
