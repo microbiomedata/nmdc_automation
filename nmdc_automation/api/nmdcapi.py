@@ -2,6 +2,7 @@
 import json
 from typing import List
 import os
+from functools import wraps
 from time import sleep as _sleep
 from urllib.parse import urlencode
 import requests
@@ -23,28 +24,57 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
+def refresh_token(func):
+    @wraps(func)
+    def _refresh_and_call(self, *args, **kwargs):
+        self.refresh_auth_header()
+        return func(self, *args, **kwargs)
+
+    return _refresh_and_call
+
 class NmdcRuntimeApi:
-    _base_url = None
-    client_id = None
-    client_secret = None
 
     def __init__(self, site_configuration: Union[str, Path, SiteConfig]):
         if isinstance(site_configuration, str) or isinstance(site_configuration, Path):
             site_configuration = SiteConfig(site_configuration)
         self.config = site_configuration
         self._base_url = self.config.api_url
-        self.client_id = self.config.client_id
-        self.client_secret = self.config.client_secret
+        if self._base_url[-1] != "/":
+            self._base_url += "/"
+        self.auth = NMDCAuth(
+            client_id=self.config.client_id,
+            client_secret=self.config.client_secret,
+            username=self.config.username,
+            password=self.config.password,
+            api_base_url=self._base_url
+        )
+        self.header = self.refresh_auth_header()
+
+    def refresh_auth_header(self):
+        '''
+        Refresh the authentication token and update the header for API calls that 
+        don't use nmdc-client, which handles its own token refresh.
+        '''
+        try:
+            token = self.auth.get_token()  # fetches/refreshes token
+            self.header = self.auth._build_http_request_headers(
+                access_token=token,
+                accept="application/json",
+                content_type="application/json",
+            )
+        except Exception as e:
+            logging.error(f"Failed to refresh token: {e}")
+            raise
+        return self.header
 
     @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
     def minter(self, id_type) -> str:
-        minter = Minter(api_base_url=self._base_url)
+        minter = Minter(auth=self.auth)
         try:
             new_id = minter.mint(
                 nmdc_type=id_type,
-                count=1,
-                client_id=self.client_id,
-                client_secret=self.client_secret,
+                count=1
             )
             return new_id
         except Exception as e:
@@ -121,6 +151,7 @@ class NmdcRuntimeApi:
         return results
 
     @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
+    @refresh_token
     def create_job(self, job_obj):
         url = "%sjobs" % (self._base_url)
         resp = requests.post(url, headers=self.header, data=json.dumps(job_obj))
@@ -130,8 +161,9 @@ class NmdcRuntimeApi:
 
     # TODO test that this concatenates multi-page results
     @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
+    @refresh_token
     def list_jobs(self, filt=None, max=100) -> List[dict]:
-        url = "%sjobs" % (self._base_url) 
+        url = "%sjobs" % (self._base_url)
 
         params = {
             "max_page_size": max
@@ -167,6 +199,7 @@ class NmdcRuntimeApi:
         return results
 
     @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
+    @refresh_token
     def claim_job(self, job_id: str):
         url = "%sjobs/%s:claim" % (self._base_url, job_id)
         resp = requests.post(url, headers=self.header)
@@ -179,6 +212,7 @@ class NmdcRuntimeApi:
         return data
 
     @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
+    @refresh_token
     def release_job(self, job_id: str):
         """
         Release a job that was previously claimed.
@@ -206,6 +240,7 @@ class NmdcRuntimeApi:
         stop=stop_after_attempt(6),
         reraise=True
     )
+    @refresh_token
     def get_op(self, opid):
         url = "%soperations/%s" % (self._base_url, opid)
         resp = requests.get(url, headers=self.header)
@@ -214,6 +249,7 @@ class NmdcRuntimeApi:
         return resp.json()
 
     @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
+    @refresh_token
     def update_op(self, opid, done=None, results=None, meta=None):
         """
         Update an operation with the given ID with the specified parameters.
@@ -239,6 +275,7 @@ class NmdcRuntimeApi:
             resp.raise_for_status()
         return resp.json()
 
+    @refresh_token
     def _run_query_single(self, query):
         url = "%squeries:run" % self._base_url
         try:
@@ -290,6 +327,7 @@ class NmdcRuntimeApi:
 
 
     @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
+    @refresh_token
     def find_planned_processes(self, filter: dict):
         # construct filter params
         filter_parts = []
@@ -309,17 +347,9 @@ class NmdcRuntimeApi:
         return resp.json()["results"]
 
     def validate_metadata(self, metadata):
-        auth = NMDCAuth(
-            client_id=self.client_id,
-            client_secret=self.client_secret
-        )
-        metadata_client = Metadata(api_base_url=self._base_url, auth=auth)
+        metadata_client = Metadata(auth=self.auth)
         return metadata_client.validate_json(metadata)
 
     def submit_metadata(self, metadata):
-        auth = NMDCAuth(
-            client_id=self.client_id,
-            client_secret=self.client_secret
-        )
-        metadata_client = Metadata(api_base_url=self._base_url, auth=auth)
+        metadata_client = Metadata(auth=self.auth)
         return metadata_client.submit_json(metadata)

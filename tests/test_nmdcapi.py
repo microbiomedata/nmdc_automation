@@ -1,30 +1,38 @@
 from nmdc_automation.api.nmdcapi import NmdcRuntimeApi as nmdcapi
 import json
-from pathlib import Path
 from unittest.mock import patch
 from tests.fixtures.db_utils import load_fixture, reset_db
 
-def test_nmdc_runtime_api_minter_live():
-    site_config_path = Path("configs/.local_site_configuration.toml")
-
-    api = nmdcapi(site_config_path)
+def test_nmdc_runtime_api_minter(configured_api_mock):
+    api = configured_api_mock
     minted_id = api.minter("nmdc:DataObject")
     assert isinstance(minted_id, str), f"Expected single minted ID to be a string, got {type(minted_id)}"
     assert minted_id.startswith("nmdc:dobj-")
 
-def test_nmdc_runtime_api_get_object_live():
-    site_config_path = Path("configs/.local_site_configuration.toml")
+def test_nmdc_runtime_api_get_object(test_db, configured_api_mock):
+    reset_db(test_db)
+    test_db.data_object_set.insert_one({
+        "id": "nmdc:dobj-11-rhjsg657",
+        "name": "Test Object",
+        "description": json.dumps({"a": 1}),
+        "type": "nmdc:DataObject",
+    })
 
-    api = nmdcapi(site_config_path)
+    api = configured_api_mock
     obj_info = api.get_object("nmdc:dobj-11-rhjsg657", decode=True)
 
     assert isinstance(obj_info, dict)
     assert "metadata" in obj_info
 
-def test_nmdc_runtime_api_list_from_collection_live():
-    site_config_path = Path("configs/.local_site_configuration.toml")
+def test_nmdc_runtime_api_list_from_collection(test_db, configured_api_mock):
+    reset_db(test_db)
+    test_db.data_object_set.insert_one({
+        "id": "nmdc:dobj-11-rhjsg657",
+        "name": "Test Object",
+        "type": "nmdc:DataObject",
+    })
 
-    api = nmdcapi(site_config_path)
+    api = configured_api_mock
     obj_info = api.list_from_collection(collection="data_object_set", filt={"id": "nmdc:dobj-11-rhjsg657"}, projection=None, max=100)
 
     assert isinstance(obj_info, list)

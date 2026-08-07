@@ -242,7 +242,7 @@ def test_type_resolving(test_db, test_client, workflows_config_dir, site_config_
     "workflows-mt.yaml"
 ])
 #def test_scheduler_add_job_rec(test_db, mock_api, workflow_file, workflows_config_dir, site_config_file):
-def test_scheduler_add_job_rec(test_db, workflow_file, workflows_config_dir, site_config_file):
+def test_scheduler_add_job_rec(test_db, test_client, workflow_file, workflows_config_dir, site_config_file):
     """
     Test basic job creation.
     """
@@ -253,7 +253,8 @@ def test_scheduler_add_job_rec(test_db, workflow_file, workflows_config_dir, sit
     #jm = Scheduler(test_db, workflow_yaml=workflows_config_dir / workflow_file,
     #               site_conf=site_config_file)
     jm = Scheduler(workflow_yaml=workflows_config_dir / workflow_file,
-                   site_conf=site_config_file)
+                   site_conf=site_config_file,
+                   api=test_client)
     # sanity check
     assert jm
 
