@@ -273,44 +273,41 @@ def import_projects(ctx,  import_file, import_yaml, site_configuration, update_d
         logger.info(
             f"Validating {len(import_db['data_object_set'])} data objects and {wfe_ct} workflow executions"
             )
-        val_result = runtime_api.validate_metadata(import_db)
-
-        # If validation passes, update the database if the --update-db flag is set
-        # Otherwise, print the update json and update query if there are any
-        if val_result['result'] == "All Okay!":
-            logger.info(f"Validation passed")
-            if update_db:
-                # check if there are any workflow executions or data objects to add
-                if 'data_object_set' in import_db or 'workflow_execution_set' in import_db:
-                    logger.info(f"Updating Database")
-                    resp = runtime_api.submit_metadata(import_db)
-                    logger.info(f"metadata/json:submit response: {resp}")
-                else:
-                    logger.info(f"No new data objects or workflow executions to add")
-
-                logger.info(f"Applying update queries")
-                if data_generation_update_query['updates']:
-                    resp = runtime_api.run_query(data_generation_update_query)
-                    logger.info(f"queries:run response: {resp}")
-                else:
-                    logger.info(f"No updates to apply")
-            else:
-                logger.info(f"Option --update-db not selected. No changes made")
-                if 'data_object_set' in import_db or 'workflow_execution_set' in import_db:
-                    logger.info(f"Update json:")
-                    logger.info(db_update_json)
-                else:
-                    logger.info(f"No new data objects or workflow executions to add")
-
-                if data_generation_update_query['updates']:
-                    logger.info(f"Update query:")
-                    logger.info(json.dumps(data_generation_update_query, indent=4))
-                else:
-                    logger.info(f"No updates to apply")
-        else:
+        try:
+            runtime_api.validate_metadata(import_db)
+        except Exception as exc:
             logger.info(f"Validation failed")
-            logger.info(f"Validation result: {val_result}")
+            logger.info(f"Validation error: {exc}")
             logger.info(db_update_json)
+        logger.info(f"Validation passed")
+        if update_db:
+            # check if there are any workflow executions or data objects to add
+            if 'data_object_set' in import_db or 'workflow_execution_set' in import_db:
+                logger.info(f"Updating Database")
+                resp = runtime_api.submit_metadata(import_db)
+                logger.info(f"metadata/json:submit response: {resp}")
+            else:
+                logger.info(f"No new data objects or workflow executions to add")
+
+            logger.info(f"Applying update queries")
+            if data_generation_update_query['updates']:
+                resp = runtime_api.run_query(data_generation_update_query)
+                logger.info(f"queries:run response: {resp}")
+            else:
+                logger.info(f"No updates to apply")
+        else:
+            logger.info(f"Option --update-db not selected. No changes made")
+            if 'data_object_set' in import_db or 'workflow_execution_set' in import_db:
+                logger.info(f"Update json:")
+                logger.info(db_update_json)
+            else:
+                logger.info(f"No new data objects or workflow executions to add")
+
+            if data_generation_update_query['updates']:
+                logger.info(f"Update query:")
+                logger.info(json.dumps(data_generation_update_query, indent=4))
+            else:
+                logger.info(f"No updates to apply")
 
 
         logger.info("Updating minted IDs")

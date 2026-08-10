@@ -187,10 +187,16 @@ def get_current_workflow_process_nodes(
 
     # I think the cycling should start here, not from querying all data objects. 20260219 KL
     # override query with allowlist
+    dg_execution_records = []
     if allowlist:
-        q["id"] = {"$in": list(allowlist)}
-    #dg_execution_records = db["data_generation_set"].find(q)
-    dg_execution_records = api.list_from_collection("data_generation_set", q)
+        allowlist_list = list(set(allowlist))
+        for i in range(0, len(allowlist_list), 500):
+            id_chunk = allowlist_list[i:i + 500]
+            q["id"] = {"$in": id_chunk}
+            records = api.list_from_collection("data_generation_set", q, max=500)
+            dg_execution_records.extend(records)
+    else:
+        dg_execution_records = api.list_from_collection("data_generation_set", q, max=500)
     dg_execution_records = list(dg_execution_records)
 
     for wf in data_generation_workflows:
@@ -271,15 +277,18 @@ def get_current_workflow_process_nodes(
         q = {}
         if wf.git_repo:
             q = {"git_url": wf.git_repo}
+        records = []
         # override query with allowlist
-        if allowlist: 
-            q = {"was_informed_by": {"$in": list(allowlist)}}
-
-        #records = db[wf.collection].find(q)
-        records = api.list_from_collection(wf.collection, q)
+        if allowlist:
+            allowlist_list = list(set(allowlist))
+            for i in range(0, len(allowlist_list), 500):
+                id_chunk = allowlist_list[i:i + 500]
+                q = {"was_informed_by": {"$in": id_chunk}, "type": wf.type}
+                wf_records = api.list_from_collection(wf.collection, q, max=500)
+                records.extend(wf_records)
+        else:
+            records = api.list_from_collection(wf.collection, q, max=500)
         for rec in records:
-            if rec['type'] != wf.type:
-                continue
             if wf.version and not _within_range(rec["version"], wf.version):
                 continue
             if _is_missing_required_input_output(wf, rec, data_objects_by_id):

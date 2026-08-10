@@ -24,15 +24,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-
-def refresh_token(func):
-    @wraps(func)
-    def _refresh_and_call(self, *args, **kwargs):
-        self.refresh_auth_header()
-        return func(self, *args, **kwargs)
-
-    return _refresh_and_call
-
 class NmdcRuntimeApi:
 
     def __init__(self, site_configuration: Union[str, Path, SiteConfig]):
@@ -50,6 +41,14 @@ class NmdcRuntimeApi:
             api_base_url=self._base_url
         )
         self.header = None
+
+    def refresh_token(func):
+        @wraps(func)
+        def _refresh_and_call(self, *args, **kwargs):
+            self.refresh_auth_header()
+            return func(self, *args, **kwargs)
+
+        return _refresh_and_call
 
     def refresh_auth_header(self):
         '''

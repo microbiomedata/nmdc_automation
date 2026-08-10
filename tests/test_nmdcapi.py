@@ -1,15 +1,17 @@
 from nmdc_automation.api.nmdcapi import NmdcRuntimeApi as nmdcapi
 import json
+import logging
+import pytest
 from unittest.mock import patch
 from tests.fixtures.db_utils import load_fixture, reset_db
 
-def test_nmdc_runtime_api_minter(configured_api_mock):
+def test_nmdc_client_minter(configured_api_mock):
     api = configured_api_mock
     minted_id = api.minter("nmdc:DataObject")
     assert isinstance(minted_id, str), f"Expected single minted ID to be a string, got {type(minted_id)}"
     assert minted_id.startswith("nmdc:dobj-")
 
-def test_nmdc_runtime_api_get_object(test_db, configured_api_mock):
+def test_nmdc_client_get_object(test_db, configured_api_mock):
     reset_db(test_db)
     test_db.data_object_set.insert_one({
         "id": "nmdc:dobj-11-rhjsg657",
@@ -24,7 +26,7 @@ def test_nmdc_runtime_api_get_object(test_db, configured_api_mock):
     assert isinstance(obj_info, dict)
     assert "metadata" in obj_info
 
-def test_nmdc_runtime_api_list_from_collection(test_db, configured_api_mock):
+def test_nmdc_client_list_from_collection(test_db, configured_api_mock):
     reset_db(test_db)
     test_db.data_object_set.insert_one({
         "id": "nmdc:dobj-11-rhjsg657",
@@ -182,4 +184,102 @@ def test_run_query_pagination(mock_run_query_single, site_config_file, mock_api_
     results = api.run_query(manifest_agg)
     assert isinstance(results, list) 
     assert len(results) == expected_total_count
-        
+
+def test_nmdc_client_validate(requests_mock, caplog, site_config_file):
+    api = nmdcapi(site_config_file)
+    valid_json = {
+        "data_object_set": [
+            {
+                "id": "nmdc:dobj-11-rhjsg657",
+                "name": "Test Object",
+                "description": "valid type",
+                "data_category": "processed_data",
+                "type": "nmdc:DataObject",
+                "data_object_type":"Raw sequencing data read 1"
+            }
+        ]
+    }
+    invalid_json = {
+        "data_object_set": [
+            {
+                "id": "nmdc:dobj-11-rhjsg657",
+                "name": "Test Object",
+                "description": "invalid type",
+                "data_category": "processed_data",
+                "type": "nmdc:DataObject",
+                "data_object_type":"Invalid type"
+            }
+        ]
+    }
+    requests_mock.post(
+        "https://api.microbiomedata.org/metadata/json:validate",
+        [
+            {"text": '{"result":"All Okay!"}', "status_code": 200},
+            {
+                "text": '{"result":"errors","detail":{"data_object_set":["Invalid type"]}}',
+                "status_code": 200,
+            },
+        ],
+    )
+
+    caplog.clear()
+    with caplog.at_level(logging.INFO):
+        assert api.validate_metadata(valid_json) == 200
+    assert "Validation passed!" in caplog.text
+
+    caplog.clear()
+    with caplog.at_level(logging.INFO), pytest.raises(Exception, match="Validation failed"):
+        api.validate_metadata(invalid_json)
+    assert "Validation failed." in caplog.text
+
+def test_nmdc_client_submit(requests_mock, caplog, site_config_file):
+    api = nmdcapi(site_config_file)
+    token_resp = {"expires": {"minutes": 60}, "access_token": "abcd"}
+    valid_json = {
+        "data_object_set": [
+            {
+                "id": "nmdc:dobj-11-rhjsg657",
+                "name": "Test Object",
+                "description": "valid type",
+                "data_category": "processed_data",
+                "type": "nmdc:DataObject",
+                "data_object_type":"Raw sequencing data read 1"
+            }
+        ]
+    }
+    invalid_json = {
+        "data_object_set": [
+            {
+                "id": "nmdc:dobj-11-rhjsg657",
+                "name": "Test Object",
+                "description": "invalid type",
+                "data_category": "processed_data",
+                "type": "nmdc:DataObject",
+                "data_object_type":"Invalid type"
+            }
+        ]
+    }
+    requests_mock.post("http://localhost:8000/token", json=token_resp)
+    requests_mock.post(
+        "https://api.microbiomedata.org/metadata/json:submit",
+        [
+            {"status_code": 200},
+            {
+                "text": '{"result":"errors","detail":{"data_object_set":["Invalid type"]}}',
+                "status_code": 400,
+            },
+        ],
+    )
+
+    caplog.clear()
+    with caplog.at_level(logging.INFO):
+        assert api.submit_metadata(valid_json) == 200
+    assert "Submission passed!" in caplog.text
+
+    caplog.clear()
+    with caplog.at_level(logging.INFO), pytest.raises(Exception, match="Submission failed"):
+        api.submit_metadata(invalid_json)
+    assert "Request failed" in caplog.text
+
+#### IM HERE: ADD TESTS FOR SUBMIT AND VALIDATE JSONS, BELIEVE CURRENT ASSERTION LOGIC WRONG
+# also check which function is teh one that fails with a large allow list due to http length and change to batch api call
