@@ -253,7 +253,8 @@ def test_scheduler_add_job_rec(test_db, workflow_file, workflows_config_dir, sit
     #jm = Scheduler(test_db, workflow_yaml=workflows_config_dir / workflow_file,
     #               site_conf=site_config_file)
     jm = Scheduler(workflow_yaml=workflows_config_dir / workflow_file,
-                   site_conf=site_config_file)
+                   site_conf=site_config_file
+                   )
     # sanity check
     assert jm
 

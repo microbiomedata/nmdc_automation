@@ -306,7 +306,6 @@ class Scheduler:
 
         jr = {
             "workflow": {"id": f"{wf.name}: {wf.version}"},
-            #"id": self.generate_job_id(),
             #"created_at": datetime.today().replace(microsecond=0),
             "config": job_config,
             "claims": [],
@@ -316,29 +315,6 @@ class Scheduler:
         # This would make the job record
         # print(json.dumps(ji, indent=2))
         return jr
-
-    def generate_job_id(self) -> str:
-        """
-        Generate an ID for the job
-
-        Note: This is not currently Napa compliant.  Since these are somewhat
-        ephemeral I'm not sure if it matters though.
-        """
-        u = str(uuid.uuid1())
-        return f"nmdc:{u}"
-
-    def mock_mint(self, id_type):  # pragma: no cover
-        """
-        Return a fixed pattern used for testing
-        """
-        mapping = {
-            "nmdc:ReadQcAnalysisActivity": "mgrqc",
-            "nmdc:MetagenomeAssembly": "mgasm",
-            "nmdc:MetagenomeAnnotationActivity": "mgann",
-            "nmdc:MAGsAnalysisActivity": "mgmag",
-            "nmdc:ReadBasedTaxonomyAnalysisActivity": "mgrbt",
-        }
-        return f"nmdc:wf{mapping[id_type]}-11-xxxxxx"
 
     def get_activity_id(self, wf: WorkflowConfig, informed_by: list[str]):
         """
@@ -367,7 +343,7 @@ class Scheduler:
         if last_root is None and last_iteration is None:
             # Get an ID
             if os.environ.get("MOCK_MINT"):
-                root_id = self.mock_mint(wf.type)
+                root_id = self.api.mock_mint(wf.type)
             else:
                 root_id = self.api.minter(wf.type, informed_by)
             return root_id, 1
