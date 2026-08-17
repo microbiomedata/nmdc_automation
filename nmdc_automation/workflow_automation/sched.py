@@ -9,10 +9,7 @@ from nmdc_automation.api.nmdcapi import NmdcRuntimeApi
 #from nmdc_automation.db.nmdc_mongo import get_db
 from nmdc_automation.workflow_automation.workflows import load_workflow_configs
 from functools import lru_cache
-from nmdc_automation.workflow_automation.workflow_process import (
-    load_workflow_process_nodes,
-    required_data_object_types_satisfied,
-)
+from nmdc_automation.workflow_automation.workflow_process import load_workflow_process_nodes
 from nmdc_automation.models.workflow import WorkflowConfig, WorkflowProcessNode
 from semver.version import Version
 import sys
@@ -167,7 +164,6 @@ class Scheduler:
         resolves all the information needed to create a
         job record.
         """
-
         # Get all the data objects
         next_act = job.trigger_act
         do_by_type = dict()
@@ -219,11 +215,6 @@ class Scheduler:
         inputs = dict()
         optional_inputs = wf.optional_inputs
         fq_inputs = ["input_files", "input_fq1", "input_fq2", "input_fastq1", "input_fastq2"]
-        data_object_types = [
-            str(obj.data_object_type)
-            for obj_list in do_by_type.values()
-            for obj in obj_list
-        ]
         for k, v in job.workflow.inputs.items():
             # some inputs are booleans and should not be modified
             if isinstance(v, bool):
@@ -235,8 +226,6 @@ class Scheduler:
                 dobj_list = do_by_type.get(do_type)
                 if not dobj_list:
                     if k in optional_inputs:
-                        continue
-                    if required_data_object_types_satisfied([do_type], data_object_types):
                         continue
                     raise MissingDataObjectException(f"Unable to find {do_type} in {do_by_type}")
                 if len(dobj_list) == 1:

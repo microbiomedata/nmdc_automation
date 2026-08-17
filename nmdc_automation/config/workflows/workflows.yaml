@@ -6,7 +6,6 @@ Workflows:
     Filter Output Objects:
     - Metagenome Raw Read 1
     - Metagenome Raw Read 2
-    - SRA toolkit-accessible sequence data
 
   - Name: Sequencing Interleaved
     Collection: data_generation_set
@@ -14,6 +13,13 @@ Workflows:
     Analyte Category: Metagenome
     Filter Output Objects:
     - Metagenome Raw Reads
+
+  - Name: Sequencing Noninterleaved SRA
+    Collection: data_generation_set
+    Enabled: True
+    Analyte Category: Metagenome
+    Filter Output Objects:
+    - SRA toolkit-accessible sequence data
 
   - Name: Reads QC
     Type: nmdc:ReadQcAnalysis
@@ -69,13 +75,50 @@ Workflows:
       input_fq2: do:Metagenome Raw Read 2
       shortRead: true
       interleaved: false
-      accessions: do:SRA toolkit-accessible sequence data
     Filter Input Objects:
     - Metagenome Raw Read 1
     - Metagenome Raw Read 2
-    - SRA toolkit-accessible sequence data
     Predecessors:
     - Sequencing Noninterleaved
+    Workflow Execution:
+      name: "Read QC for {id}"
+      input_read_bases: "{outputs.stats.input_read_bases}"
+      input_read_count: "{outputs.stats.input_read_count}"
+      output_read_bases: "{outputs.stats.output_read_bases}"
+      output_read_count: "{outputs.stats.output_read_count}"
+      type: nmdc:ReadQcAnalysis
+    Outputs:
+      - output: filtered_final
+        name: Reads QC result fastq (clean data)
+        data_object_type: Filtered Sequencing Reads
+        description: Reads QC for {id}
+      - output: filtered_stats_final
+        name: Reads QC summary statistics
+        data_object_type: QC Statistics
+        description: Reads QC summary for {id}
+      - output: rqc_info
+        name: File containing read filtering information
+        data_object_type: Read Filtering Info File
+        description: Read filtering info for {id}
+
+  - Name: Reads QC Interleave SRA
+    Type: nmdc:ReadQcAnalysis
+    Enabled: True
+    Analyte Category: Metagenome
+    Git_repo: https://github.com/microbiomedata/ReadsQC
+    Version: v1.0.28
+    Collection: workflow_execution_set
+    WDL: rqcfilter.wdl
+    Input_prefix: rqcfilter
+    Inputs:
+      proj: "{workflow_execution_id}"
+      shortRead: true
+      interleaved: false
+      accessions: do:SRA toolkit-accessible sequence data
+    Filter Input Objects:
+    - SRA toolkit-accessible sequence data
+    Predecessors:
+    - Sequencing Noninterleaved SRA
     Workflow Execution:
       name: "Read QC for {id}"
       input_read_bases: "{outputs.stats.input_read_bases}"

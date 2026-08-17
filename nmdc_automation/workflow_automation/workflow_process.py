@@ -111,52 +111,21 @@ def _within_range(ver1: str, ver2: str) -> bool:
         return True
     return False
 
-def required_data_object_types_satisfied(wf_input_types, available_data_object_types) -> bool:
-    """
-    Determine whether the available data object types satisfy the workflow's
-    required input types, including the SRA versus paired-read compatibility rule.
-    """
-    sra_data_object_type = "SRA toolkit-accessible sequence data"
-    raw_read_1_data_object_type = "Metagenome Raw Read 1"
-    raw_read_2_data_object_type = "Metagenome Raw Read 2"
-
-    if not wf_input_types:
-        return True
-
-    wf_input_set = set(wf_input_types)
-    do_types = set(available_data_object_types)
-
-    all_sra = sra_data_object_type in do_types and \
-        raw_read_1_data_object_type not in do_types and \
-        raw_read_2_data_object_type not in do_types
-    all_reads = raw_read_1_data_object_type in do_types and \
-        raw_read_2_data_object_type in do_types and \
-        sra_data_object_type not in do_types
-
-    if all_reads:
-        wf_input_set = wf_input_set - {sra_data_object_type}
-    if all_sra:
-        wf_input_set = wf_input_set - {
-            raw_read_1_data_object_type,
-            raw_read_2_data_object_type,
-        }
-
-    return wf_input_set.issubset(do_types)
-
-
-def _check(wf_input_types, data_object_ids, data_objs):
+def _check(match_types, data_object_ids, data_objs):
     """
     This iterates through a list of data objects and
     checks the type against the match types.
     """
     if not data_object_ids:
         return False
-    do_types = []
+    if not match_types or len(match_types) == 0:
+        return True
+    match_set = set(match_types)
+    do_types = set()
     for doid in data_object_ids:
         if doid in data_objs:
-            do_types.append(data_objs[doid].data_object_type.code.text)
-
-    return required_data_object_types_satisfied(wf_input_types, do_types)
+            do_types.add(data_objs[doid].data_object_type.code.text)
+    return match_set.issubset(do_types)
 
 
 def _is_missing_required_input_output(wf: WorkflowConfig, rec: dict, data_objects_by_id: Dict[str, DataObject]) -> bool:

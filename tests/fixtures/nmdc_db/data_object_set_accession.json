@@ -102,9 +102,7 @@
     "type": "nmdc:DataObject",
     "data_category": "instrument_data",
     "url": "https://data.microbiomedata.org",
-    "in_manifest":[
-      "nmdc:manif-11-duo"
-    ]
+    "was_generated_by": "nmdc:dgns-11-duo"
   },
     {
     "id": "nmdc:dobj-11-access4",

@@ -412,9 +412,9 @@ def test_scheduler_create_job_rec_do_sra(test_db, test_client, workflows_config_
 
     # Filter to ReadsQC jobs
     rqc_jobs = [j for j in new_jobs if j.workflow.type == "nmdc:ReadQcAnalysis"]
-    assert len(rqc_jobs) == 3 # one for metag1/metag2, one for access1, one for access2/access3
+    assert len(rqc_jobs) == 3
 
-    # Confirm job created for data objects associated with accession id
+    # Confirm job created for data objects associated with single accession id (access1)
     single_accession_job = next(j for j in rqc_jobs if j.trigger_id == "nmdc:dgns-11-access1")
     single_accession_job_req = scheduler.create_job_rec(single_accession_job, manifest_map)
     assert "accessions" in single_accession_job_req["config"]["inputs"]
@@ -422,7 +422,7 @@ def test_scheduler_create_job_rec_do_sra(test_db, test_client, workflows_config_
     assert "input_fq1" not in single_accession_job_req["config"]["inputs"]
     assert "input_fq2" not in single_accession_job_req["config"]["inputs"]
 
-    # Confirm data objects associated by manifest create single job
+    # Confirm data objects associated by manifest create single job (access2/access3)
     accession_manifest_job = next(
         j for j in rqc_jobs
         if set(j.informed_by) == {"nmdc:dgns-11-access2", "nmdc:dgns-11-access3"}
@@ -433,7 +433,7 @@ def test_scheduler_create_job_rec_do_sra(test_db, test_client, workflows_config_
     assert "input_fq1" not in accession_manifest_job_req["config"]["inputs"]
     assert "input_fq2" not in accession_manifest_job_req["config"]["inputs"]
 
-    # Confirm jobs still created for raw read objects associated by manifest
+    # Confirm jobs still created for raw read objects associated by manifest (metag1/metag2)
     dg_manifest_job = next(
         j for j in rqc_jobs
         if set(j.informed_by) == {"nmdc:omprc-11-metag1", "nmdc:omprc-11-metag2"}
@@ -444,10 +444,6 @@ def test_scheduler_create_job_rec_do_sra(test_db, test_client, workflows_config_
     assert len(dg_manifest_job_req["config"]["inputs"]["input_fq1"]) == 2
     assert "input_fq2" in dg_manifest_job_req["config"]["inputs"]
     assert len(dg_manifest_job_req["config"]["inputs"]["input_fq2"]) == 2
-
-    # Confirm no job created when a dg has one data object with a read and one with an accession
-    with pytest.raises(StopIteration):
-        next(j for j in rqc_jobs if j.trigger_id == "nmdc:omprc-11-duo")
 
 @pytest.mark.parametrize("job_fixture", [
     "job_req_2.json",
