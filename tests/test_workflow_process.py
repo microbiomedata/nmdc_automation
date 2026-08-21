@@ -207,8 +207,8 @@ def test_load_workflows(workflows_config_dir, workflow_file):
                         "Expression Analysis Sense", "Expression Analysis Nonstranded", ]
     else:
         exp_num_workflow_config = 10
-        placeholder_wf_names = ["Sequencing Noninterleaved", "Sequencing Interleaved", "Sequencing Noninterleaved SRA"]
-        exp_wf_names = ["Reads QC", "Reads QC Interleave", "Reads QC Interleave SRA", "Metagenome Assembly", "Metagenome Annotation", "MAGs",
+        placeholder_wf_names = ["Sequencing Noninterleaved", "Sequencing Interleaved", "Sequencing SRA"]
+        exp_wf_names = ["Reads QC", "Reads QC Interleave", "Reads QC SRA", "Metagenome Assembly", "Metagenome Annotation", "MAGs",
                         "Readbased Analysis"]
 
     workflow_config = load_workflow_configs(workflows_config_dir / workflow_file)

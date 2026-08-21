@@ -14,7 +14,7 @@ Workflows:
     Filter Output Objects:
     - Metagenome Raw Reads
 
-  - Name: Sequencing Noninterleaved SRA
+  - Name: Sequencing SRA
     Collection: data_generation_set
     Enabled: True
     Analyte Category: Metagenome
@@ -101,7 +101,7 @@ Workflows:
         data_object_type: Read Filtering Info File
         description: Read filtering info for {id}
 
-  - Name: Reads QC Interleave SRA
+  - Name: Reads QC SRA
     Type: nmdc:ReadQcAnalysis
     Enabled: True
     Analyte Category: Metagenome
@@ -118,7 +118,7 @@ Workflows:
     Filter Input Objects:
     - SRA toolkit-accessible sequence data
     Predecessors:
-    - Sequencing Noninterleaved SRA
+    - Sequencing SRA
     Workflow Execution:
       name: "Read QC for {id}"
       input_read_bases: "{outputs.stats.input_read_bases}"
@@ -151,6 +151,7 @@ Workflows:
     Predecessors:
     - Reads QC
     - Reads QC Interleave
+    - Reads QC SRA
     Input_prefix: jgi_metaAssembly
     Inputs:
       input_files: do:Filtered Sequencing Reads
