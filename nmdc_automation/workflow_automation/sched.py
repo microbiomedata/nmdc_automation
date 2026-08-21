@@ -405,12 +405,19 @@ class Scheduler:
             # the assumption is that a job in any state has been triggered by an activity
             # that was the result of an existing (completed) job
             act = j["config"]["trigger_activity"]
-
-            if not manifest_id and j["config"].get("manifest"):
+            
+            # Get the current job's manifest value if available
+            j_manifest = j["config"].get("manifest")
+            
+            # When we don't have a manifest_id to filter jobs, then we want to warn if 
+            # manifest_id is not available for filter criteria (individual dg id) and we find
+            # a historical job that has manifest in its config
+            if not manifest_id and j_manifest:
                 logger.warning(
-                    f"Data integrity mismatch for activity {act}: Live data object is individual, "
-                    f"but historical job {j.get('id')} was run as part of manifest '{j['config']['manifest']}'. "
-                    f"Upstream database may have changed. Proceeding with individual scheduling."
+                    f"[Data Integrity Warning] manifest_set mismatch for '{act}' during existing jobs lookup. "
+                    f"Current job filtering: manifest_id=None. "
+                    f"Historical Job ID '{j.get('id')}': manifest_set: {j_manifest}. "
+                    f"Skipping this historical job from existing jobs evaluation."
                 )
                 continue
             
