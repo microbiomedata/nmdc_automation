@@ -220,7 +220,6 @@ def test_load_workflows(workflows_config_dir, workflow_file):
     for wf_name in exp_wf_names:
         assert wf_name in wfm
         wf = wfm[wf_name]
-        print(wf.name, wf.type, wf.collection, wf.git_repo, wf.version, wf.analyte_category)
         assert wf is not None
         assert wf.type is not None
         assert wf.name is not None

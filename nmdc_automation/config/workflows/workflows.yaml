@@ -427,6 +427,7 @@ Workflows:
     Predecessors:
     - Reads QC
     - Reads QC Interleave
+    - Reads QC SRA
     Input_prefix: ReadbasedAnalysis
     Inputs:
       input_file: do:Filtered Sequencing Reads
