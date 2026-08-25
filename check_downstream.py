@@ -75,9 +75,16 @@ def build_allowlist(args, api):
             "data_generation_set",
             {"associated_studies": args.study_id},
         )
-        ids = [rec["id"] for rec in records]
-        if not ids:
+        if not records:
             sys.exit(f"ERROR: no data_generation records found for study {args.study_id}")
+        ids = [rec["id"] for rec in records if rec.get("qc_status") != "fail"]
+        excluded_count = len(records) - len(ids)
+        if excluded_count:
+            logging.info(
+                "Study %s: excluded %d data_generation record(s) with qc_status=fail",
+                args.study_id,
+                excluded_count,
+            )
         logging.info(f"Study {args.study_id}: found {len(ids)} data_generation record(s)")
         return ids
     if args.allowlist_file:
@@ -234,6 +241,9 @@ def main():
 
     # ── Build allowlist ───────────────────────────────────────────────────────
     allowlist = build_allowlist(args, api)
+    if not allowlist:
+        logging.info("No eligible data_generation records found after filtering; nothing to check.")
+        sys.exit(0)
     if allowlist:
         logging.info(f"Allowlist     : {len(allowlist)} IDs")
 
