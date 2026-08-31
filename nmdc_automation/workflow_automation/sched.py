@@ -172,8 +172,6 @@ class Scheduler:
         wf_filters = job.workflow.filter_input_objects or []
         # Keep track of the source that provided the data for Filter Input Objects
         type_source_map = dict()
-        # Make list of accession ids
-        accessions = []
         
         while next_act:
 
@@ -190,7 +188,6 @@ class Scheduler:
                     do_by_type[do_type].append(data_object)
             else:
                 for do_type, data_object in next_act.data_objects_by_type.items():
-
                     if do_type in wf_filters:
                         current_source = type_source_map.get(do_type)
                         # If we find this type in a new (higher) activity, wipe the downstream data
@@ -207,16 +204,9 @@ class Scheduler:
                     do_by_type[do_type] = []
                     do_by_type[do_type].append(data_object)
                     #do_by_type[do_type] = data_object #used to be scalar
-
-            dg_accessions = getattr(next_act.process, "insdc_experiment_identifiers", [])
-            if dg_accessions:
-                accessions.extend(dg_accessions)
             
             # do_by_type.update(next_act.data_objects_by_type.__dict__)
             next_act = next_act.parent
-
-        if accessions:
-            accessions = list(dict.fromkeys(accessions))
 
         wf = job.workflow
         base_id, iteration = self.get_activity_id(wf, job.informed_by)
@@ -237,28 +227,26 @@ class Scheduler:
                 if not dobj_list:
                     if k in optional_inputs:
                         continue
-                    if k in fq_inputs:
-                        if accessions:
-                            continue
-                        raise MissingDataObjectException(f"Unable to find {do_type} in {do_by_type} and no accession(s) provided")
                     raise MissingDataObjectException(f"Unable to find {do_type} in {do_by_type}")
                 if len(dobj_list) == 1:
                     input_data_objects.append(dobj_list[0].as_dict())
-                
-                    if k in fq_inputs:
+                    if k == "accessions":
+                        for accession in dobj_list[0].insdc_run_identifiers:
+                            v = [accession.split('insdc.run:')[1]]
+                    elif k in fq_inputs:
                         v = [resolve_url(dobj_list[0]["url"])]
                     else:
                         v = resolve_url(dobj_list[0]["url"])
-                
                 # For multi-input, it goes here to produce []
                 else:
                     v = []
                     for dobj in dobj_list:
                         input_data_objects.append(dobj.as_dict())
-    
-                        v.append(resolve_url(dobj["url"]))
-                        
-                    
+                        if k == "accessions":
+                            for accession in dobj.insdc_run_identifiers:
+                                v.append(accession.split('insdc.run:')[1])
+                        else:
+                            v.append(resolve_url(dobj["url"]))
             # TODO: Make this smarter
             elif v == "{was_informed_by}":
                 v = job.informed_by  #Check that this works for 1 or >1 todojp 20250911
@@ -266,11 +254,6 @@ class Scheduler:
                 v = workflow_execution_id
             elif v == "{predecessor_activity_id}":
                 v = job.trigger_act.id
-            elif v == "Accessions":
-                if accessions:
-                    v = accessions
-                else:
-                    continue
 
             inputs[k] = v
 
