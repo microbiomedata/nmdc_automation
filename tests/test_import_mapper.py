@@ -1,3 +1,4 @@
+import click
 import copy
 import os.path
 from unittest.mock import MagicMock, patch
@@ -5,6 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from nmdc_automation.import_automation.import_mapper import ImportMapper
+from nmdc_automation.run_process import run_import
 
 
 @pytest.fixture
@@ -50,6 +52,66 @@ def test_update_do_mapping_from_import_files_correct_binning_mapping(import_mapp
         fm for fm in import_mapper_instance.mappings if fm.data_object_type == "Metagenome HQMQ Bins Compression File"
     ]
     assert len(binning_files) == 2, "Multiple files should be imported."
+
+
+def test_import_projects_sets_hqmq_zip_file_size_bytes(
+    import_mapper_instance, base_test_dir, monkeypatch, tmp_path
+):
+    runtime_api = import_mapper_instance.runtime_api
+
+    def find_planned_processes(filters):
+        if filters == {"id": "nmdc:omprc-11-importT"}:
+            return [{"id": "nmdc:omprc-11-importT", "has_output": []}]
+        return []
+
+    runtime_api.find_planned_processes.side_effect = find_planned_processes
+    minted_ids = {"count": 0}
+
+    def mint_id(object_type):
+        minted_ids["count"] += 1
+        return f"nmdc:test-{minted_ids['count']}"
+
+    runtime_api.minter.side_effect = mint_id
+    runtime_api.validate_metadata.return_value = {"result": "All Okay!"}
+    import_mapper_instance._import_files = [
+        "Ga0597026_bins_1.tar.gz",
+        "Ga0597026_bins_2.tar.gz",
+    ]
+    monkeypatch.setattr(import_mapper_instance, "add_do_mappings_from_data_generation", lambda: None)
+    monkeypatch.setattr(import_mapper_instance, "add_do_mappings_from_workflow_executions", lambda: None)
+    monkeypatch.chdir(tmp_path)
+    import_yaml = tmp_path / "import_test.yaml"
+    import_yaml.write_text(
+        (base_test_dir / "import_test.yaml").read_text()
+    )
+    import_mapper_instance.import_yaml = str(import_yaml)
+    monkeypatch.setattr(run_import, "NmdcRuntimeApi", lambda _: runtime_api)
+    monkeypatch.setattr(run_import, "ImportMapper", lambda *args: import_mapper_instance)
+    monkeypatch.setattr(
+        run_import,
+        "_parse_tsv",
+        lambda _: [{
+            "project_path": str(base_test_dir / "import_project_dir"),
+            "nucleotide_sequencing_id": "nmdc:omprc-11-importT",
+        }],
+    )
+
+    context = click.Context(run_import.cli, obj={"log_level": 20})
+    with context:
+        run_import.import_projects.callback(
+            "ignored.tsv",
+            str(base_test_dir / "import_test.yaml"),
+            str(base_test_dir / "site_configuration_test.toml"),
+            False,
+        )
+
+    records = runtime_api.validate_metadata.call_args.args[0]["data_object_set"]
+    hqmq_records = [
+        record for record in records
+        if record["data_object_type"] == "Metagenome HQMQ Bins Compression File"
+    ]
+    assert len(hqmq_records) == 1
+    assert hqmq_records[0]["file_size_bytes"] == 1201
 
 
 def test_write_minted_id_file(import_mapper_instance, base_test_dir):
