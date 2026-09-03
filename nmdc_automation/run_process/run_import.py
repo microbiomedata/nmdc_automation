@@ -167,6 +167,7 @@ def import_projects(ctx,  import_file, import_yaml, site_configuration, update_d
                 logger.debug(f"Directory {nmdc_data_directory} already exists")
 
             # Link data files and create Data Objects if they don't already exist
+            linked_files = []
             for mapping in mappings:
                 if mapping.data_object_in_db:
                     logger.info(f"Data Object: {mapping.data_object_id} / {mapping.data_object_type} already exists in DB - skipping")
@@ -194,7 +195,7 @@ def import_projects(ctx,  import_file, import_yaml, site_configuration, update_d
                         os.link(import_file, export_file)
                     except FileExistsError:
                         logger.debug(f"File {export_file} already exists")
-                linked_files.append((mapping, nmdc_data_file_name, export_file)
+                linked_files.append((mapping, nmdc_data_file_name, export_file))
              
             # Create Data Objects from the completed files.
             for mapping, nmdc_data_file_name, export_file in linked_files:                       
