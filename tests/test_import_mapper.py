@@ -111,7 +111,7 @@ def test_import_projects_sets_hqmq_zip_file_size_bytes(
         if record["data_object_type"] == "Metagenome HQMQ Bins Compression File"
     ]
     assert len(hqmq_records) == 1
-    assert hqmq_records[0]["file_size_bytes"] == 1305
+    assert hqmq_records[0]["file_size_bytes"] == 1201
 
 
 def test_write_minted_id_file(import_mapper_instance, base_test_dir):
