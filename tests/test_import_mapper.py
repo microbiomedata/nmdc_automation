@@ -58,10 +58,13 @@ def test_import_projects_sets_hqmq_zip_file_size_bytes(
     import_mapper_instance, base_test_dir, monkeypatch, tmp_path
 ):
     runtime_api = import_mapper_instance.runtime_api
-    runtime_api.find_planned_processes.side_effect = [
-        [{"id": "nmdc:omprc-11-importT", "has_output": []}],
-        [],
-    ]
+
+    def find_planned_processes(filters):
+        if filters == {"id": "nmdc:omprc-11-importT"}:
+            return [{"id": "nmdc:omprc-11-importT", "has_output": []}]
+        return []
+
+    runtime_api.find_planned_processes.side_effect = find_planned_processes
     minted_ids = {"count": 0}
 
     def mint_id(object_type):
@@ -70,7 +73,20 @@ def test_import_projects_sets_hqmq_zip_file_size_bytes(
 
     runtime_api.minter.side_effect = mint_id
     runtime_api.validate_metadata.return_value = {"result": "All Okay!"}
+    import_mapper_instance._import_files = [
+        "Ga0597026_bins_1.tar.gz",
+        "Ga0597026_bins_2.tar.gz",
+    ]
+    monkeypatch.setattr(import_mapper_instance, "add_do_mappings_from_data_generation", lambda: None)
+    monkeypatch.setattr(import_mapper_instance, "add_do_mappings_from_workflow_executions", lambda: None)
     monkeypatch.chdir(tmp_path)
+    import_yaml = tmp_path / "import_test.yaml"
+    import_yaml.write_text(
+        (base_test_dir / "import_test.yaml").read_text()
+    )
+    import_mapper_instance.import_yaml = str(import_yaml)
+    monkeypatch.setattr(run_import, "NmdcRuntimeApi", lambda _: runtime_api)
+    monkeypatch.setattr(run_import, "ImportMapper", lambda *args: import_mapper_instance)
     monkeypatch.setattr(
         run_import,
         "_parse_tsv",
@@ -81,13 +97,13 @@ def test_import_projects_sets_hqmq_zip_file_size_bytes(
     )
 
     context = click.Context(run_import.cli, obj={"log_level": 20})
-    run_import.import_projects.callback(
-        context,
-        "ignored.tsv",
-        str(base_test_dir / "import_test.yaml"),
-        "ignored.yaml",
-        False,
-    )
+    with context:
+        run_import.import_projects.callback(
+            "ignored.tsv",
+            str(base_test_dir / "import_test.yaml"),
+            str(base_test_dir / "site_configuration_test.toml"),
+            False,
+        )
 
     records = runtime_api.validate_metadata.call_args.args[0]["data_object_set"]
     hqmq_records = [
