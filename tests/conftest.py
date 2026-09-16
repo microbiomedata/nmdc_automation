@@ -337,8 +337,26 @@ def configured_api_mock(session_monkeypatch, test_db, test_data_dir):
     }
     mock_api.auth = MagicMock()
     mock_api.auth.get_token.return_value = "fake_test_token_from_mock"
-    mock_api.auth._build_http_request_headers.return_value = mock_api.header
-    mock_api.refresh_token = MagicMock(return_value=mock_api.header)
+
+    def mock_build_headers(access_token, accept="application/json", content_type="application/json"):
+        return {
+            'Authorization': f'Bearer {access_token}',
+            'Accept': accept,
+            'Content-Type': content_type,
+        }
+
+    mock_api.auth._build_http_request_headers.side_effect = mock_build_headers
+
+    def mock_refresh_auth_header_side_effect():
+        token = mock_api.auth.get_token()
+        mock_api.header = mock_api.auth._build_http_request_headers(
+            access_token=token,
+            accept="application/json",
+            content_type="application/json",
+        )
+        return mock_api.header
+
+    mock_api.refresh_auth_header = MagicMock(side_effect=mock_refresh_auth_header_side_effect)
 
     def mock_mint_side_effect(id_type, informed_by=None):
     
@@ -627,36 +645,54 @@ def import_config_file():
 class MockNmdcRuntimeApi:
     def __init__(self):
         self.counter = 10
+        self._base_url = "http://localhost:8000/"
+        self.header = None
+        self.auth = MagicMock()
+        self.auth.get_token.return_value = "abcd"
+        self.auth._build_http_request_headers.side_effect = self._build_http_request_headers
+
+    def _build_http_request_headers(self, access_token, accept="application/json", content_type="application/json"):
+        return {
+            "Authorization": f"Bearer {access_token}",
+            "Accept": accept,
+            "Content-Type": content_type,
+        }
+
+    def refresh_auth_header(self):
+        token = self.auth.get_token()
+        self.header = self.auth._build_http_request_headers(
+            access_token=token,
+            accept="application/json",
+            content_type="application/json",
+        )
+        return self.header
 
     def minter(self, id_type):
         type_code_map = {
             "nmdc:DataObject": "nmdc:dobj",
             "nmdc:MetagenomeAssembly": "nmdc:wfmgas",
             "nmdc:MetagenomeAnnotation": "nmdc:wfmgan",
+            "nmdc:MetagenomeAnnotationActivity": "nmdc:wfmgan",
             "nmdc:MagsAnalysis": "nmdc:wfmag",
+            "nmdc:MAGsAnalysisActivity": "nmdc:wfmag",
             "nmdc:ReadQcAnalysis": "nmdc:wfrqc",
+            "nmdc:ReadQcAnalysisActivity": "nmdc:wfrqc",
             "nmdc:ReadBasedTaxonomyAnalysis": "nmdc:wfrbt",
+            "nmdc:ReadBasedTaxonomyAnalysisActivity": "nmdc:wfrbt",
         }
         self.counter += 1
         prefix = type_code_map[id_type]
         return f"{prefix}-{self.counter:02d}-abcd1234"
 
-    def get_token(self):
-        return {"expires": {"minutes": time()+60},
-            "access_token": "abcd"
-            }
-
-    def refresh_token(self):
-        return {"expires": {"minutes": time()+60},
-            "access_token": "abcd"
-            }
-
-    def get_object(self, id):
-        return {
-            "id": id,
+    def get_object(self, obj, decode=False):
+        data = {
+            "id": obj,
             "name": "Test Object",
             "type": "nmdc:DataObject"
         }
+        if decode:
+            data["metadata"] = None
+        return data
 
 
 @fixture(scope="session")

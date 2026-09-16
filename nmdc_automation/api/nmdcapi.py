@@ -69,7 +69,10 @@ class NmdcRuntimeApi:
 
     @retry(wait=wait_exponential(multiplier=4, min=8, max=120), stop=stop_after_attempt(6), reraise=True)
     def minter(self, id_type) -> str:
-        minter = Minter(auth=self.auth)
+        minter = Minter(
+            auth=self.auth,
+            api_base_url=self._base_url
+        )
         try:
             new_id = minter.mint(
                 nmdc_type=id_type,
@@ -108,8 +111,6 @@ class NmdcRuntimeApi:
         except Exception as e:
             logging.error(f"Failed to get object info using DataObjectSearch: {e}")
             raise
-        ## TODO: why does the below code exist? is it used somewhere?
-        # its function adds metadata slot if description is a json (not a string)
         if decode and "description" in data:
             try:
                 data["metadata"] = json.loads(data["description"])
@@ -132,7 +133,7 @@ class NmdcRuntimeApi:
                     fields=projection
                 )
                 break
-            except (requests.exceptions.RequestException, json.JSONDecodeError, ValueError) as e:
+            except (requests.exceptions.RequestException, json.JSONDecodeError, ValueError, RuntimeError) as e:
                 attempt += 1
                 logging.warning(f"--- API Instability Detected (Attempt {attempt}/{max_attempts}) ---")
                 logging.warning(f"Error: {type(e).__name__}")

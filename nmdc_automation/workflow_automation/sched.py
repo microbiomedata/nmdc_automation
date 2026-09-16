@@ -293,10 +293,7 @@ class Scheduler:
         if wf.outputs:
             outputs = []
             for output in wf.outputs:
-                # Mint an ID
-                # Note - the minter uses the informed_by to generate a metadata record so no need
-                # to check for the length of the array.
-                output["id"] = self.api.minter("nmdc:DataObject", job.informed_by)
+                output["id"] = self.api.minter("nmdc:DataObject")
                 outputs.append(output)
             job_config["outputs"] = outputs
         
@@ -345,7 +342,7 @@ class Scheduler:
             if os.environ.get("MOCK_MINT"):
                 root_id = self.api.mock_mint(wf.type)
             else:
-                root_id = self.api.minter(wf.type, informed_by)
+                root_id = self.api.minter(wf.type)
             return root_id, 1
         else:
             root_id = last_root

@@ -1,17 +1,47 @@
 from nmdc_automation.api.nmdcapi import NmdcRuntimeApi as nmdcapi
+import nmdc_automation.api.nmdcapi as nmdcapi_module
 import json
 import logging
 import pytest
-from unittest.mock import patch
+import requests
+from unittest.mock import MagicMock, patch
 from tests.fixtures.db_utils import load_fixture, reset_db
+import time
 
-def test_nmdc_client_minter(configured_api_mock):
-    api = configured_api_mock
+def test_basics(monkeypatch, requests_mock, site_config_file, test_client):
+    #n = nmdcapi(site_config_file)
+    n = test_client
+
+    # Temporarily bind the REAL method to the mock instance
+    monkeypatch.setattr(n, "get_object", nmdcapi.get_object.__get__(n, nmdcapi))
+
+    # Add decode description
+    resp = {"description": '{"a": "b"}'}
+    mock_search = MagicMock()
+    mock_search.get_record_by_attribute.return_value = [resp]
+    monkeypatch.setattr("nmdc_automation.api.nmdcapi.DataObjectSearch", lambda api_base_url: mock_search)
+    resp = n.get_object("xxx", decode=True)
+    assert resp is not None
+    assert "metadata" in resp
+
+def test_nmdcapi_get_token_live(test_client): 
+    """
+    Tests auth-managed token acquisition against the active API client.
+    """
+    n = test_client
+    token = n.auth.get_token()
+
+    assert token is not None
+    assert isinstance(token, str)
+    assert len(token) > 10
+
+def test_nmdc_client_minter(test_client):
+    api = test_client
     minted_id = api.minter("nmdc:DataObject")
     assert isinstance(minted_id, str), f"Expected single minted ID to be a string, got {type(minted_id)}"
     assert minted_id.startswith("nmdc:dobj-")
 
-def test_nmdc_client_get_object(test_db, configured_api_mock):
+def test_nmdc_client_get_object(test_db, test_client):
     reset_db(test_db)
     test_db.data_object_set.insert_one({
         "id": "nmdc:dobj-11-rhjsg657",
@@ -20,13 +50,13 @@ def test_nmdc_client_get_object(test_db, configured_api_mock):
         "type": "nmdc:DataObject",
     })
 
-    api = configured_api_mock
+    api = test_client
     obj_info = api.get_object("nmdc:dobj-11-rhjsg657", decode=True)
 
     assert isinstance(obj_info, dict)
     assert "metadata" in obj_info
 
-def test_nmdc_client_list_from_collection(test_db, configured_api_mock):
+def test_nmdc_client_list_from_collection(test_db, test_client):
     reset_db(test_db)
     test_db.data_object_set.insert_one({
         "id": "nmdc:dobj-11-rhjsg657",
@@ -34,7 +64,7 @@ def test_nmdc_client_list_from_collection(test_db, configured_api_mock):
         "type": "nmdc:DataObject",
     })
 
-    api = configured_api_mock
+    api = test_client
     obj_info = api.list_from_collection(collection="data_object_set", filt={"id": "nmdc:dobj-11-rhjsg657"}, projection=None, max=100)
 
     assert isinstance(obj_info, list)
@@ -184,6 +214,29 @@ def test_run_query_pagination(mock_run_query_single, site_config_file, mock_api_
     results = api.run_query(manifest_agg)
     assert isinstance(results, list) 
     assert len(results) == expected_total_count
+
+def test_actual_retry_delay_fast(site_config_file, caplog):
+    # instantiate the API
+    api = nmdcapi(site_config_file)
+    original_sleep = nmdcapi_module._sleep
+    nmdcapi_module._sleep = lambda *_args, **_kwargs: None
+    api._base_url = "http://localhost:9999/"
+    
+    results = None
+    try:
+        caplog.clear()
+        start_time = time.time()
+        with caplog.at_level(logging.WARNING), pytest.raises(RuntimeError, match="Crawl failed after 3 full restarts"):
+            results = api.list_from_collection("data_object_set")
+        duration = time.time() - start_time
+        
+        assert caplog.text.count("API Instability Detected") == 3
+        assert "Attempt 3/3" in caplog.text
+        assert duration < 1
+    finally:
+        nmdcapi_module._sleep = original_sleep
+
+    assert results is None
 
 def test_nmdc_client_validate(requests_mock, caplog, site_config_file):
     api = nmdcapi(site_config_file)
