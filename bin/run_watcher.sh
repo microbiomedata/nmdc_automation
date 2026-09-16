@@ -105,6 +105,11 @@ send_slack_notification() {
         return
     fi
     local message="$1"
+
+    # If the message contains a single-quoted HTTP header that includes an auth token,
+    # replace the auth token with ellipses (i.e. "...").
+    message="$(printf '%s\n' "$message" | sed "s/'Authorization': 'Bearer [^']*'/'Authorization': 'Bearer ...'/g")"
+
     curl -s -X POST -H 'Content-type: application/json' \
          --data "{\"text\": \"$message\"}" \
          "$SLACK_WEBHOOK_URL" > /dev/null
