@@ -6,6 +6,7 @@ from time import time
 
 import pytest
 import requests
+from datetime import datetime, timedelta
 
 from nmdc_automation.api.nmdcapi import NmdcRuntimeApi as nmdcapi
 
@@ -51,7 +52,7 @@ def test_nmdcapi_list_jobs_refreshes_token(site_config_file):
     assert n.header is not None
     assert n.header["Authorization"].startswith("Bearer ")
 
-    n.auth._token_expires_at = time() - 1
+    n.auth._token_expires_at = datetime.now() - timedelta(seconds=1)
     n.header = None
     jobs = n.list_jobs()
     assert jobs is not None
