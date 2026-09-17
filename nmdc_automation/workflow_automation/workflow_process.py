@@ -598,3 +598,4 @@ def load_workflow_process_nodes(nmdcapi, workflows: list[WorkflowConfig], allowl
     # Now populate the parent and children values for the
     resolved_nodes = _resolve_relationships(current_nodes, node_data_object_map)
     return resolved_nodes, manifest_map
+
