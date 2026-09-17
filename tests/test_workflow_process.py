@@ -199,21 +199,22 @@ def test_load_workflows(workflows_config_dir, workflow_file):
     if workflow_file == "workflows-mt.yaml":
         metatranscriptome = True
 
-    shared_wf_names = ["Sequencing Noninterleaved", "Sequencing Interleaved"]
     if metatranscriptome:
         exp_num_workflow_config = 9
+        placeholder_wf_names = ["Sequencing Noninterleaved", "Sequencing Interleaved"]
         exp_wf_names = ["Metatranscriptome Reads QC", "Metatranscriptome Reads QC Interleave",
                         "Metatranscriptome Assembly", "Metatranscriptome Annotation", "Expression Analysis Antisense",
                         "Expression Analysis Sense", "Expression Analysis Nonstranded", ]
     else:
-        exp_num_workflow_config = 8
-        exp_wf_names = ["Reads QC", "Reads QC Interleave", "Metagenome Assembly", "Metagenome Annotation", "MAGs",
-                        "Readbased Analysis", ]
+        exp_num_workflow_config = 10
+        placeholder_wf_names = ["Sequencing Noninterleaved", "Sequencing Interleaved", "Sequencing SRA"]
+        exp_wf_names = ["Reads QC", "Reads QC Interleave", "Reads QC SRA", "Metagenome Assembly", "Metagenome Annotation", "MAGs",
+                        "Readbased Analysis"]
 
     workflow_config = load_workflow_configs(workflows_config_dir / workflow_file)
     assert workflow_config
     wfm = {}
-    assert len(workflow_config) == len(exp_wf_names) + len(shared_wf_names)
+    assert len(workflow_config) == len(exp_wf_names) + len(placeholder_wf_names)
     for wf in workflow_config:
         wfm[wf.name] = wf
     for wf_name in exp_wf_names:
