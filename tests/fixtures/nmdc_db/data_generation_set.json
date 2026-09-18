@@ -14,12 +14,7 @@
         "nmdc:sty-11-test001"
     ],
     "processing_institution": "JGI",
-    "principal_investigator" : {
-        "has_raw_value" : "PI Name",
-        "email" : "pi_name@example.com",
-        "name" : "PI Name",
-        "type": "nmdc:PersonValue"
-    },
+    "has_credit_associations": [{"type": "prov:Association", "applies_to_agent": {"type": "nmdc:Person", "name": "Janet Jansson"}, "applied_roles": ["Principal Investigator"]}],
     "type" : "nmdc:NucleotideSequencing"
 },
   {
@@ -43,12 +38,7 @@
     "ncbi_project_name" : "NCBI Project Name",
     "analyte_category": "metatranscriptome",
     "processing_institution": "JGI",
-    "principal_investigator": {
-        "has_raw_value": "Investigator Name",
-        "email": "test@example.org",
-        "name": "Investigator Name",
-        "type": "nmdc:PersonValue"
-      },
+    "has_credit_associations": [{"type": "prov:Association", "applies_to_agent": {"type": "nmdc:Person", "name": "Janet Jansson"}, "applied_roles": ["Principal Investigator"]}],
     "type" : "nmdc:NucleotideSequencing",
     "gold_sequencing_project_identifiers" : [
         "gold:Gp0324008"

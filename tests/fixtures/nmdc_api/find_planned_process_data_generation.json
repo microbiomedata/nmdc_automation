@@ -14,12 +14,7 @@
       "mod_date": "2024-01-07",
       "name": "Soil microbial communities from grassland in Ellensburg, Washington, USA - FTA3_TOP",
       "ncbi_project_name": "Soil microbial communities from grassland in Ellensburg, Washington, USA - FTA3_TOP",
-      "principal_investigator": {
-        "email": "nancy.hess@pnnl.gov",
-        "has_raw_value": "Nancy Hess",
-        "name": "Nancy Hess",
-        "type": "nmdc:PersonValue"
-      },
+      "has_credit_associations": [{"type": "prov:Association", "applies_to_agent": {"type": "nmdc:Person", "name": "Janet Jansson"}, "applied_roles": ["Principal Investigator"]}],
       "processing_institution": "JGI",
       "type": "nmdc:NucleotideSequencing",
       "analyte_category": "metagenome",
