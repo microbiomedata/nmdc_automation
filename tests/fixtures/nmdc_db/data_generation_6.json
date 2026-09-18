@@ -14,12 +14,7 @@
         "nmdc:sty-11-test001"
     ],
     "processing_institution": "JGI",
-    "principal_investigator" : {
-        "has_raw_value" : "PI Name",
-        "email" : "pi_name@example.com",
-        "name" : "PI Name",
-        "type": "nmdc:PersonValue"
-    },
+    "has_credit_associations": [{"type": "prov:Association", "applies_to_agent": {"type": "nmdc:Person", "name": "Janet Jansson"}, "applied_roles": ["Principal Investigator"]}],
     "type" : "nmdc:NucleotideSequencing"
 },
 {
@@ -32,12 +27,7 @@
         "nmdc:dobj-11-direct"
     ],
     "ncbi_project_name": "Banana cropland soil microbial communities from Singapore - Seedorf71.JP1soil.18",
-    "principal_investigator": {
-        "has_raw_value": "Janet Jansson",
-        "email": "janet.jansson@pnnl.gov",
-        "name": "Janet Jansson",
-        "type": "nmdc:PersonValue"
-    },
+    "has_credit_associations": [{"type": "prov:Association", "applies_to_agent": {"type": "nmdc:Person", "name": "Janet Jansson"}, "applied_roles": ["Principal Investigator"]}],
     "processing_institution": "UCSD",
     "type": "nmdc:NucleotideSequencing",
     "gold_sequencing_project_identifiers": [
