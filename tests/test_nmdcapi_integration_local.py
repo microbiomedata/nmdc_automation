@@ -6,6 +6,7 @@ from time import time
 
 import pytest
 import requests
+from datetime import datetime, timedelta
 
 from nmdc_automation.api.nmdcapi import NmdcRuntimeApi as nmdcapi
 
@@ -33,34 +34,27 @@ def test_integration_environment():
 def test_nmdcapi_get_token(site_config_file):
     n = nmdcapi(site_config_file)
 
-    assert n.expires_at == 0
-    token_resp = n.get_token()
-    assert token_resp["expires"]["days"] == 1
-    assert token_resp["access_token"] is not None
-    # should be at least an hour in the future
-    assert n.expires_at >= time() + 3600
-    assert n.token is not None
+    assert n.header is None
+    token = n.auth.get_token()
+    assert token is not None
+    header = n.refresh_auth_header()
+    assert header["Authorization"] == f"Bearer {token}"
+    assert n.header == header
 
 
 @pytest.mark.integration
 def test_nmdcapi_list_jobs_refreshes_token(site_config_file):
-    # initial client state - no token
     n = nmdcapi(site_config_file)
-    assert n.expires_at == 0
-    assert n.token is None
+    assert n.header is None
 
-    # list_jobs will invoke refresh_token
     jobs = n.list_jobs()
     assert jobs is not None
-    assert n.token is not None
-    # should be at least an hour in the future
-    assert n.expires_at > time() + 3600
+    assert n.header is not None
+    assert n.header["Authorization"].startswith("Bearer ")
 
-    # set the token to expire now
-    n.expires_at = time()
-    assert n.expires_at < time()
+    n.auth._token_expires_at = datetime.now() - timedelta(seconds=1)
+    n.header = None
     jobs = n.list_jobs()
     assert jobs is not None
-    assert n.token is not None
-    # should be at least an hour in the future again
-    assert n.expires_at > time() + 3600
+    assert n.header is not None
+    assert n.header["Authorization"].startswith("Bearer ")

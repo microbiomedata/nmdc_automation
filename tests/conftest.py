@@ -182,23 +182,23 @@ def configured_api_mock(session_monkeypatch, test_db, test_data_dir):
     # (This allows the function to query fixtures loaded into test_db)
     mock_api.client = test_db.client
 
-    def mock_list_from_collection_side_effect(collection_name, query_filter=None, projection_fields=None, max=None):
-        projection = None
-        if projection_fields:
+    def mock_list_from_collection_side_effect(collection, filt=None, projection=None, max=None):
+        projection_out = None
+        if projection:
             # Create a dictionary for MongoDB projection: {'field': 1, 'another_field': 1}
             # Split the comma-delimited string, strip whitespace, and filter out any empty strings
-            field_list = [f.strip() for f in projection_fields.split(',') if f.strip()]
+            field_list = [f.strip() for f in projection.split(',') if f.strip()]
             
             if field_list:
                 # Create the inclusion projection dictionary
-                projection = {field: 1 for field in field_list}
+                projection_out = {field: 1 for field in field_list}
                 
                 # Explicitly exclude the _id field if it wasn't requested
-                if '_id' not in projection:
-                    projection['_id'] = 0
+                if '_id' not in projection_out:
+                    projection_out['_id'] = 0
 
-        collection = test_db[collection_name] 
-        cursor = collection.find(query_filter if query_filter else {}, projection)
+        collection_db = test_db[collection]
+        cursor = collection_db.find(filt if filt else {}, projection_out)
         return list(cursor)
 
     mock_api.list_from_collection.side_effect = mock_list_from_collection_side_effect
@@ -284,38 +284,84 @@ def configured_api_mock(session_monkeypatch, test_db, test_data_dir):
 
     mock_api.get_op.side_effect = mock_get_op_side_effect
 
-    def mock_update_operation_side_effect(op_id, done=None, meta=None):
+    def mock_get_object_side_effect(obj_id, decode=False):
+        data = test_db.data_object_set.find_one({"id": obj_id}, {"_id": 0})
+        if not data:
+            raise ValueError(f"Object not found: {obj_id}")
+
+        if decode and "description" in data:
+            try:
+                data["metadata"] = json.loads(data["description"])
+            except Exception:
+                data["metadata"] = None
+
+        return data
+
+    mock_api.get_object.side_effect = mock_get_object_side_effect
+
+    def mock_update_op_side_effect(opid, done=None, results=None, meta=None):
         """
         Updates the operation in the test_db to reflect the new state.
         """
         update_fields = {}
         if done is not None:
             update_fields["done"] = done
+        if results is not None:
+            update_fields["result"] = results
         if meta is not None:
-            update_fields["metadata"] = meta
+            existing = test_db.operations.find_one({"id": opid}) or {}
+            metadata = existing.get("metadata")
+            if metadata:
+                metadata = dict(metadata)
+                metadata["extra"] = meta
+                update_fields["metadata"] = metadata
             
         if update_fields:
             test_db.operations.update_one(
-                {"id": op_id}, 
+                {"id": opid}, 
                 {"$set": update_fields}
             )
         
         # Return the updated object to mimic a real API response
-        return test_db.operations.find_one({"id": op_id})
+        return test_db.operations.find_one({"id": opid})
 
+    mock_api.update_op = MagicMock()
+    mock_api.update_op.side_effect = mock_update_op_side_effect
     mock_api.update_operation = MagicMock()
-    mock_api.update_operation.side_effect = mock_update_operation_side_effect
+    mock_api.update_operation.side_effect = mock_update_op_side_effect
 
     mock_api._base_url = "http://localhost:8000/" 
     mock_api.header = {
         'Authorization': 'Bearer abcd', 
         'Content-Type': 'application/json' 
     }
+    mock_api.auth = MagicMock()
+    mock_api.auth.get_token.return_value = "fake_test_token_from_mock"
+
+    def mock_build_headers(access_token, accept="application/json", content_type="application/json"):
+        return {
+            'Authorization': f'Bearer {access_token}',
+            'Accept': accept,
+            'Content-Type': content_type,
+        }
+
+    mock_api.auth._build_http_request_headers.side_effect = mock_build_headers
+
+    def mock_refresh_auth_header_side_effect():
+        token = mock_api.auth.get_token()
+        mock_api.header = mock_api.auth._build_http_request_headers(
+            access_token=token,
+            accept="application/json",
+            content_type="application/json",
+        )
+        return mock_api.header
+
+    mock_api.refresh_auth_header = MagicMock(side_effect=mock_refresh_auth_header_side_effect)
 
     def mock_mint_side_effect(id_type, informed_by=None):
     
         if id_type == "nmdc:DataObject":
-            return ["nmdc:dobj-01-abcd4321"]
+            return "nmdc:dobj-01-abcd4321"
         
         # Else this is a wf activity
         return "nmdc:wfabc-01-abcd4321"
@@ -331,17 +377,6 @@ def configured_api_mock(session_monkeypatch, test_db, test_data_dir):
     #        }
     #session_requests_mock.post("http://localhost:8000/token", json=token_resp)
 
-
-    # 1. Custom function to set state directly
-    def mock_get_token(self):
-        self.token = "fake_test_token_from_mock"
-        self.expires_at = time() + 3600 # Guaranteed future time
-
-    # 2. Bind the CUSTOM function to the mock instance
-    mock_api.get_token = mock_get_token.__get__(mock_api, nmdcapi) 
-
-    # 3. Call it to initialize the mock's state
-    mock_api.get_token()
 
     #resp = ["nmdc:dobj-01-abcd4321"]
     # mock mint responses in sequence
@@ -610,36 +645,54 @@ def import_config_file():
 class MockNmdcRuntimeApi:
     def __init__(self):
         self.counter = 10
+        self._base_url = "http://localhost:8000/"
+        self.header = None
+        self.auth = MagicMock()
+        self.auth.get_token.return_value = "abcd"
+        self.auth._build_http_request_headers.side_effect = self._build_http_request_headers
+
+    def _build_http_request_headers(self, access_token, accept="application/json", content_type="application/json"):
+        return {
+            "Authorization": f"Bearer {access_token}",
+            "Accept": accept,
+            "Content-Type": content_type,
+        }
+
+    def refresh_auth_header(self):
+        token = self.auth.get_token()
+        self.header = self.auth._build_http_request_headers(
+            access_token=token,
+            accept="application/json",
+            content_type="application/json",
+        )
+        return self.header
 
     def minter(self, id_type):
         type_code_map = {
             "nmdc:DataObject": "nmdc:dobj",
             "nmdc:MetagenomeAssembly": "nmdc:wfmgas",
             "nmdc:MetagenomeAnnotation": "nmdc:wfmgan",
+            "nmdc:MetagenomeAnnotationActivity": "nmdc:wfmgan",
             "nmdc:MagsAnalysis": "nmdc:wfmag",
+            "nmdc:MAGsAnalysisActivity": "nmdc:wfmag",
             "nmdc:ReadQcAnalysis": "nmdc:wfrqc",
+            "nmdc:ReadQcAnalysisActivity": "nmdc:wfrqc",
             "nmdc:ReadBasedTaxonomyAnalysis": "nmdc:wfrbt",
+            "nmdc:ReadBasedTaxonomyAnalysisActivity": "nmdc:wfrbt",
         }
         self.counter += 1
         prefix = type_code_map[id_type]
         return f"{prefix}-{self.counter:02d}-abcd1234"
 
-    def get_token(self):
-        return {"expires": {"minutes": time()+60},
-            "access_token": "abcd"
-            }
-
-    def refresh_token(self):
-        return {"expires": {"minutes": time()+60},
-            "access_token": "abcd"
-            }
-
-    def get_object(self, id):
-        return {
-            "id": id,
+    def get_object(self, obj, decode=False):
+        data = {
+            "id": obj,
             "name": "Test Object",
             "type": "nmdc:DataObject"
         }
+        if decode:
+            data["metadata"] = None
+        return data
 
 
 @fixture(scope="session")
