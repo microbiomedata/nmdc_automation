@@ -29,3 +29,7 @@ prof/
 .env
 nmdc_automation/jgi_file_staging/data
 nmdc_automation/jgi_file_staging/venv/
+
+# Ignore directories named ".venv" at any level of the repository.
+# Note: This is a common directory name for a Python virtual environment.
+.venv
