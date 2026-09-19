@@ -29,11 +29,3 @@ prof/
 .env
 nmdc_automation/jgi_file_staging/data
 nmdc_automation/jgi_file_staging/venv/
-
-# Ignore directories named ".venv" at any level of the repository.
-# Note: This is a common directory name for a Python virtual environment.
-.venv
-
-# Do not ignore `*.txt` files within the `data_management/` directory.
-# Note: This overrides the `*.txt` directive above, which may have been more broad than intended.
-!/data_management/**/*.txt
