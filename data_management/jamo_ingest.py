@@ -348,6 +348,11 @@ def generate_metadata_file(workflow_execution_id: str, workflow_execution: str, 
         logging.debug(f"Skip. No valid outputs found for workflow_execution {workflow_execution} {workflow_execution_id}")
     else:
         # Save the JSON structure to a file
+        #
+        # TODO: Is it intentional that the resulting filename preserve the `was_informed_by` string and array wrapper?
+        #       For example   : `data_management/metadata_files/metadata_['nmdc:omprc-13-zzewgw49']_nmdc:wfrqc-13-j4akyr76.1.json`
+        #       As opposed to : `data_management/metadata_files/metadata_nmdc:omprc-13-zzewgw49_nmdc:wfrqc-13-j4akyr76.1.json`
+        #
         save_json(json_structure, f"metadata_files/metadata_{was_informed_by}_{workflow_execution_id}.json")
 
 
