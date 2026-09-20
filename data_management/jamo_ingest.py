@@ -465,7 +465,7 @@ def main():
         help="Maximum number of records per page to request from the API (default: %(default)s)",
     )
     parser.add_argument("--generate-labels", type=str, metavar="TEMPLATE_DIR", help="Generate workflow_labels.json from YAML templates in the specified directory")
-    parser.add_argument("--generate-labels-only", action="store_true", help="Only generate workflow_labels.json")
+    parser.add_argument("--exit-after-generating-labels", action="store_true", help="If also using `--generate-labels`, then exit after generating the labels")
     parser.add_argument("--emsl-only", action="store_true", help="Only process EMSL data records")
     parser.add_argument("--nersc-only", action="store_true", help="Only process NERSC data records")
     args = parser.parse_args()
@@ -481,9 +481,7 @@ def main():
     # Generate workflow labels if requested
     if args.generate_labels:
         generate_workflow_labels_json(args.generate_labels)
-
-        # If the user opted to _only_ generate labels, return at this point.
-        if args.generate_labels_only:
+        if args.exit_after_generating_labels:
             return
     
     if args.clean:
