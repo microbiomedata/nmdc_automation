@@ -377,21 +377,21 @@ class Scheduler:
             return Version.parse(v_clean)
 
         current_v = get_v_obj(wf.version)
+        
         q = {"config.git_repo": wf.git_repo}
 
         # If we are evaluating a manifest pool, target jobs matching this manifest
-
         if manifest_id:
             q["config.manifest"] = manifest_id
-
+        
         for j in self.api.list_jobs(q):
             # the assumption is that a job in any state has been triggered by an activity
             # that was the result of an existing (completed) job
             act = j["config"]["trigger_activity"]
-
+            
             # Get the current job's manifest value if available
             j_manifest = j["config"].get("manifest")
-
+            
             # When we don't have a manifest_id to filter jobs, then we want to warn if 
             # manifest_id is not available for filter criteria (individual dg id) and we find
             # a historical job that has manifest in its config
@@ -403,16 +403,17 @@ class Scheduler:
                     f"Skipping this historical job from existing jobs evaluation."
                 )
                 continue
-
+            
             job_version_str = j["config"].get("release")
             job_v = get_v_obj(job_version_str)
             claims = j.get("claims", [])
 
+            
             # If the exact version (e.g. v2.0.1) exists, return it
             if job_version_str == wf.version:
                 existing_jobs.add(act)
                 continue
-
+            
             #
             # Look for active jobs to avoid directory collisions,
             # Anything found going forward will not be the exact version
@@ -422,16 +423,17 @@ class Scheduler:
             if not claims:
                 existing_jobs.add(act)
                 continue
-
+            
             # If we get here, then check if any jobs for this activity exists
             # that has a claim and is currently in progress.
             # In this case, we don't want it to schedule a new job on top of one found, 
             # so return it as an existing job.
             is_active = False
             for claim in claims:
+
                 # If the claim is cancelled, skip checking this claim completely.
                 if claim.get("cancelled") is True:
-                    continue
+                    continue  # move to the next claim in the loop
 
                 op_id = claim.get("op_id")
                 if op_id:
@@ -441,10 +443,10 @@ class Scheduler:
                         # Again ensure that is not a cancelled operation
                         if op_obj.get("metadata", {}).get("cancelled") is True:
                             continue
-
+                        
                         if op_obj.get("done") is False:
                             is_active = True
-                            break
+                            break # Stop checking claims for this job
                     except HTTPError as e:
                         # check if it was specifically a data issue (404)
                         # and only continue for this use case
@@ -452,9 +454,9 @@ class Scheduler:
                         if status_code == 404:
                             logger.warning(f"Data missing (404) for operation ID {op_id}.")
                             continue
-
+                        
                         logger.error(f"API Error {status_code} for {op_id}. Aborting cycle for safety.")
-                        raise
+                        raise 
 
                     except Exception as e:
                         logger.error(f"Critical system failure during op check: {e}")
@@ -463,7 +465,7 @@ class Scheduler:
             if is_active:
                 existing_jobs.add(act)
                 continue
-
+            
             # prevent scheduling of version downgrades
             # If we reach here, the version is different and it is NOT active.
             # we only allow a new job if wf.version > all existing versions for this activity id
@@ -514,6 +516,7 @@ class Scheduler:
             associated_wfp_node_id = None
             if len(wfp_node.manifest) == 1:
                 if wfp_node.id in manifest_map[wfp_node.manifest[0]]['data_generation_set']:
+
                     for dgns_id in manifest_map[wfp_node.manifest[0]]['data_generation_set']:
                         # Only need to check for others dgns since already checked itself above
                         if dgns_id != wfp_node.id:
