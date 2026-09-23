@@ -127,7 +127,7 @@ def query_collection(base_url: str, collection_name: str,
     return response_data
 
 
-def get_data_object_set(base_api_url: str, max_page_size: int) -> Dict:
+def get_data_object_set(base_api_url: str, max_page_size: int = 100000) -> Dict:
     """
     Retrieve data objects with URLs from the data_object_set collection.
 
@@ -348,6 +348,11 @@ def generate_metadata_file(workflow_execution_id: str, workflow_execution: str, 
         logging.debug(f"Skip. No valid outputs found for workflow_execution {workflow_execution} {workflow_execution_id}")
     else:
         # Save the JSON structure to a file
+        #
+        # TODO: Is it intentional that the resulting filename preserve the `was_informed_by` string and array wrapper?
+        #       For example   : `data_management/metadata_files/metadata_['nmdc:omprc-13-zzewgw49']_nmdc:wfrqc-13-j4akyr76.1.json`
+        #       As opposed to : `data_management/metadata_files/metadata_nmdc:omprc-13-zzewgw49_nmdc:wfrqc-13-j4akyr76.1.json`
+        #
         save_json(json_structure, f"metadata_files/metadata_{was_informed_by}_{workflow_execution_id}.json")
 
 
@@ -449,12 +454,25 @@ def main():
     2. Processes and validates the data
     3. Generates individual metadata files for each workflow execution
     """
+
+    # TODO: Since this script already depends upon `click`, use `@click.option()` for these CLI options.
     parser = argparse.ArgumentParser(description="Run specific methods based on flags")
     parser.add_argument("--clean", action="store_true", help="Start a clean run with a fresh pull of NMDC data from the runtime api")
+    parser.add_argument(
+        "--max-page-size",
+        type=int,
+        default=100000,
+        help="Maximum number of records per page to request from the API (default: %(default)s)",
+    )
     parser.add_argument("--generate-labels", type=str, metavar="TEMPLATE_DIR", help="Generate workflow_labels.json from YAML templates in the specified directory")
+    parser.add_argument("--exit-after-generating-labels", action="store_true", help="If also using `--generate-labels`, then exit after generating the labels")
     parser.add_argument("--emsl-only", action="store_true", help="Only process EMSL data records")
     parser.add_argument("--nersc-only", action="store_true", help="Only process NERSC data records")
     args = parser.parse_args()
+
+    # If the user specified an invalid maximum page size, exit with an error message.
+    if args.max_page_size <= 0:
+        parser.error("--max-page-size must be a positive integer")
     
     # Validate mutually exclusive flags
     if args.emsl_only and args.nersc_only:
@@ -463,9 +481,11 @@ def main():
     # Generate workflow labels if requested
     if args.generate_labels:
         generate_workflow_labels_json(args.generate_labels)
+        if args.exit_after_generating_labels:
+            return
     
     if args.clean:
-        get_workflow_execution_set() # Produces valid_data.json
+        get_workflow_execution_set(max_page_size=args.max_page_size) # Produces valid_data.json
 
     # Check if valid_data.json exists before trying to load it
     if not os.path.exists('valid_data/valid_data.json'):
