@@ -71,8 +71,8 @@ def test_process_factory_with_db_record():
               'name': 'Test Metagenome Processing', 'has_input': ['nmdc:bsm-11-qezc0h51'],
               'has_output': ['nmdc:dobj-11-rawreads1', 'nmdc:dobj-11-rawreads2'], 'analyte_category': 'metagenome',
               'associated_studies': ['nmdc:sty-11-test001'], "processing_institution": "JGI",
-              'principal_investigator': {'has_raw_value': 'PI Name', 'email': 'pi_name@example.com',
-                                         'name': 'PI Name', "type": "nmdc:PersonValue"},
+              'has_credit_associations': [{'type': 'prov:Association', 'applies_to_agent': {'type': 'nmdc:Person', 'name':'PI Name'},
+                                         'applied_roles': ['Principal Investigator']}],
               'type': 'nmdc:NucleotideSequencing'}
     wfe = workflow_process_factory(record)
     assert wfe.type == "nmdc:NucleotideSequencing"
