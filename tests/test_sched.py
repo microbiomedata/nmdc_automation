@@ -1285,3 +1285,62 @@ def test_manifest_repooling_permutations_multicycle(allowlist_permutation, test_
         # All jobs should now be in a submitted state
         resp = jm.cycle(allowlist=current_allowlist)
         assert len(resp) == exp_num_jobs_cycle_3
+
+
+@mark.parametrize("allowlist_permutation", [
+    ("nmdc:dgns-11-syr2vn62",),
+    ("nmdc:dgns-11-kwb7eq83",),
+    ("nmdc:dgns-11-syr2vn62", "nmdc:dgns-11-kwb7eq83")
+])
+def test_manifest_repooling_with_legacy_single_sample_child_workflow_execution(
+    allowlist_permutation,
+    test_db,
+    test_client,
+    workflows_config_dir,
+    site_config_file,
+):
+    reset_db(test_db)
+    load_fixture(test_db, "data_objects_in_manifest_update.json", "data_object_set")
+    load_fixture(test_db, "data_generation_in_manifest_update.json", "data_generation_set")
+    load_fixture(test_db, "manifest_set_update.json", "manifest_set")
+    load_fixture(test_db, "job_manifest_update_indiv_done.json", "jobs")
+    test_db["workflow_execution_set"].insert_one(
+        {
+            "id": "nmdc:wfrqc-11-2rg3xg37.1",
+            "type": "nmdc:ReadQcAnalysis",
+            "name": "Read QC for nmdc:wfrqc-11-2rg3xg37.1",
+            "has_input": [
+                "nmdc:dobj-11-kpt53f77",
+                "nmdc:dobj-11-tv9g1670",
+            ],
+            "has_output": [
+                "nmdc:dobj-11-r1dngr87",
+                "nmdc:dobj-11-dpb8yd39",
+                "nmdc:dobj-11-j5xkvb53",
+            ],
+            "execution_resource": "NERSC-Perlmutter",
+            "git_url": "https://github.com/microbiomedata/ReadsQC",
+            "started_at_time": "2025-05-05T17:23:04.000000+00:00",
+            "was_informed_by": ["nmdc:dgns-11-syr2vn62"],
+            "version": "v1.0.18",
+            "processing_institution": "NMDC",
+        }
+    )
+
+    jm = Scheduler(workflow_yaml=workflows_config_dir / "workflows.yaml",
+                   site_conf=site_config_file, api=test_client)
+
+    current_allowlist = set(allowlist_permutation)
+    with patch.object(jm.api, 'minter', return_value="mock-id-123"):
+        resp = jm.cycle(allowlist=current_allowlist)
+
+        readsqc_jobs = [
+            job for job in resp
+            if job["config"]["activity"]["type"] == "nmdc:ReadQcAnalysis"
+        ]
+
+        assert len(readsqc_jobs) == 1
+        assert set(readsqc_jobs[0]["config"]["was_informed_by"]) == {
+            "nmdc:dgns-11-syr2vn62",
+            "nmdc:dgns-11-kwb7eq83",
+        }

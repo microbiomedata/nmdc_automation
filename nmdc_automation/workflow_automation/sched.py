@@ -527,6 +527,16 @@ class Scheduler:
             # but this isn't currently impacting what should be the right answer so maybe this is leftover from 
             # the refactor but making a note of it. -jlp 20250714
             for child_act in wfp_node.children:
+                expected_informed_by = sorted(wfp_node.was_informed_by)
+                child_informed_by = sorted(child_act.was_informed_by)
+                if child_informed_by != expected_informed_by:
+                    logger.debug(
+                        "Ignoring child activity with different was_informed_by context: "
+                        f"child={child_act.id} child_wib={child_informed_by} "
+                        f"expected_wib={expected_informed_by} manifest={current_manifest_id}"
+                    )
+                    continue
+
                 if within_range(child_act.workflow, wf, force=self.force):
                     msg = f"Skipping existing job for {child_act.id} {wf.name}:{child_act.version}"
                     if msg not in self._messages:
