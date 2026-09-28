@@ -240,8 +240,20 @@ def test_actual_retry_delay_fast(site_config_file, caplog):
 
     assert results is None
 
+def test_nmdc_client_env():
+    """
+    Confirm that `api_base_url` needs to be set directly in Metadata (not just passed to Auth) to use a non-default API URL
+    """
+    auth = NMDCAuth(api_base_url="https://api-dev.microbiomedata.org")
+    metadata_default = Metadata(auth = auth)
+    assert metadata_default.api_base_url == "https://api.microbiomedata.org"
+
+    metadata_specified = Metadata(api_base_url = "https://api-dev.microbiomedata.org", auth = auth)
+    assert metadata_specified.api_base_url == "https://api-dev.microbiomedata.org"
+
 def test_nmdc_client_validate(requests_mock, caplog, site_config_file):
     api = nmdcapi(site_config_file)
+    metadata_validate_url = f"{api._base_url.rstrip('/')}/metadata/json:validate"
     valid_json = {
         "data_object_set": [
             {
@@ -267,7 +279,7 @@ def test_nmdc_client_validate(requests_mock, caplog, site_config_file):
         ]
     }
     requests_mock.post(
-        "https://api.microbiomedata.org/metadata/json:validate",
+        metadata_validate_url,
         [
             {"text": '{"result":"All Okay!"}', "status_code": 200},
             {
@@ -289,6 +301,8 @@ def test_nmdc_client_validate(requests_mock, caplog, site_config_file):
 
 def test_nmdc_client_submit(requests_mock, caplog, site_config_file):
     api = nmdcapi(site_config_file)
+    token_url = f"{api._base_url.rstrip('/')}/token"
+    metadata_submit_url = f"{api._base_url.rstrip('/')}/metadata/json:submit"
     token_resp = {"expires": {"minutes": 60}, "access_token": "abcd"}
     valid_json = {
         "data_object_set": [
@@ -314,9 +328,9 @@ def test_nmdc_client_submit(requests_mock, caplog, site_config_file):
             }
         ]
     }
-    requests_mock.post("http://localhost:8000/token", json=token_resp)
+    requests_mock.post(token_url, json=token_resp)
     requests_mock.post(
-        "https://api.microbiomedata.org/metadata/json:submit",
+        metadata_submit_url,
         [
             {"status_code": 200},
             {
@@ -335,14 +349,3 @@ def test_nmdc_client_submit(requests_mock, caplog, site_config_file):
     with caplog.at_level(logging.INFO), pytest.raises(Exception, match="Submission failed"):
         api.submit_metadata(invalid_json)
     assert "Request failed" in caplog.text
-
-def test_nmdc_client_env():
-    """
-    Confirm that `api_base_url` needs to be set directly in Metadata (not just passed to Auth) to use a non-default API URL
-    """
-    auth = NMDCAuth(api_base_url="https://api-dev.microbiomedata.org")
-    metadata_default = Metadata(auth = auth)
-    assert metadata_default.api_base_url == "https://api.microbiomedata.org"
-
-    metadata_specified = Metadata(api_base_url = "https://api-dev.microbiomedata.org", auth = auth)
-    assert metadata_specified.api_base_url == "https://api-dev.microbiomedata.org"
