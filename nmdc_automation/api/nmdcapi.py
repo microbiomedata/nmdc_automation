@@ -347,9 +347,9 @@ class NmdcRuntimeApi:
         return resp.json()["results"]
 
     def validate_metadata(self, metadata):
-        metadata_client = Metadata(auth=self.auth)
+        metadata_client = Metadata(api_base_url=self._base_url.rstrip("/"), auth=self.auth)
         return metadata_client.validate_json(metadata)
 
     def submit_metadata(self, metadata):
-        metadata_client = Metadata(auth=self.auth)
+        metadata_client = Metadata(api_base_url=self._base_url.rstrip("/"), auth=self.auth)
         return metadata_client.submit_json(metadata)
