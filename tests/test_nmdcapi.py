@@ -7,6 +7,8 @@ import requests
 from unittest.mock import MagicMock, patch
 from tests.fixtures.db_utils import load_fixture, reset_db
 import time
+from nmdc_client.metadata import Metadata
+from nmdc_client.auth import NMDCAuth
 
 def test_basics(monkeypatch, requests_mock, site_config_file, test_client):
     #n = nmdcapi(site_config_file)
@@ -334,5 +336,13 @@ def test_nmdc_client_submit(requests_mock, caplog, site_config_file):
         api.submit_metadata(invalid_json)
     assert "Request failed" in caplog.text
 
-#### IM HERE: ADD TESTS FOR SUBMIT AND VALIDATE JSONS, BELIEVE CURRENT ASSERTION LOGIC WRONG
-# also check which function is teh one that fails with a large allow list due to http length and change to batch api call
+def test_nmdc_client_env():
+    """
+    Confirm that `api_base_url` needs to be set directly in Metadata (not just passed to Auth) to use a non-default API URL
+    """
+    auth = NMDCAuth(api_base_url="https://api-dev.microbiomedata.org")
+    metadata_default = Metadata(auth = auth)
+    assert metadata_default.api_base_url == "https://api.microbiomedata.org"
+
+    metadata_specified = Metadata(api_base_url = "https://api-dev.microbiomedata.org", auth = auth)
+    assert metadata_specified.api_base_url == "https://api-dev.microbiomedata.org"
