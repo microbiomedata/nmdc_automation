@@ -127,7 +127,7 @@ def query_collection(base_url: str, collection_name: str,
     return response_data
 
 
-def get_data_object_set(base_api_url: str, max_page_size: int = 100000) -> Dict:
+def get_data_object_set(base_api_url: str, max_page_size: int = 1000) -> Dict:
     """
     Retrieve data objects with URLs from the data_object_set collection.
 
@@ -153,7 +153,7 @@ def get_data_object_set(base_api_url: str, max_page_size: int = 100000) -> Dict:
     return kv_store
 
 
-def get_workflow_execution_set(base_api_url: str = _BASE_URL, max_page_size: int = 100000) -> Dict[str, List[str]]:
+def get_workflow_execution_set(base_api_url: str = _BASE_URL, max_page_size: int = 1000) -> Dict[str, List[str]]:
     """
     Query workflow execution records and organize them by workflow type.
 
@@ -458,12 +458,7 @@ def main():
     # TODO: Since this script already depends upon `click`, use `@click.option()` for these CLI options.
     parser = argparse.ArgumentParser(description="Run specific methods based on flags")
     parser.add_argument("--clean", action="store_true", help="Start a clean run with a fresh pull of NMDC data from the runtime api")
-    parser.add_argument(
-        "--max-page-size",
-        type=int,
-        default=100000,
-        help="Maximum number of records per page to request from the API (default: %(default)s)",
-    )
+    parser.add_argument("--max-page-size", type=int, default=1000, help="Maximum number of records per page to request from the API (default: %(default)s)",)
     parser.add_argument("--generate-labels", type=str, metavar="TEMPLATE_DIR", help="Generate workflow_labels.json from YAML templates in the specified directory")
     parser.add_argument("--exit-after-generating-labels", action="store_true", help="If also using `--generate-labels`, then exit after generating the labels")
     parser.add_argument("--emsl-only", action="store_true", help="Only process EMSL data records")
