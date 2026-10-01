@@ -245,6 +245,9 @@ def get_current_workflow_process_nodes(
                 if 'data_generation_set' in manifest_map[current_manifest]:
                     if wfp_node.id in manifest_map[current_manifest]['data_generation_set']:
                         wfp_node.add_to_manifest(current_manifest)
+                        wfp_node.process.was_informed_by = sorted(
+                            manifest_map[current_manifest]['data_generation_set']
+                        )
 
             workflow_process_nodes.add(wfp_node)
 
