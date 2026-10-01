@@ -1,0 +1,16 @@
+# Ignore local copies of the JGI JAT repository.
+#
+# Note: Developers sometimes use a local copy when running the `jamo_ingest.py` script with its
+#       `--generate-labels` CLI option. The copy is typically named "jgi-jat-{branch_name}".
+#       Reference: https://code.jgi.doe.gov/dsi/advanced-analysis/sequence-data-management/jgi-jat/
+#
+/jgi-jat-*
+
+# Ignore Python virtual environments.
+/.venv
+
+# Do not ignore the `requirements.txt` file.
+#
+# Note: This overrides a generic "*.txt" directive in the repository's root `.gitignore`.
+#
+!/requirements.txt
