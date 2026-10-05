@@ -278,6 +278,9 @@ def get_current_workflow_process_nodes(
                 q = {"was_informed_by": {"$in": id_chunk}, "type": wf.type}
                 wf_records = api.list_from_collection(wf.collection, q, max=500)
                 records.extend(wf_records)
+            # remove duplicated workflows (possible if dg ids are part of a manifest and the ids are split across multiple chunks)
+            records = list({rec["id"]: rec for rec in records}.values())
+
         else:
             records = api.list_from_collection(wf.collection, q, max=500)
         for rec in records:
