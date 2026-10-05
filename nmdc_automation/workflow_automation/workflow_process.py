@@ -334,9 +334,6 @@ def get_current_workflow_process_nodes(
                         latest  = _get_latest_version(wfp_node, found_wfs[ current_found_rec_key ][wf.name])
 
                         if latest is None:
-                            print(f"Duplicate workflow process node found for key: {current_found_rec_key}, workflow: {wf.name}")
-                            print(f"new node: {wfp_node.version, wfp_node.id}")
-                            print(f"existing node: {found_wfs[ current_found_rec_key ][wf.name].version, found_wfs[ current_found_rec_key ][wf.name].id}")
                             raise ValueError("Duplicate workflow process node with same version found")
                         
                         # If current wfp_node is the latest, remove the old one
