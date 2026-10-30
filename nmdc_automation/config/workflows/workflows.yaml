@@ -220,7 +220,7 @@ Workflows:
     Enabled: True
     Analyte Category: Metagenome
     Git_repo: https://github.com/microbiomedata/mg_annotation
-    Version: v1.1.5
+    Version: v1.2.0
     WDL: annotation_full.wdl
     Collection: workflow_execution_set
     Predecessors:
