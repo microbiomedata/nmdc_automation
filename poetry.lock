@@ -1870,14 +1870,14 @@ requests = "*"
 
 [[package]]
 name = "nmdc-client"
-version = "1.0.1"
+version = "1.1.0"
 description = "Python client library for the NMDC API (formerly nmdc-api-utilities)"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "nmdc_client-1.0.1-py3-none-any.whl", hash = "sha256:754d79ffa31813688f1fce24644c7dd77458ae1826931a6360c9b397b6e8c8af"},
-    {file = "nmdc_client-1.0.1.tar.gz", hash = "sha256:4483f3f14862840e43e99eaec46bffda0d7392e7f3391e2b3c5e19db4d83065a"},
+    {file = "nmdc_client-1.1.0-py3-none-any.whl", hash = "sha256:a948c9941d294e48a720cf22a01dfb5299f7a1a0496ab36949deadf5047cd68f"},
+    {file = "nmdc_client-1.1.0.tar.gz", hash = "sha256:21d9bb97dde9f0d2dd6ff6edeb86809c52a8eede8a3733355cd5d7aa1264ae52"},
 ]
 
 [package.dependencies]
@@ -4457,4 +4457,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.12"
-content-hash = "bb7589e27efe299f5b52de97724fcfd3dd06a07fe7a11686239b55d0b78a0212"
+content-hash = "e855b24af8553f564ca38219dc2de4929d303c9e527e554d0bb86e6e3bce81ba"
