@@ -677,13 +677,21 @@ def main():
     2. Processes and validates the data
     3. Generates individual metadata files for each workflow execution
     """
+
+    # TODO: Since this script already depends upon `click`, use `@click.option()` for these CLI options.
     parser = argparse.ArgumentParser(description="Run specific methods based on flags")
     parser.add_argument("--clean", action="store_true", help="Start a clean run with a fresh pull of NMDC data from the runtime api")
+    parser.add_argument("--max-page-size", type=int, default=1000, help="Maximum number of records per page to request from the API (default: %(default)s)",)
     parser.add_argument("--generate-labels", type=str, metavar="TEMPLATE_DIR", help="Generate workflow_labels.json from YAML templates in the specified directory")
+    parser.add_argument("--exit-after-generating-labels", action="store_true", help="If also using `--generate-labels`, then exit after generating the labels")
     parser.add_argument("--emsl-only", action="store_true", help="Only process EMSL data records")
     parser.add_argument("--nersc-only", action="store_true", help="Only process NERSC data records")
     parser.add_argument("--jamo-check", action="store_true", help="Only run the jamo check stage")
     args = parser.parse_args()
+
+    # If the user specified an invalid maximum page size, exit with an error message.
+    if args.max_page_size <= 0:
+        parser.error("--max-page-size must be a positive integer")
     
     # Validate mutually exclusive flags
     if args.emsl_only and args.nersc_only:
@@ -692,9 +700,11 @@ def main():
     # Generate workflow labels if requested
     if args.generate_labels:
         generate_workflow_labels_json(args.generate_labels)
+        if args.exit_after_generating_labels:
+            return
     
     if args.clean:
-        get_workflow_execution_set() # Produces valid_data.json
+        get_workflow_execution_set(max_page_size=args.max_page_size) # Produces valid_data.json
 
     # When set, only runs to find records to archive then exits
     if args.jamo_check:
