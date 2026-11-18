@@ -15,12 +15,28 @@ import argparse
 from typing import Dict, List, Optional
 import logging
 import traceback
+from datetime import datetime
+from pathlib import Path
+import csv
+import shutil
+import subprocess
+from functools import lru_cache
 
 _BASE_URL = "https://api.microbiomedata.org/"
 NERSC_URL_PREFIX = "https://data.microbiomedata.org/data/"
 EMSL_URL_PREFIX = "https://nmdcdemo.emsl.pnnl.gov/"
 NERSC_BACKUP_PREFIX = "/global/cfs/cdirs/m3408/results/"
 EMSL_BACKUP_PREFIX = "/global/cfs/cdirs/m3408/emsl_backup/"
+
+# local file and dir outputs
+METADATA_FILES_DIR = "metadata_files"
+FOUND_JAMO_METADATA_DIR = "archive_metadata_in_jamo"
+JAMO_RECORD_LOOKUP_FILE = "archived_metadata_existing_jat_records.tsv"
+
+_ENV_MARKER = "__JAMO_ENV_START__"
+
+class JamoSetupError(Exception):
+    """jamo's environment couldn't be set up, so no query can succeed. Abort the run."""
 
 # File Operations
 def save_json(data: Dict, filename: str):
@@ -85,6 +101,10 @@ def query_collection(base_url: str, collection_name: str,
         params['max_page_size'] = max_page_size
     if filter_param:
         params['filter'] = filter_param
+
+    # Default to include superseded_by and failed records
+    params['include_superseded'] = True
+    params['include_failed'] = True
 
     if not paginate:
         # Single page request (original behavior)
@@ -348,12 +368,7 @@ def generate_metadata_file(workflow_execution_id: str, workflow_execution: str, 
         logging.debug(f"Skip. No valid outputs found for workflow_execution {workflow_execution} {workflow_execution_id}")
     else:
         # Save the JSON structure to a file
-        #
-        # TODO: Is it intentional that the resulting filename preserve the `was_informed_by` string and array wrapper?
-        #       For example   : `data_management/metadata_files/metadata_['nmdc:omprc-13-zzewgw49']_nmdc:wfrqc-13-j4akyr76.1.json`
-        #       As opposed to : `data_management/metadata_files/metadata_nmdc:omprc-13-zzewgw49_nmdc:wfrqc-13-j4akyr76.1.json`
-        #
-        save_json(json_structure, f"metadata_files/metadata_{was_informed_by}_{workflow_execution_id}.json")
+        save_json(json_structure, f"{METADATA_FILES_DIR}/metadata_{workflow_execution_id}.json")
 
 
 def process_data(valid_data: Dict[str, List], emsl_only: bool = False, nersc_only: bool = False):
@@ -373,6 +388,214 @@ def process_data(valid_data: Dict[str, List], emsl_only: bool = False, nersc_onl
         generate_metadata_file(workflow_execution_id, workflow_execution, was_informed_by, records, emsl_only, nersc_only)
 
     click.echo(f"number of records of each workflow execution: {count_workflow_execution_records}")
+
+
+def count_audit_file_rows(manifest_path: Path) -> int:
+    """Count data rows, streaming so memory stays flat."""
+    with open(manifest_path, encoding="utf-8") as f:
+        return sum(1 for line in f if not line.startswith("#"))
+
+    
+def count_json_files(directory: Path) -> int:
+    with os.scandir(directory) as entries:
+        return sum(1 for e in entries if e.name.endswith(".json"))
+
+
+@lru_cache(maxsize=1)
+def get_jamo_runner():
+    script = (
+        "module load jamo >/dev/null 2>&1 || exit 1; "
+        f"echo; echo {_ENV_MARKER}; env -0"
+    )
+    try:
+        # Non-login (-c), environment inherited: same as the probe that worked
+        result = subprocess.run(["bash", "-c", script], capture_output=True, timeout=60)
+    except subprocess.TimeoutExpired as e:
+        raise JamoSetupError("Timed out running 'module load jamo'.") from e
+
+    marker = f"{_ENV_MARKER}\n".encode()
+    if result.returncode != 0 or marker not in result.stdout:
+        raise JamoSetupError(
+            f"Could not 'module load jamo': {result.stderr.decode(errors='replace').strip()}"
+        )
+
+    env = {}
+    for item in result.stdout.split(marker, 1)[1].split(b"\0"):
+        key, sep, value = item.decode(errors="replace").partition("=")
+        if sep and key:
+            env[key] = value
+
+    jamo_path = shutil.which("jamo", path=env.get("PATH", ""))
+    jamo_python = shutil.which("python", path=env.get("PATH", ""))
+    if jamo_path is None or jamo_python is None:
+        raise JamoSetupError(
+            f"jamo ({jamo_path}) or its python ({jamo_python}) not on PATH after module load."
+        )
+
+    # Verify the exact import that was failing, under the exact environment we'll use
+    check = subprocess.run(
+        [jamo_python, "-c", "from bson import ObjectId"],
+        env=env, capture_output=True, text=True, timeout=30,
+    )
+    if check.returncode != 0:
+        raise JamoSetupError(
+            f"jamo's python ({jamo_python}) can't import bson:\n{check.stderr.strip()}\n"
+            f"PATH head: {env['PATH'].split(':')[:5]}\nPYTHONPATH: {env.get('PYTHONPATH')}"
+        )
+
+    logging.info(f"jamo: {jamo_path}, python: {jamo_python}")
+    return [jamo_python, jamo_path], env
+
+
+def find_jamo_record(workflow_execution_id):
+    """
+    Query JAMO for files tagged with this workflow_execution_id.
+    Returns {jat_key: [file_names]}. An empty dict means JAMO answered "no records".
+    Raises if the query itself fails.
+    """
+
+    runner, jamo_env = get_jamo_runner()   # cached after the first call
+
+    # This report will either return 0 if nothing found or the list of filenames and the jat key
+    # should I save the 
+    cmd = [
+        *runner, "report", "select", "file_name, metadata.jat_key",
+        "where", f"metadata.workflow_execution_id='{workflow_execution_id}'",
+    ]
+    logging.debug(f"- jamo cmd: {cmd}") 
+    
+    result = subprocess.run(cmd, env=jamo_env, capture_output=True, text=True, timeout=120)
+    if result.returncode != 0:
+        raise RuntimeError(f"JAMO query failed for {workflow_execution_id}: {result.stderr.strip()}")
+
+    keys_to_files = {}
+    for line in result.stdout.splitlines():
+        if not line.strip():
+            continue
+        parts = line.split("\t")
+        if len(parts) != 2 or not parts[1].strip():
+            raise RuntimeError(f"Unexpected JAMO output for {workflow_execution_id}: {line!r}")
+        file_name = parts[0]
+        jat_key = parts[1].strip()
+        if jat_key not in keys_to_files:
+            keys_to_files[jat_key] = []
+        keys_to_files[jat_key].append(file_name)
+        
+
+    return keys_to_files
+
+
+def get_workflow_id_from_json(filepath: Path) -> str | None:
+    """Reads JSON in Python and extracts workflow_execution_id."""
+    try:
+        with open(filepath, 'r') as f:
+            data = json.load(f)
+            # equivalent to jq '.metadata.workflow_execution_id'
+            return data.get("metadata", {}).get("workflow_execution_id")
+    except (json.JSONDecodeError, OSError) as e:
+        logging.error(f"Failed to read JSON from {filepath}: {e}")
+        return None
+    
+#def find_existing_jamo_records(source_dir: str = METADATA_FILES_DIR, dest_dir: str = FOUND_JAMO_METADATA_DIR) -> None:
+def archive_metadata_files_already_in_jamo(source_dir: str = METADATA_FILES_DIR, dest_dir: str = FOUND_JAMO_METADATA_DIR) -> None:
+    """
+    Reads in the generated JSON files in source dirs, retrieves the metadata "workflow_execution_id" and queries JAMO 
+    to check if a record with the given workflow execution ID already exists.
+    If it does, move the jat record to an archive directory so that it doesn't get re-imported.
+    
+    Args:
+        source_dir: Directory containing generated JAT metadata JSONs.
+        dest_dir: Target directory for JSONs that already exist in JAMO.
+        archive_log_filename: File name for recording the audit log of matched records.
+    
+    Output: An audit file of the records found and their JAMO record ID is saved, stored under the dest_dir.
+    """
+
+    logging.info("archive_metadata_files_already_in_jamo")
+    logging.info(f"src:{source_dir} and dest:{dest_dir}")
+    # If we don't find a source dir, exit with error? TODO jlp20261007
+    src_path = Path(source_dir).resolve()
+    if not src_path.is_dir():
+        logging.warning(f"Source directory {src_path} is not a directory. Skipping JAMO archive check.")
+        return
+
+    # Audit file located in cwd
+    archive_log_file = Path.cwd() / JAMO_RECORD_LOOKUP_FILE
+
+    # Let's make a timestamp subdir so that we make sure we don't overwrite any previous iterations 
+    # for the archived files
+    # Generate current timestamp in YYYYMMDDHHMMSS format
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+
+    archive_path = Path(dest_dir) / timestamp
+
+    # The timestamp dir shouldn't exist because we just created it but erroring on the side of caution anyhow
+    if archive_path.exists():
+        logging.error(f"Dest datestamp directory {archive_path} already exists. Check results and try again. Exiting.")
+        sys.exit(1)
+
+    logging.info(f"Creating timestamp dir under {dest_dir}")
+    archive_path.mkdir(parents=True)
+    
+
+    # loop through the json files and run jq to get the wfe ID being stored as an ID in jamo
+    with os.scandir(src_path) as entries:
+        # Save the files name to a static list upfront to avoid any risk of iterating directly on scandir
+        # where the list could change as we move files out, resulting in skipped entries
+        json_names = [e.name for e in entries if e.name.endswith(".json") and e.is_file()]
+
+    processed = 0
+    multi_key = 0
+    failed = 0
+    with open(archive_log_file, "w", encoding="utf-8", newline="") as tsv_file:
+        writer = csv.writer(tsv_file, delimiter="\t")
+        writer.writerow(["# json_file", "workflow_execution_id", "existing_jat_key", "existing_record_file_count"])
+        
+        for current_json in json_names:
+            processed += 1
+            try:
+                json_path = src_path / current_json
+                wfe_id = get_workflow_id_from_json(json_path)
+                # check wfe_id is not None first? todo jlp
+                # Check if a record exists
+                records = find_jamo_record(wfe_id) # {} if not found
+                
+                if not records:
+                    continue
+
+                # Move the file
+                logging.info(f"JAMO record found for {wfe_id}. Moving to archive.")
+                logging.info(f"Moving {json_path}...")
+                shutil.move(json_path, archive_path / current_json )
+            
+            except JamoSetupError:
+                raise   # setup is broken for every file, so stop the whole run
+            # don't know if Exception will catch any jamo errors? test with incorrect query TODO jlp
+            except Exception:
+                failed += 1
+                logging.exception(f"Failed processing {current_json}; left in {src_path} for the next run.")
+                continue
+
+            keys = sorted(records)
+            file_count = sum(len(files) for files in records.values())
+            if len(keys) > 1:
+                multi_key += 1
+                detail = "; ".join(f"{k}: {len(records[k])} files ({', '.join(records[k])})" for k in keys)
+                logging.warning(f"{wfe_id} has {len(keys)} jat keys in JAMO: {detail}")
+
+            writer.writerow([current_json, wfe_id, ",".join(keys), file_count])
+
+                
+    # Audit the files moved to make sure nothing failed
+    audit_rows = count_audit_file_rows(archive_log_file)
+    dest_files = count_json_files(archive_path)
+
+    logging.info(
+        f"Done processing dir: {src_path}\n"
+        f"Total files processed: {processed}\n"
+        f"Audit: {audit_rows} audit file rows, {dest_files} files in {archive_path}."
+    )
+    
 
 
 def parse_workflow_templates(template_dir: str = None) -> Dict[str, Dict[str, str]]:
@@ -463,6 +686,7 @@ def main():
     parser.add_argument("--exit-after-generating-labels", action="store_true", help="If also using `--generate-labels`, then exit after generating the labels")
     parser.add_argument("--emsl-only", action="store_true", help="Only process EMSL data records")
     parser.add_argument("--nersc-only", action="store_true", help="Only process NERSC data records")
+    parser.add_argument("--jamo-check", action="store_true", help="Only run the jamo check stage")
     args = parser.parse_args()
 
     # If the user specified an invalid maximum page size, exit with an error message.
@@ -482,6 +706,12 @@ def main():
     if args.clean:
         get_workflow_execution_set(max_page_size=args.max_page_size) # Produces valid_data.json
 
+    # When set, only runs to find records to archive then exits
+    if args.jamo_check:
+        archive_metadata_files_already_in_jamo(METADATA_FILES_DIR)
+        logging.info("Completed %s", script_name)
+        sys.exit(0)        
+
     # Check if valid_data.json exists before trying to load it
     if not os.path.exists('valid_data/valid_data.json'):
         logging.error("valid_data/valid_data.json not found. Run with --clean first.")
@@ -493,6 +723,21 @@ def main():
     # Process valid data
     process_data(valid_data, args.emsl_only, args.nersc_only)
 
+    # Currently only checked explicitly with flag
+    # Move json that correspond to an already existing jat record 
+    # so that import is skipped
+    # This list can be further assessed
+    # TODO - IMPLEMENT
+    #archive_metadata_files_already_in_jamo(METADATA_FILES_DIR)
+
+    logging.info("Completed %s", script_name)
+
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## Main Program
+
+
+script_name = __file__
+
 if __name__ == "__main__":
     # Configure logging
     logging.basicConfig(
@@ -500,7 +745,9 @@ if __name__ == "__main__":
         format='%(asctime)s - %(levelname)s - %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S'
     )
-    
+
+    logging.info("Starting %s", script_name)
+
     try:
         main()
     except Exception as e:
