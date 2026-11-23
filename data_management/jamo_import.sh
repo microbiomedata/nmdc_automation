@@ -109,6 +109,9 @@ if (( ${#files[@]} == 0 )); then
   exit 0
 fi
 
+# Initialize a variable that we can use to keep track of how many `jat import` commands failed.
+failed_import_count=0
+
 # TODO: check for workflow_execution record in jamo; make it skip if found
 for file in "${files[@]}"; do
   wf=$(echo "$file" | cut -d':' -f2 | cut -d'-' -f1)
@@ -130,15 +133,35 @@ for file in "${files[@]}"; do
   # using this instead of $? to ensure we check the specific import cmd
   # in case other cmds get added in between
   if "${cmd[@]}"; then
-    # Append ".done" to the filename. If that appending fails, print an error message to STDERR.
-    mv "$file" "${file}.done" || { echo "Failed to rename file '$file'." >&2; }
-    echo "Moved: $file -> ${file}.done"
+    # Append ".done" to the filename; and print a confirmation message if the append was successful.
+    if mv "$file" "${file}.done"; then
+      echo "Moved: $file -> ${file}.done"
+    else
+      # If we failed to append ".done" to the filename, assume a foundational problem (e.g. the disk
+      # is full, the directory permissions are not what we expect) has occurred that would affect
+      # future imports/appends also, so we not only print an error message, but we also _exit_.
+      echo "Error: Imported '$file', but failed to rename it to '${file}.done'." >&2
+      exit 1
+    fi
   else
-    echo "Error: Failed to import $file"
+    # If we failed to `jat import` the file, print an error message to STDERR and increment the
+    # counter of failed imports.
+    echo "Error: Failed to import $file" >&2
+    failed_import_count=$((failed_import_count + 1))
   fi
-  #echo "------------------------------------------"
 done
 
 echo "=========================================="
 echo "Script finished at: $(date '+%Y-%m-%d %H:%M:%S')"
 echo "=========================================="
+
+# By default, the script will return the exit code of the final command within it. If there were any
+# failed imports, however, we want to make sure the script returns a non-zero exit code (so that
+# whatever invoked the script has an opportunity to respond accordingly).
+if [[ "$failed_import_count" -gt 0 ]]; then
+  echo "$failed_import_count imports failed." >&2
+  exit 1
+fi
+
+# If we made it this far, return a zero exit code.
+exit 0
