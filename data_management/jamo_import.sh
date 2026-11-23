@@ -118,7 +118,8 @@ for file in "${files[@]}"; do
   # using this instead of $? to ensure we check the specific import cmd
   # in case other cmds get added in between
   if "${cmd[@]}"; then
-    mv "$file" "${file}.done"
+    # Append ".done" to the filename. If that appending fails, print an error message to STDERR.
+    mv "$file" "${file}.done" || { echo "Failed to rename file '$file'." >&2; }
     echo "Moved: $file -> ${file}.done"
   else
     echo "Error: Failed to import $file"
