@@ -35,15 +35,27 @@ while [[ $# -gt 0 ]]; do
       exit 1
       ;;
     *)
+      # If we haven't already consumed a CLI argument as the `METADATA_DIR`, consume this one.
+      #
+      # Note: The reason we bother to check is that a user might accidentally specify multiple
+      #       positional arguments and, if we didn't check, we would silently discard earlier
+      #       ones here. Checking allows us to avoid that and to show a helpful error message.
+      #
+      if [[ -n "$METADATA_DIR" ]]; then
+        echo "Error: Too many positional arguments." >&2
+        usage >&2
+        exit 1
+      fi
       METADATA_DIR="$1"
       shift
       ;;
   esac
 done
 
+# If `$METADATA_DIR` is empty, print an error message and usage string to STDERR, then exit.
 if [[ -z "$METADATA_DIR" ]]; then
-  echo "Error: Metadata directory path is required."
-  echo "Usage: $0 [--dev] <path_to_metadata_dir>"
+  echo "Error: Metadata directory path is required." >&2
+  usage >&2
   exit 1
 fi
 
