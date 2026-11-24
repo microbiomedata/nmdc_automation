@@ -505,7 +505,7 @@ def get_workflow_id_from_json(filepath: Path) -> str | None:
         return None
     
 #def find_existing_jamo_records(source_dir: str = METADATA_FILES_DIR, dest_dir: str = FOUND_JAMO_METADATA_DIR) -> None:
-def archive_metadata_files_already_in_jamo(source_dir: str = METADATA_FILES_DIR, dest_dir: str = FOUND_JAMO_METADATA_DIR) -> None:
+def archive_metadata_files_already_in_jamo(source_dir: str = METADATA_FILES_DIR, dest_dir: str = FOUND_JAMO_METADATA_DIR) -> int:
     """
     Reads in the generated JSON files in source dirs, retrieves the metadata "workflow_execution_id" and queries JAMO 
     to check if a record with the given workflow execution ID already exists.
@@ -515,7 +515,11 @@ def archive_metadata_files_already_in_jamo(source_dir: str = METADATA_FILES_DIR,
         source_dir: Directory containing generated JAT metadata JSONs.
         dest_dir: Target directory for JSONs that already exist in JAMO.
         archive_log_filename: File name for recording the audit log of matched records.
-    
+
+    Returns:
+        The number of JAT metadata JSON files that this function failed to process and,
+        as a result, left in the `source_dir` directory (i.e. refrained from moving).
+
     Output: An audit file of the records found and their JAMO record ID is saved, stored under the dest_dir.
     """
 
@@ -525,7 +529,9 @@ def archive_metadata_files_already_in_jamo(source_dir: str = METADATA_FILES_DIR,
     src_path = Path(source_dir).resolve()
     if not src_path.is_dir():
         logging.warning(f"Source directory {src_path} is not a directory. Skipping JAMO archive check.")
-        return
+        # In this situation, we return `0` because there are _no_ JAT metadata JSON files in
+        # "the specified directory" (which it is _not_ a directory and so can't contain files).
+        return 0
 
     # Audit file located in cwd
     archive_log_file = Path.cwd() / JAMO_RECORD_LOOKUP_FILE
@@ -554,7 +560,7 @@ def archive_metadata_files_already_in_jamo(source_dir: str = METADATA_FILES_DIR,
 
     processed = 0
     multi_key = 0
-    failed = 0
+    failed: int = 0
     with open(archive_log_file, "w", encoding="utf-8", newline="") as tsv_file:
         writer = csv.writer(tsv_file, delimiter="\t")
         writer.writerow(["# json_file", "workflow_execution_id", "existing_jat_key", "existing_record_file_count"])
@@ -608,10 +614,13 @@ def archive_metadata_files_already_in_jamo(source_dir: str = METADATA_FILES_DIR,
 
     logging.info(
         f"Done processing dir: {src_path}\n"
-        f"Total files processed: {processed}\n"
+        f"Number of files we attempted to process: {processed}\n"
+        f"Number of files we failed to process: {failed}\n"
         f"Audit: {audit_rows} audit file rows, {dest_files} files in {archive_path}."
     )
-    
+
+    # Return the number of JAT metadata JSON files that we failed to process.
+    return failed
 
 
 def parse_workflow_templates(template_dir: str = None) -> Dict[str, Dict[str, str]]:
@@ -722,11 +731,19 @@ def main():
     if args.clean:
         get_workflow_execution_set(max_page_size=args.max_page_size) # Produces valid_data.json
 
-    # When set, only runs to find records to archive then exits
+    # When set, only runs to find records to archive then exits.
     if args.jamo_check:
-        archive_metadata_files_already_in_jamo(METADATA_FILES_DIR)
+
+        # Process the JAT metadata JSON files residing in the directory. If we fail to process
+        # any of them, exit with a non-zero status code so the calling process knows a failure
+        # occurred.
+        num_failures = archive_metadata_files_already_in_jamo(METADATA_FILES_DIR)
+        if num_failures > 0:
+            logging.error(f"Failed to process {num_failures} JAT metadata JSON files. Exiting.")
+            sys.exit(1)
+
         logging.info("Completed %s", script_name)
-        sys.exit(0)        
+        sys.exit(0)
 
     # Check if valid_data.json exists before trying to load it
     if not os.path.exists('valid_data/valid_data.json'):
