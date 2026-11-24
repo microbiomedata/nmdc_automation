@@ -533,9 +533,6 @@ def archive_metadata_files_already_in_jamo(source_dir: str = METADATA_FILES_DIR,
         # "the specified directory" (which it is _not_ a directory and so can't contain files).
         return 0
 
-    # Audit file located in cwd
-    archive_log_file = Path.cwd() / JAMO_RECORD_LOOKUP_FILE
-
     # Let's make a timestamp subdir so that we make sure we don't overwrite any previous iterations 
     # for the archived files
     # Generate current timestamp in YYYYMMDDHHMMSS format
@@ -550,7 +547,13 @@ def archive_metadata_files_already_in_jamo(source_dir: str = METADATA_FILES_DIR,
 
     logging.info(f"Creating timestamp dir under {dest_dir}")
     archive_path.mkdir(parents=True)
-    
+
+    # Store the "audit file" inside the timestamped archive directory (which is within `dest_dir`).
+    #
+    # Note: If we were to store it in the CWD, it would overwrite any existing "audit file" there,
+    #       since we `open` it in "write" mode ("w") instead of "append" mode ("a") below.
+    #
+    archive_log_file = archive_path / JAMO_RECORD_LOOKUP_FILE
 
     # loop through the json files and run jq to get the wfe ID being stored as an ID in jamo
     with os.scandir(src_path) as entries:
