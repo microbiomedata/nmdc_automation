@@ -432,11 +432,19 @@ def get_jamo_runner():
             f"jamo ({jamo_path}) or its python ({jamo_python}) not on PATH after module load."
         )
 
-    # Verify the exact import that was failing, under the exact environment we'll use
-    check = subprocess.run(
-        [jamo_python, "-c", "from bson import ObjectId"],
-        env=env, capture_output=True, text=True, timeout=30,
-    )
+    # Check whether Python can import `ObjectId` from `bson` (i.e. check whether the `bson`
+    # package is installed in the correct Python environment). If it isn't, raise an exception.
+    try:
+        check = subprocess.run(
+            [jamo_python, "-c", "from bson import ObjectId"],
+            env=env, capture_output=True, text=True, timeout=30,
+        )
+    except subprocess.TimeoutExpired as e:
+        # Note: `from e` indicates that this exception is a direct consequence of `e`.
+        # Docs: https://docs.python.org/3/tutorial/errors.html#raising-exceptions
+        raise JamoSetupError(
+            f"Timed out while running 'from bson import ObjectId' via {jamo_python}."
+        ) from e
     if check.returncode != 0:
         raise JamoSetupError(
             f"jamo's python ({jamo_python}) can't import bson:\n{check.stderr.strip()}\n"
