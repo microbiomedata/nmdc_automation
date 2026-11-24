@@ -556,7 +556,15 @@ def archive_metadata_files_already_in_jamo(source_dir: str = METADATA_FILES_DIR,
             try:
                 json_path = src_path / current_json
                 wfe_id = get_workflow_id_from_json(json_path)
-                # check wfe_id is not None first? todo jlp
+
+                # If the `WorkflowExecution` ID we got from the metadata JSON file is anything other
+                # than a string that consists of at least one non-whitespace character, raise an
+                # error (rather than trying to find find a JAMO record having that as its ID).
+                if not isinstance(wfe_id, str) or wfe_id.strip() == "":
+                    raise ValueError(
+                        f"Failed to get non-empty WFE ID from JSON file: {current_json}",
+                    )
+
                 # Check if a record exists
                 records = find_jamo_record(wfe_id) # {} if not found
                 
