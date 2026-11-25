@@ -20,7 +20,6 @@ from pathlib import Path
 import csv
 import shutil
 import subprocess
-from collections import Counter
 from functools import lru_cache
 
 _BASE_URL = "https://api.microbiomedata.org/"
@@ -459,16 +458,15 @@ def get_jamo_runner():
 def find_jamo_record(workflow_execution_id):
     """
     Query JAMO for files tagged with this workflow_execution_id.
-    Returns {jat_key: [file_names]}. An empty dict means JAMO answered "no records".
+    Returns {jat_key: [data_object_ids]}. An empty dict means JAMO answered "no records".
     Raises if the query itself fails.
     """
 
     runner, jamo_env = get_jamo_runner()   # cached after the first call
 
-    # This report will either return 0 if nothing found or the list of filenames and the jat key
-    # should I save the 
+    # This report will either return 0 if nothing found or the list of data_object_ids and the jat key
     cmd = [
-        *runner, "report", "select", "file_name, metadata.jat_key",
+        *runner, "report", "select", "metadata.data_object_id, metadata.jat_key",
         "where", f"metadata.workflow_execution_id='{workflow_execution_id}'",
     ]
     logging.debug(f"- jamo cmd: {cmd}") 
@@ -506,100 +504,92 @@ def get_workflow_id_from_json(filepath: Path) -> str | None:
         return None
 
 
-def get_output_file_basename_quantities(json_file_path: Path) -> Counter[str]:
+def get_output_data_object_ids(json_file_path: Path) -> set[str]:
     """
-    Reads a JAT metadata JSON file and returns a `Counter` instance whose keys are the distinct
-    _basenames_ of the "file" paths in the "outputs" array, and whose values are the number of
-    times a given basename occurs among those "file" paths (see doctests for an example).
+    Read a JAT metadata JSON file and return the set of `data_object_id` strings
+    from `outputs[*].metadata.data_object_id`.
 
-    Docs: https://docs.python.org/3/library/collections.html#collections.Counter
-
-    Raises `ValueError` if the JSON data is inadequate.
+    Raises `ValueError` if the JSON structure is invalid, the "outputs" array is empty or missing,
+    or any "outputs" elements lack a non-blank "metadata.data_object_id" field.
 
     >>> import tempfile
     >>> with tempfile.TemporaryDirectory() as tmpdir:
     ...     p = Path(tmpdir) / "meta.json"
     ...     _ = p.write_text(
-    ...         '{"outputs": [{"file": "/a/x.tsv"}, {"file": "/b/x.tsv"}, {"file": "/a/y.csv"}]}',
-    ...         encoding="utf-8"
+    ...         '{"outputs": ['
+    ...         '  {"file": "/nersc/result.tsv", "metadata": {"data_object_id": "nmdc:dobj-1"}}, '
+    ...         '  {"file": "/emsl/result.tsv", "metadata": {"data_object_id": "nmdc:dobj-2"}}'
+    ...         ']}',
+    ...         encoding="utf-8",
     ...     )
-    ...     basename_counter = get_output_file_basename_quantities(p)
-    ...     sorted(basename_counter.items())
-    [('x.tsv', 2), ('y.csv', 1)]
+    ...     sorted(get_output_data_object_ids(p))
+    ['nmdc:dobj-1', 'nmdc:dobj-2']
     """
     with open(json_file_path, "r", encoding="utf-8") as f:
         jat_metadata = json.load(f)
 
     if not isinstance(jat_metadata, dict):
         raise ValueError(f"Expected top-level JSON value in '{json_file_path}' to be an object.")
-    outputs = jat_metadata.get("outputs", [])
-    if not all(isinstance(output, dict) for output in outputs):
-        raise ValueError("Expected all JSON values within outputs to be objects.")
-    output_file_paths = [output.get("file") for output in outputs]
-    if not all(isinstance(p, str) and p.strip() != "" for p in output_file_paths):
-        raise ValueError("Expected all output file paths to be non-blank strings.")
+    outputs = jat_metadata.get("outputs")
+    if not isinstance(outputs, list) or len(outputs) == 0:
+        raise ValueError(f"Expected non-empty 'outputs' list in '{json_file_path}'.")
 
-    # Count the number of times each basename occurs.
-    distinct_output_file_basenames: List[str] = []
-    for file_path in output_file_paths:
-        basename = Path(file_path).name  # gets the basename
-        distinct_output_file_basenames.append(basename)
+    data_object_ids: set[str] = set()
+    for output in outputs:
+        if not isinstance(output, dict):
+            raise ValueError("Expected all JSON values within outputs to be objects.")
+        metadata = output.get("metadata")
+        if not isinstance(metadata, dict):
+            raise ValueError("Expected each output object to contain a 'metadata' object.")
+        data_object_id = metadata.get("data_object_id")
+        if not isinstance(data_object_id, str) or data_object_id.strip() == "":
+            raise ValueError("Expected all output 'metadata.data_object_id' values to be non-blank strings.")
+        data_object_ids.add(data_object_id.strip())
 
-    return Counter(distinct_output_file_basenames)
+    return data_object_ids
 
 
-def identify_missing_output_file_basenames(
-    expected_basename_quantities: Counter[str],
-    paths_by_jat_key: Dict[str, List[str]],
-) -> Counter[str]:
+def identify_missing_output_data_object_ids(
+    expected_data_object_ids: set[str],
+    records_by_jat_key: Dict[str, List[str]],
+) -> set[str]:
     """
-    Return a `Counter` whose keys are the basenames that the caller expected to appear in
-    the dictionary more times than they actually did. The value associated with a given key
-    is the number of _more times_.
+    Compare expected `data_object_id` values against JAMO records `{jat_key: [data_object_ids]}`,
+    and return any expected `data_object_id`s that are not yet present in JAMO.
 
-    Returns an empty `Counter` if all expectations are met.
-    >>> identify_missing_output_file_basenames(
-    ...     Counter(["a.tsv", "b.csv"]),
-    ...     {"jat1": ["a.tsv", "b.csv", "other.csv"]},
+    Returns an empty set if every expected `data_object_id` is present across the JAT keys.
+    >>> identify_missing_output_data_object_ids(
+    ...     {"nmdc:dobj-1", "nmdc:dobj-2"},
+    ...     {"jat1": ["nmdc:dobj-1", "nmdc:dobj-2"]},
     ... )
-    Counter()
+    set()
 
-    # Comparison spans all JAT keys.
-    >>> identify_missing_output_file_basenames(
-    ...     Counter(["a.tsv", "b.csv", "c.csv"]),
-    ...     {"jat1": ["a.tsv", "b.csv"], "jat2": ["c.csv"]},
+    Comparison spans all JAT keys:
+    >>> identify_missing_output_data_object_ids(
+    ...     {"nmdc:dobj-1", "nmdc:dobj-2"},
+    ...     {"jat1": ["nmdc:dobj-1"], "jat2": ["nmdc:dobj-2"]},
     ... )
-    Counter()
+    set()
 
-    # Result omits basenames that meet expectations.
-    >>> counter = identify_missing_output_file_basenames(
-    ...     Counter(["a.tsv", "b.csv"]),
-    ...     {"jat1": ["a.tsv"]},
-    ... )
-    >>> sorted(counter.items())
-    [('b.csv', 1)]
+    Distinguishes distinct outputs (e.g., NERSC vs. EMSL `result.tsv`) by `data_object_id`:
+    >>> sorted(identify_missing_output_data_object_ids(
+    ...     {"nmdc:dobj-emsl-1"},
+    ...     {"jat1": ["nmdc:dobj-nersc-1"]},
+    ... ))
+    ['nmdc:dobj-emsl-1']
 
-    Tolerates full paths (as an alternative to basenames) in the input dictionary.
-    >>> counter = identify_missing_output_file_basenames(
-    ...     Counter(["dup.tsv", "dup.tsv", "dup.tsv", "a.tsv"]),
-    ...     {"jat1": ["/path/to/dup.tsv"]},
-    ... )
-    >>> sorted(counter.items())
-    [('a.tsv', 1), ('dup.tsv', 2)]
+    Missing/"None" values from JAMO do not satisfy expected outputs:
+    >>> sorted(identify_missing_output_data_object_ids(
+    ...     {"nmdc:dobj-1"},
+    ...     {"jat1": ["None", ""]},
+    ... ))
+    ['nmdc:dobj-1']
     """
+    actual_data_object_ids: set[str] = set()
+    for data_object_ids in records_by_jat_key.values():
+        actual_data_object_ids.update(data_object_ids)
 
-    # Count the number of times a given basename appears within the dictionary of paths by JAT key.
-    actual_basenames = []
-    for paths in paths_by_jat_key.values():
-        basenames = [Path(p).name for p in paths]
-        actual_basenames.extend(basenames)  # adds each basename to the list
-    actual_basename_quantities = Counter(actual_basenames)
-
-    # Compare that to the number we expect.
-    missing_basename_quantities = expected_basename_quantities - actual_basename_quantities
-
-    # Return the difference.
-    return missing_basename_quantities
+    return expected_data_object_ids - actual_data_object_ids
 
 
 #def find_existing_jamo_records(source_dir: str = METADATA_FILES_DIR, dest_dir: str = FOUND_JAMO_METADATA_DIR) -> None:
@@ -680,7 +670,7 @@ def archive_metadata_files_already_in_jamo(source_dir: str = METADATA_FILES_DIR,
                         f"Failed to get non-empty WFE ID from JSON file: {current_json}",
                     )
 
-                output_file_basename_quantities = get_output_file_basename_quantities(
+                expected_data_object_ids = get_output_data_object_ids(
                     json_file_path=json_path,
                 )
 
@@ -690,18 +680,17 @@ def archive_metadata_files_already_in_jamo(source_dir: str = METADATA_FILES_DIR,
                 if not records:
                     continue
 
-                # Compare the list of output files we found on JAMO, to the ones we expected to find
-                # based on the JAT metadata JSON file. If we didn't find some of the ones we expected
-                # to, refrain from moving the JAT metadata JSON file from its current location.
-                missing_output_file_basenames = identify_missing_output_file_basenames(
-                    expected_basename_quantities=output_file_basename_quantities,
-                    paths_by_jat_key=records,
+                # Compare every output `data_object_id` listed in this JAT metadata JSON
+                # against the `data_object_id`s already stored in JAMO for this workflow.
+                missing_data_object_ids = identify_missing_output_data_object_ids(
+                    expected_data_object_ids=expected_data_object_ids,
+                    records_by_jat_key=records,
                 )
-                if missing_output_file_basenames.total() > 0:
+                if len(missing_data_object_ids) > 0:
                     logging.warning(
-                        f"One or more output files of WFE {wfe_id} do not exist in JAMO."
-                        f"Leaving '{current_json}' in '{src_path}' for a future import."
-                        f"The missing output files are: {sorted(missing_output_file_basenames.elements())}"
+                        f"One or more output DataObjects of WFE {wfe_id} do not exist in JAMO. "
+                        f"Leaving '{current_json}' in '{src_path}' for a future import. "
+                        f"Missing DataObject ID(s): {sorted(missing_data_object_ids)}"
                     )
                     continue
 
