@@ -475,6 +475,15 @@ def find_jamo_record(workflow_execution_id):
     if result.returncode != 0:
         raise RuntimeError(f"JAMO query failed for {workflow_execution_id}: {result.stderr.strip()}")
 
+    # If nothing was found, return an empty dictionary.
+    #
+    # Note: The comment above says that "the report will return 0" if nothing was found. The JAMOv1
+    #       documentation is currently offline (November 24, 2026) and so I cannot find the relevant
+    #       part of its documentation to cite as a reference here.
+    #
+    if result.stdout.strip() == "0":
+        return {}
+
     keys_to_files = {}
     for line in result.stdout.splitlines():
         if not line.strip():
