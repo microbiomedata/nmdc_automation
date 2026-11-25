@@ -15,12 +15,28 @@ import argparse
 from typing import Dict, List, Optional
 import logging
 import traceback
+from datetime import datetime
+from pathlib import Path
+import csv
+import shutil
+import subprocess
+from functools import lru_cache
 
 _BASE_URL = "https://api.microbiomedata.org/"
 NERSC_URL_PREFIX = "https://data.microbiomedata.org/data/"
 EMSL_URL_PREFIX = "https://nmdcdemo.emsl.pnnl.gov/"
 NERSC_BACKUP_PREFIX = "/global/cfs/cdirs/m3408/results/"
 EMSL_BACKUP_PREFIX = "/global/cfs/cdirs/m3408/emsl_backup/"
+
+# local file and dir outputs
+METADATA_FILES_DIR = "metadata_files"
+FOUND_JAMO_METADATA_DIR = "archive_metadata_in_jamo"
+JAMO_RECORD_LOOKUP_FILE = "archived_metadata_existing_jat_records.tsv"
+
+_ENV_MARKER = "__JAMO_ENV_START__"
+
+class JamoSetupError(Exception):
+    """jamo's environment couldn't be set up, so no query can succeed. Abort the run."""
 
 # File Operations
 def save_json(data: Dict, filename: str):
@@ -85,6 +101,10 @@ def query_collection(base_url: str, collection_name: str,
         params['max_page_size'] = max_page_size
     if filter_param:
         params['filter'] = filter_param
+
+    # Default to include superseded_by and failed records
+    params['include_superseded'] = True
+    params['include_failed'] = True
 
     if not paginate:
         # Single page request (original behavior)
@@ -348,12 +368,7 @@ def generate_metadata_file(workflow_execution_id: str, workflow_execution: str, 
         logging.debug(f"Skip. No valid outputs found for workflow_execution {workflow_execution} {workflow_execution_id}")
     else:
         # Save the JSON structure to a file
-        #
-        # TODO: Is it intentional that the resulting filename preserve the `was_informed_by` string and array wrapper?
-        #       For example   : `data_management/metadata_files/metadata_['nmdc:omprc-13-zzewgw49']_nmdc:wfrqc-13-j4akyr76.1.json`
-        #       As opposed to : `data_management/metadata_files/metadata_nmdc:omprc-13-zzewgw49_nmdc:wfrqc-13-j4akyr76.1.json`
-        #
-        save_json(json_structure, f"metadata_files/metadata_{was_informed_by}_{workflow_execution_id}.json")
+        save_json(json_structure, f"{METADATA_FILES_DIR}/metadata_{workflow_execution_id}.json")
 
 
 def process_data(valid_data: Dict[str, List], emsl_only: bool = False, nersc_only: bool = False):
@@ -373,6 +388,357 @@ def process_data(valid_data: Dict[str, List], emsl_only: bool = False, nersc_onl
         generate_metadata_file(workflow_execution_id, workflow_execution, was_informed_by, records, emsl_only, nersc_only)
 
     click.echo(f"number of records of each workflow execution: {count_workflow_execution_records}")
+
+
+def count_audit_file_rows(manifest_path: Path) -> int:
+    """Count data rows, streaming so memory stays flat."""
+    with open(manifest_path, encoding="utf-8") as f:
+        return sum(1 for line in f if not line.startswith("#"))
+
+    
+def count_json_files(directory: Path) -> int:
+    with os.scandir(directory) as entries:
+        return sum(1 for e in entries if e.name.endswith(".json"))
+
+
+@lru_cache(maxsize=1)
+def get_jamo_runner():
+    script = (
+        "module load jamo >/dev/null 2>&1 || exit 1; "
+        f"echo; echo {_ENV_MARKER}; env -0"
+    )
+    try:
+        # Non-login (-c), environment inherited: same as the probe that worked
+        result = subprocess.run(["bash", "-c", script], capture_output=True, timeout=60)
+    except subprocess.TimeoutExpired as e:
+        raise JamoSetupError("Timed out running 'module load jamo'.") from e
+
+    marker = f"{_ENV_MARKER}\n".encode()
+    if result.returncode != 0 or marker not in result.stdout:
+        raise JamoSetupError(
+            f"Could not 'module load jamo': {result.stderr.decode(errors='replace').strip()}"
+        )
+
+    env = {}
+    for item in result.stdout.split(marker, 1)[1].split(b"\0"):
+        key, sep, value = item.decode(errors="replace").partition("=")
+        if sep and key:
+            env[key] = value
+
+    jamo_path = shutil.which("jamo", path=env.get("PATH", ""))
+    jamo_python = shutil.which("python", path=env.get("PATH", ""))
+    if jamo_path is None or jamo_python is None:
+        raise JamoSetupError(
+            f"jamo ({jamo_path}) or its python ({jamo_python}) not on PATH after module load."
+        )
+
+    # Check whether Python can import `ObjectId` from `bson` (i.e. check whether the `bson`
+    # package is installed in the correct Python environment). If it isn't, raise an exception.
+    try:
+        check = subprocess.run(
+            [jamo_python, "-c", "from bson import ObjectId"],
+            env=env, capture_output=True, text=True, timeout=30,
+        )
+    except subprocess.TimeoutExpired as e:
+        # Note: `from e` indicates that this exception is a direct consequence of `e`.
+        # Docs: https://docs.python.org/3/tutorial/errors.html#raising-exceptions
+        raise JamoSetupError(
+            f"Timed out while running 'from bson import ObjectId' via {jamo_python}."
+        ) from e
+    if check.returncode != 0:
+        raise JamoSetupError(
+            f"jamo's python ({jamo_python}) can't import bson:\n{check.stderr.strip()}\n"
+            f"PATH head: {env['PATH'].split(':')[:5]}\nPYTHONPATH: {env.get('PYTHONPATH')}"
+        )
+
+    logging.info(f"jamo: {jamo_path}, python: {jamo_python}")
+    return [jamo_python, jamo_path], env
+
+
+def find_jamo_record(workflow_execution_id):
+    """
+    Query JAMO for files tagged with this workflow_execution_id.
+    Returns {jat_key: [data_object_ids]}. An empty dict means JAMO answered "no records".
+    Raises if the query itself fails.
+    """
+
+    runner, jamo_env = get_jamo_runner()   # cached after the first call
+
+    # This report will either return 0 if nothing found or the list of data_object_ids and the jat key
+    cmd = [
+        *runner, "report", "select", "metadata.data_object_id, metadata.jat_key",
+        "where", f"metadata.workflow_execution_id='{workflow_execution_id}'",
+    ]
+    logging.debug(f"- jamo cmd: {cmd}") 
+    
+    result = subprocess.run(cmd, env=jamo_env, capture_output=True, text=True, timeout=120)
+    if result.returncode != 0:
+        raise RuntimeError(f"JAMO query failed for {workflow_execution_id}: {result.stderr.strip()}")
+
+    # If nothing was found, return an empty dictionary.
+    #
+    # Note: The comment above says that "the report will return 0" if nothing was found. The JAMOv1
+    #       documentation is currently offline (November 24, 2026) and so I cannot find the relevant
+    #       part of its documentation to cite as a reference here.
+    #
+    if result.stdout.strip() == "0":
+        return {}
+
+    keys_to_files = {}
+    for line in result.stdout.splitlines():
+        if not line.strip():
+            continue
+        parts = line.split("\t")
+        if len(parts) != 2 or not parts[1].strip():
+            raise RuntimeError(f"Unexpected JAMO output for {workflow_execution_id}: {line!r}")
+        file_name = parts[0]
+        jat_key = parts[1].strip()
+        if jat_key not in keys_to_files:
+            keys_to_files[jat_key] = []
+        keys_to_files[jat_key].append(file_name)
+        
+
+    return keys_to_files
+
+
+def get_workflow_id_from_json(filepath: Path) -> str | None:
+    """Reads JSON in Python and extracts workflow_execution_id."""
+    try:
+        with open(filepath, 'r') as f:
+            data = json.load(f)
+            # equivalent to jq '.metadata.workflow_execution_id'
+            return data.get("metadata", {}).get("workflow_execution_id")
+    except (json.JSONDecodeError, OSError) as e:
+        logging.error(f"Failed to read JSON from {filepath}: {e}")
+        return None
+
+
+def get_output_data_object_ids(json_file_path: Path) -> set[str]:
+    """
+    Read a JAT metadata JSON file and return the set of `data_object_id` strings
+    from `outputs[*].metadata.data_object_id`.
+
+    Raises `ValueError` if the JSON structure is invalid, the "outputs" array is empty or missing,
+    or any "outputs" elements lack a non-blank "metadata.data_object_id" field.
+
+    >>> import tempfile
+    >>> with tempfile.TemporaryDirectory() as tmpdir:
+    ...     p = Path(tmpdir) / "meta.json"
+    ...     _ = p.write_text(
+    ...         '{"outputs": ['
+    ...         '  {"file": "/nersc/result.tsv", "metadata": {"data_object_id": "nmdc:dobj-1"}}, '
+    ...         '  {"file": "/emsl/result.tsv", "metadata": {"data_object_id": "nmdc:dobj-2"}}'
+    ...         ']}',
+    ...         encoding="utf-8",
+    ...     )
+    ...     sorted(get_output_data_object_ids(p))
+    ['nmdc:dobj-1', 'nmdc:dobj-2']
+    """
+    with open(json_file_path, "r", encoding="utf-8") as f:
+        jat_metadata = json.load(f)
+
+    if not isinstance(jat_metadata, dict):
+        raise ValueError(f"Expected top-level JSON value in '{json_file_path}' to be an object.")
+    outputs = jat_metadata.get("outputs")
+    if not isinstance(outputs, list) or len(outputs) == 0:
+        raise ValueError(f"Expected non-empty 'outputs' list in '{json_file_path}'.")
+
+    data_object_ids: set[str] = set()
+    for output in outputs:
+        if not isinstance(output, dict):
+            raise ValueError("Expected all JSON values within outputs to be objects.")
+        metadata = output.get("metadata")
+        if not isinstance(metadata, dict):
+            raise ValueError("Expected each output object to contain a 'metadata' object.")
+        data_object_id = metadata.get("data_object_id")
+        if not isinstance(data_object_id, str) or data_object_id.strip() == "":
+            raise ValueError("Expected all output 'metadata.data_object_id' values to be non-blank strings.")
+        data_object_ids.add(data_object_id.strip())
+
+    return data_object_ids
+
+
+def identify_missing_output_data_object_ids(
+    expected_data_object_ids: set[str],
+    records_by_jat_key: Dict[str, List[str]],
+) -> set[str]:
+    """
+    Compare expected `data_object_id` values against JAMO records `{jat_key: [data_object_ids]}`,
+    and return any expected `data_object_id`s that are not yet present in JAMO.
+
+    Returns an empty set if every expected `data_object_id` is present across the JAT keys.
+    >>> identify_missing_output_data_object_ids(
+    ...     {"nmdc:dobj-1", "nmdc:dobj-2"},
+    ...     {"jat1": ["nmdc:dobj-1", "nmdc:dobj-2"]},
+    ... )
+    set()
+
+    Comparison spans all JAT keys:
+    >>> identify_missing_output_data_object_ids(
+    ...     {"nmdc:dobj-1", "nmdc:dobj-2"},
+    ...     {"jat1": ["nmdc:dobj-1"], "jat2": ["nmdc:dobj-2"]},
+    ... )
+    set()
+
+    Distinguishes distinct outputs (e.g., NERSC vs. EMSL `result.tsv`) by `data_object_id`:
+    >>> sorted(identify_missing_output_data_object_ids(
+    ...     {"nmdc:dobj-emsl-1"},
+    ...     {"jat1": ["nmdc:dobj-nersc-1"]},
+    ... ))
+    ['nmdc:dobj-emsl-1']
+
+    Missing/"None" values from JAMO do not satisfy expected outputs:
+    >>> sorted(identify_missing_output_data_object_ids(
+    ...     {"nmdc:dobj-1"},
+    ...     {"jat1": ["None", ""]},
+    ... ))
+    ['nmdc:dobj-1']
+    """
+    actual_data_object_ids: set[str] = set()
+    for data_object_ids in records_by_jat_key.values():
+        actual_data_object_ids.update(data_object_ids)
+
+    return expected_data_object_ids - actual_data_object_ids
+
+
+#def find_existing_jamo_records(source_dir: str = METADATA_FILES_DIR, dest_dir: str = FOUND_JAMO_METADATA_DIR) -> None:
+def archive_metadata_files_already_in_jamo(source_dir: str = METADATA_FILES_DIR, dest_dir: str = FOUND_JAMO_METADATA_DIR) -> int:
+    """
+    Reads in the generated JSON files in source dirs, retrieves the metadata "workflow_execution_id" and queries JAMO 
+    to check if a record with the given workflow execution ID already exists.
+    If it does, move the jat record to an archive directory so that it doesn't get re-imported.
+    
+    Args:
+        source_dir: Directory containing generated JAT metadata JSONs.
+        dest_dir: Target directory for JSONs that already exist in JAMO.
+        archive_log_filename: File name for recording the audit log of matched records.
+
+    Returns:
+        The number of JAT metadata JSON files that this function failed to process and,
+        as a result, left in the `source_dir` directory (i.e. refrained from moving).
+
+    Output: An audit file of the records found and their JAMO record ID is saved, stored under the dest_dir.
+    """
+
+    logging.info("archive_metadata_files_already_in_jamo")
+    logging.info(f"src:{source_dir} and dest:{dest_dir}")
+    # If we don't find a source dir, exit with error? TODO jlp20261007
+    src_path = Path(source_dir).resolve()
+    if not src_path.is_dir():
+        logging.warning(f"Source directory {src_path} is not a directory. Skipping JAMO archive check.")
+        # In this situation, we return `0` because there are _no_ JAT metadata JSON files in
+        # "the specified directory" (which it is _not_ a directory and so can't contain files).
+        return 0
+
+    # Let's make a timestamp subdir so that we make sure we don't overwrite any previous iterations 
+    # for the archived files
+    # Generate current timestamp in YYYYMMDDHHMMSS format
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+
+    archive_path = Path(dest_dir) / timestamp
+
+    # The timestamp dir shouldn't exist because we just created it but erroring on the side of caution anyhow
+    if archive_path.exists():
+        logging.error(f"Dest datestamp directory {archive_path} already exists. Check results and try again. Exiting.")
+        sys.exit(1)
+
+    logging.info(f"Creating timestamp dir under {dest_dir}")
+    archive_path.mkdir(parents=True)
+
+    # Store the "audit file" inside the timestamped archive directory (which is within `dest_dir`).
+    #
+    # Note: If we were to store it in the CWD, it would overwrite any existing "audit file" there,
+    #       since we `open` it in "write" mode ("w") instead of "append" mode ("a") below.
+    #
+    archive_log_file = archive_path / JAMO_RECORD_LOOKUP_FILE
+
+    # loop through the json files and run jq to get the wfe ID being stored as an ID in jamo
+    with os.scandir(src_path) as entries:
+        # Save the files name to a static list upfront to avoid any risk of iterating directly on scandir
+        # where the list could change as we move files out, resulting in skipped entries
+        json_names = [e.name for e in entries if e.name.endswith(".json") and e.is_file()]
+
+    processed = 0
+    multi_key = 0
+    failed: int = 0
+    with open(archive_log_file, "w", encoding="utf-8", newline="") as tsv_file:
+        writer = csv.writer(tsv_file, delimiter="\t")
+        writer.writerow(["# json_file", "workflow_execution_id", "existing_jat_key", "existing_record_file_count"])
+        
+        for current_json in json_names:
+            processed += 1
+            try:
+                json_path = src_path / current_json
+                wfe_id = get_workflow_id_from_json(json_path)
+
+                # If the `WorkflowExecution` ID we got from the metadata JSON file is anything other
+                # than a string that consists of at least one non-whitespace character, raise an
+                # error (rather than trying to find find a JAMO record having that as its ID).
+                if not isinstance(wfe_id, str) or wfe_id.strip() == "":
+                    raise ValueError(
+                        f"Failed to get non-empty WFE ID from JSON file: {current_json}",
+                    )
+
+                expected_data_object_ids = get_output_data_object_ids(
+                    json_file_path=json_path,
+                )
+
+                # Check if a record exists
+                records = find_jamo_record(wfe_id) # {} if not found
+                
+                if not records:
+                    continue
+
+                # Compare every output `data_object_id` listed in this JAT metadata JSON
+                # against the `data_object_id`s already stored in JAMO for this workflow.
+                missing_data_object_ids = identify_missing_output_data_object_ids(
+                    expected_data_object_ids=expected_data_object_ids,
+                    records_by_jat_key=records,
+                )
+                if len(missing_data_object_ids) > 0:
+                    logging.warning(
+                        f"One or more output DataObjects of WFE {wfe_id} do not exist in JAMO. "
+                        f"Leaving '{current_json}' in '{src_path}' for a future import. "
+                        f"Missing DataObject ID(s): {sorted(missing_data_object_ids)}"
+                    )
+                    continue
+
+                # Move the file
+                logging.info(f"JAMO record found for {wfe_id}. Moving to archive.")
+                logging.info(f"Moving {json_path}...")
+                shutil.move(json_path, archive_path / current_json )
+            
+            except JamoSetupError:
+                raise   # setup is broken for every file, so stop the whole run
+            # don't know if Exception will catch any jamo errors? test with incorrect query TODO jlp
+            except Exception:
+                failed += 1
+                logging.exception(f"Failed processing {current_json}; left in {src_path} for the next run.")
+                continue
+
+            keys = sorted(records)
+            file_count = sum(len(files) for files in records.values())
+            if len(keys) > 1:
+                multi_key += 1
+                detail = "; ".join(f"{k}: {len(records[k])} files ({', '.join(records[k])})" for k in keys)
+                logging.warning(f"{wfe_id} has {len(keys)} jat keys in JAMO: {detail}")
+
+            writer.writerow([current_json, wfe_id, ",".join(keys), file_count])
+
+                
+    # Audit the files moved to make sure nothing failed
+    audit_rows = count_audit_file_rows(archive_log_file)
+    dest_files = count_json_files(archive_path)
+
+    logging.info(
+        f"Done processing dir                           : {src_path}\n"
+        f"Total number of files we attempted to process : {processed}\n"
+        f"Number of those files we failed to process    : {failed}\n"
+        f"Audit: {audit_rows} audit file rows, {dest_files} files in {archive_path}."
+    )
+
+    # Return the number of JAT metadata JSON files that we failed to process.
+    return failed
 
 
 def parse_workflow_templates(template_dir: str = None) -> Dict[str, Dict[str, str]]:
@@ -463,6 +829,7 @@ def main():
     parser.add_argument("--exit-after-generating-labels", action="store_true", help="If also using `--generate-labels`, then exit after generating the labels")
     parser.add_argument("--emsl-only", action="store_true", help="Only process EMSL data records")
     parser.add_argument("--nersc-only", action="store_true", help="Only process NERSC data records")
+    parser.add_argument("--jamo-check", action="store_true", help="Only run the jamo check stage")
     args = parser.parse_args()
 
     # If the user specified an invalid maximum page size, exit with an error message.
@@ -482,6 +849,20 @@ def main():
     if args.clean:
         get_workflow_execution_set(max_page_size=args.max_page_size) # Produces valid_data.json
 
+    # When set, only runs to find records to archive then exits.
+    if args.jamo_check:
+
+        # Process the JAT metadata JSON files residing in the directory. If we fail to process
+        # any of them, exit with a non-zero status code so the calling process knows a failure
+        # occurred.
+        num_failures = archive_metadata_files_already_in_jamo(METADATA_FILES_DIR)
+        if num_failures > 0:
+            logging.error(f"Failed to process {num_failures} JAT metadata JSON files. Exiting.")
+            sys.exit(1)
+
+        logging.info("Completed %s", script_name)
+        sys.exit(0)
+
     # Check if valid_data.json exists before trying to load it
     if not os.path.exists('valid_data/valid_data.json'):
         logging.error("valid_data/valid_data.json not found. Run with --clean first.")
@@ -493,6 +874,21 @@ def main():
     # Process valid data
     process_data(valid_data, args.emsl_only, args.nersc_only)
 
+    # Currently only checked explicitly with flag
+    # Move json that correspond to an already existing jat record 
+    # so that import is skipped
+    # This list can be further assessed
+    # TODO - IMPLEMENT
+    #archive_metadata_files_already_in_jamo(METADATA_FILES_DIR)
+
+    logging.info("Completed %s", script_name)
+
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## Main Program
+
+
+script_name = __file__
+
 if __name__ == "__main__":
     # Configure logging
     logging.basicConfig(
@@ -500,7 +896,9 @@ if __name__ == "__main__":
         format='%(asctime)s - %(levelname)s - %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S'
     )
-    
+
+    logging.info("Starting %s", script_name)
+
     try:
         main()
     except Exception as e:
