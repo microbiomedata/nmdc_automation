@@ -731,9 +731,9 @@ def archive_metadata_files_already_in_jamo(source_dir: str = METADATA_FILES_DIR,
     dest_files = count_json_files(archive_path)
 
     logging.info(
-        f"Done processing dir: {src_path}\n"
-        f"Number of files we attempted to process: {processed}\n"
-        f"Number of files we failed to process: {failed}\n"
+        f"Done processing dir                           : {src_path}\n"
+        f"Total number of files we attempted to process : {processed}\n"
+        f"Number of those files we failed to process    : {failed}\n"
         f"Audit: {audit_rows} audit file rows, {dest_files} files in {archive_path}."
     )
 
