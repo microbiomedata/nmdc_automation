@@ -20,6 +20,7 @@ from pathlib import Path
 import csv
 import shutil
 import subprocess
+from collections import Counter
 from functools import lru_cache
 
 _BASE_URL = "https://api.microbiomedata.org/"
@@ -503,7 +504,104 @@ def get_workflow_id_from_json(filepath: Path) -> str | None:
     except (json.JSONDecodeError, OSError) as e:
         logging.error(f"Failed to read JSON from {filepath}: {e}")
         return None
-    
+
+
+def get_output_file_basename_quantities(json_file_path: Path) -> Counter[str]:
+    """
+    Reads a JAT metadata JSON file and returns a `Counter` instance whose keys are the distinct
+    _basenames_ of the "file" paths in the "outputs" array, and whose values are the number of
+    times a given basename occurs among those "file" paths (see doctests for an example).
+
+    Docs: https://docs.python.org/3/library/collections.html#collections.Counter
+
+    Raises `ValueError` if the JSON data is inadequate.
+
+    >>> import tempfile
+    >>> with tempfile.TemporaryDirectory() as tmpdir:
+    ...     p = Path(tmpdir) / "meta.json"
+    ...     _ = p.write_text(
+    ...         '{"outputs": [{"file": "/a/x.tsv"}, {"file": "/b/x.tsv"}, {"file": "/a/y.csv"}]}',
+    ...         encoding="utf-8"
+    ...     )
+    ...     basename_counter = get_output_file_basename_quantities(p)
+    ...     sorted(basename_counter.items())
+    [('x.tsv', 2), ('y.csv', 1)]
+    """
+    with open(json_file_path, "r", encoding="utf-8") as f:
+        jat_metadata = json.load(f)
+
+    if not isinstance(jat_metadata, dict):
+        raise ValueError(f"Expected top-level JSON value in '{json_file_path}' to be an object.")
+    outputs = jat_metadata.get("outputs", [])
+    if not all(isinstance(output, dict) for output in outputs):
+        raise ValueError("Expected all JSON values within outputs to be objects.")
+    output_file_paths = [output.get("file") for output in outputs]
+    if not all(isinstance(p, str) and p.strip != "" for p in output_file_paths):
+        raise ValueError("Expected all output file paths to be non-blank strings.")
+
+    # Count the number of times each basename occurs.
+    distinct_output_file_basenames: List[str] = []
+    for file_path in output_file_paths:
+        basename = Path(file_path).name  # gets the basename
+        distinct_output_file_basenames.append(basename)
+
+    return Counter(distinct_output_file_basenames)
+
+
+def identify_missing_output_file_basenames(
+    expected_basename_quantities: Counter[str],
+    paths_by_jat_key: Dict[str, List[str]],
+) -> Counter[str]:
+    """
+    Return a `Counter` whose keys are the basenames that the caller expected to appear in
+    the dictionary more times than they actually did. The value associated with a given key
+    is the number of _more times_.
+
+    Returns an empty `Counter` if all expectations are met.
+    >>> identify_missing_output_files(
+    ...     Counter(["a.tsv", "b.csv"]),
+    ...     {"jat1": ["a.tsv", "b.csv", "other.csv"]},
+    ... )
+    Counter()
+
+    # Comparison spans all JAT keys.
+    >>> identify_missing_output_files(
+    ...     Counter(["a.tsv", "b.csv", "c.csv"]),
+    ...     {"jat1": ["a.tsv", "b.csv"], "jat2": ["c.csv"]},
+    ... )
+    Counter()
+
+    # Result omits basenames that meet expectations.
+    >>> counter = identify_missing_output_files(
+    ...     Counter(["a.tsv", "b.csv"]),
+    ...     {"jat1": ["a.tsv"]},
+    ... )
+    >>> sorted(counter.items())
+    [('b.csv', 1)]
+
+    Tolerates full paths (as an alternative to basenames) in the input dictionary.
+    >>> counter = identify_missing_output_files(
+    ...     Counter(["dup.tsv", "dup.tsv", "dup.tsv", "a.tsv"]),
+    ...     {"jat1": ["/path/to/dup.tsv"]},
+    ... )
+    >>> sorted(counter.items())
+    [('a.tsv', 1), ('dup.tsv', 2)]
+    """
+
+    # Count the number of times a given basename appears within the dictionary of paths by JAT key.
+    actual_basenames = []
+    for paths in paths_by_jat_key.values():
+        basenames = [Path(p).name for p in paths]
+        actual_basenames.extend(basenames)  # adds each basename to the list
+    actual_basename_quantities = Counter(actual_basenames)
+
+    # Compare that to the number we expect.
+    missing_basename_quantities = expected_basename_quantities - actual_basename_quantities
+
+    # Return the difference.
+    return missing_basename_quantities
+
+
 #def find_existing_jamo_records(source_dir: str = METADATA_FILES_DIR, dest_dir: str = FOUND_JAMO_METADATA_DIR) -> None:
 def archive_metadata_files_already_in_jamo(source_dir: str = METADATA_FILES_DIR, dest_dir: str = FOUND_JAMO_METADATA_DIR) -> int:
     """
@@ -582,10 +680,29 @@ def archive_metadata_files_already_in_jamo(source_dir: str = METADATA_FILES_DIR,
                         f"Failed to get non-empty WFE ID from JSON file: {current_json}",
                     )
 
+                output_file_basename_quantities = get_output_file_basename_quantities(
+                    json_file_path=json_path,
+                )
+
                 # Check if a record exists
                 records = find_jamo_record(wfe_id) # {} if not found
                 
                 if not records:
+                    continue
+
+                # Compare the list of output files we found on JAMO, to the ones we expected to find
+                # based on the JAT metadata JSON file. If we didn't find some of the ones we expected
+                # to, refrain from moving the JAT metadata JSON file from its current location.
+                missing_output_file_basenames = identify_missing_output_file_basenames(
+                    expected_basename_quantities=output_file_basename_quantities,
+                    paths_by_jat_key=records,
+                )
+                if missing_output_file_basenames.total() > 0:
+                    logging.warning(
+                        f"One or more output files of WFE {wfe_id} do not exist in JAMO."
+                        f"Leaving '{current_json}' in '{src_path}' for a future import."
+                        f"The missing output files are: {sorted(missing_output_file_basenames.elements())}"
+                    )
                     continue
 
                 # Move the file
