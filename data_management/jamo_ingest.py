@@ -536,7 +536,7 @@ def get_output_file_basename_quantities(json_file_path: Path) -> Counter[str]:
     if not all(isinstance(output, dict) for output in outputs):
         raise ValueError("Expected all JSON values within outputs to be objects.")
     output_file_paths = [output.get("file") for output in outputs]
-    if not all(isinstance(p, str) and p.strip != "" for p in output_file_paths):
+    if not all(isinstance(p, str) and p.strip() != "" for p in output_file_paths):
         raise ValueError("Expected all output file paths to be non-blank strings.")
 
     # Count the number of times each basename occurs.
@@ -558,21 +558,21 @@ def identify_missing_output_file_basenames(
     is the number of _more times_.
 
     Returns an empty `Counter` if all expectations are met.
-    >>> identify_missing_output_files(
+    >>> identify_missing_output_file_basenames(
     ...     Counter(["a.tsv", "b.csv"]),
     ...     {"jat1": ["a.tsv", "b.csv", "other.csv"]},
     ... )
     Counter()
 
     # Comparison spans all JAT keys.
-    >>> identify_missing_output_files(
+    >>> identify_missing_output_file_basenames(
     ...     Counter(["a.tsv", "b.csv", "c.csv"]),
     ...     {"jat1": ["a.tsv", "b.csv"], "jat2": ["c.csv"]},
     ... )
     Counter()
 
     # Result omits basenames that meet expectations.
-    >>> counter = identify_missing_output_files(
+    >>> counter = identify_missing_output_file_basenames(
     ...     Counter(["a.tsv", "b.csv"]),
     ...     {"jat1": ["a.tsv"]},
     ... )
@@ -580,7 +580,7 @@ def identify_missing_output_file_basenames(
     [('b.csv', 1)]
 
     Tolerates full paths (as an alternative to basenames) in the input dictionary.
-    >>> counter = identify_missing_output_files(
+    >>> counter = identify_missing_output_file_basenames(
     ...     Counter(["dup.tsv", "dup.tsv", "dup.tsv", "a.tsv"]),
     ...     {"jat1": ["/path/to/dup.tsv"]},
     ... )
